@@ -1,7 +1,19 @@
-.env
+node_modules/
+build/
+.next/
+api/build/
+web/.next/
+web/out/
+*.tsbuildinfo
+
+# Local agent/tooling notes
 AGENTS.md
 CLAUDE.md
-node_modules/
-.codex
+.codex/
 docs/
 prj_context/
+
+# 環境変数（生成シークレット）。*.example のみコミットする。
+.env
+.env.*
+!.env.*.example
