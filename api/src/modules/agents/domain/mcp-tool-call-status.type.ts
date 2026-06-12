@@ -1,0 +1,6 @@
+export type McpToolCallStatus =
+  | "STARTED"
+  | "SUCCEEDED"
+  | "FAILED"
+  | "REQUIRES_HUMAN_SIGNATURE"
+  | "REQUIRES_CONFIRMATION";

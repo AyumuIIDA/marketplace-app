@@ -1,0 +1,7 @@
+.env
+AGENTS.md
+CLAUDE.md
+node_modules/
+.codex
+docs/
+prj_context/

@@ -1,0 +1,1 @@
+export const LISTING_STATUSES = ["DRAFT", "PUBLISHED", "SOLD", "HIDDEN"];
