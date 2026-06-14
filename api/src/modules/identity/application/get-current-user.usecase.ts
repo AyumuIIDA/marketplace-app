@@ -9,9 +9,11 @@ export type GetCurrentUserInput = {
 export type GetCurrentUserOutput = {
   userId: string;
   displayName: string;
-  email: string;
+  email?: string;
   avatarUrl?: string;
   status: "ACTIVE" | "SUSPENDED";
+  humanVerified: boolean;
+  humanVerifiedAt?: Date;
 };
 
 export type GetCurrentUserDeps = {
@@ -40,6 +42,8 @@ export class GetCurrentUserUseCase {
       email: snapshot.email,
       avatarUrl: snapshot.avatarUrl,
       status: snapshot.status,
+      humanVerified: snapshot.humanVerifiedAt !== undefined,
+      humanVerifiedAt: snapshot.humanVerifiedAt,
     };
   }
 }

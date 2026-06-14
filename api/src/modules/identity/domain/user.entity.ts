@@ -5,9 +5,10 @@ import type { UserStatus } from "./user-status.type.js";
 export type UserProps = {
   id: string;
   displayName: string;
-  email: string;
+  email?: string;
   avatarUrl?: string;
   status: UserStatus;
+  humanVerifiedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -15,8 +16,9 @@ export type UserProps = {
 export type CreateUserProps = {
   id: string;
   displayName: string;
-  email: string;
+  email?: string;
   avatarUrl?: string;
+  humanVerifiedAt?: Date;
   now: Date;
 };
 
@@ -25,7 +27,7 @@ export class User {
 
   static create(input: CreateUserProps): User {
     validateUserText("displayName", input.displayName);
-    validateEmail(input.email);
+    validateOptionalEmail(input.email);
 
     return new User({
       id: input.id,
@@ -33,6 +35,7 @@ export class User {
       email: input.email,
       avatarUrl: input.avatarUrl,
       status: "ACTIVE",
+      humanVerifiedAt: input.humanVerifiedAt,
       createdAt: input.now,
       updatedAt: input.now,
     });
@@ -54,14 +57,24 @@ export class User {
     return { ...this.props };
   }
 
-  updateProfile(input: { displayName: string; avatarUrl?: string; now: Date }): void {
+  updateProfile(input: { displayName: string; email?: string; avatarUrl?: string; now: Date }): void {
     validateUserText("displayName", input.displayName);
+    validateOptionalEmail(input.email);
 
     this.props = {
       ...this.props,
       displayName: input.displayName,
+      email: input.email,
       avatarUrl: input.avatarUrl,
       updatedAt: input.now,
+    };
+  }
+
+  markHumanVerified(now: Date): void {
+    this.props = {
+      ...this.props,
+      humanVerifiedAt: now,
+      updatedAt: now,
     };
   }
 
@@ -83,5 +96,11 @@ export function validateUserText(field: "displayName", value: string): void {
 export function validateEmail(email: string): void {
   if (!email.includes("@") || email.trim().length === 0) {
     throw new DomainError("USER_EMAIL_INVALID", "User email is invalid.", { email });
+  }
+}
+
+export function validateOptionalEmail(email: string | undefined): void {
+  if (email !== undefined) {
+    validateEmail(email);
   }
 }

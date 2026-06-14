@@ -29,6 +29,7 @@ export class UpsertCurrentUserUseCase {
     if (existing !== undefined) {
       existing.updateProfile({
         displayName: input.displayName,
+        email: input.email,
         avatarUrl: input.avatarUrl,
         now,
       });
