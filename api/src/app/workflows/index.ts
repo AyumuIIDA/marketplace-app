@@ -11,3 +11,4 @@ export * from "./submit-review-with-human-signature.workflow.js";
 export * from "./message-workflow.transaction.js";
 export * from "./list-order-messages.workflow.js";
 export * from "./send-order-message.workflow.js";
+export * from "./compare-listings.workflow.js";

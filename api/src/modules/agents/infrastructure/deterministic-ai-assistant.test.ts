@@ -41,4 +41,43 @@ describe("DeterministicAiAssistant", () => {
     expect(result.rating).toBe(4);
     expect(result.comment).toContain("ありがとう");
   });
+
+  it("drafts a message embedding the intent", async () => {
+    const result = await assistant.suggestMessage({
+      orderId: "order-1",
+      intent: "発送日を確認したいです。",
+      tone: "polite",
+    });
+
+    expect(result.message).toContain("発送日を確認したいです。");
+  });
+
+  it("compares listings and identifies the cheapest", async () => {
+    const result = await assistant.compareListings({
+      listings: [
+        {
+          listingId: "listing-1",
+          title: "A",
+          description: "",
+          price: 5000,
+          currency: "JPY",
+          condition: "good",
+          category: "general",
+        },
+        {
+          listingId: "listing-2",
+          title: "B",
+          description: "",
+          price: 3000,
+          currency: "JPY",
+          condition: "good",
+          category: "general",
+        },
+      ],
+    });
+
+    expect(result.items).toHaveLength(2);
+    expect(result.summary).toContain("B");
+    expect(result.items.find((i) => i.listingId === "listing-2")?.pros).toContain("価格が最も安い");
+  });
 });

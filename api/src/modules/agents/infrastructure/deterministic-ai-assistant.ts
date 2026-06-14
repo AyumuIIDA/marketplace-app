@@ -1,7 +1,11 @@
 import type {
   AiAssistant,
+  CompareListingsInput,
+  CompareListingsResult,
   SuggestListingFieldsInput,
   SuggestListingFieldsResult,
+  SuggestMessageInput,
+  SuggestMessageResult,
   SuggestPriceInput,
   SuggestPriceResult,
   SuggestReviewInput,
@@ -68,6 +72,40 @@ export class DeterministicAiAssistant implements AiAssistant {
         input.tone === "polite"
           ? "迅速かつ丁寧な取引をありがとうございました。"
           : "スムーズな取引で助かりました。",
+    };
+  }
+
+  async suggestMessage(input: SuggestMessageInput): Promise<SuggestMessageResult> {
+    const intent = input.intent?.trim() ?? "";
+    const body = intent.length > 0 ? intent : "取引について確認したいことがあります。";
+
+    return {
+      message:
+        input.tone === "polite"
+          ? `お世話になっております。${body}ご確認のほどよろしくお願いいたします。`
+          : `${body}よろしくお願いします。`,
+    };
+  }
+
+  async compareListings(input: CompareListingsInput): Promise<CompareListingsResult> {
+    if (input.listings.length === 0) {
+      return { summary: "比較対象の出品がありません。", items: [] };
+    }
+
+    const cheapest = input.listings.reduce((min, listing) =>
+      listing.price < min.price ? listing : min,
+    );
+
+    return {
+      summary: `${input.listings.length}件を比較しました。最安は「${cheapest.title}」(${cheapest.price}${cheapest.currency})です。`,
+      items: input.listings.map((listing) => ({
+        listingId: listing.listingId,
+        pros: [
+          listing.listingId === cheapest.listingId ? "価格が最も安い" : "選択肢のひとつ",
+          `状態: ${listing.condition}`,
+        ],
+        cons: listing.listingId === cheapest.listingId ? [] : [`最安より高い(${listing.price}${listing.currency})`],
+      })),
     };
   }
 }

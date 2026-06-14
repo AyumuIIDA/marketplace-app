@@ -38,8 +38,44 @@ export type SuggestReviewResult = {
   comment: string;
 };
 
+export type SuggestMessageInput = {
+  orderId: string;
+  intent?: string;
+  tone?: string;
+};
+
+export type SuggestMessageResult = {
+  message: string;
+};
+
+// 比較対象の出品要約。AIに渡す最小情報のみ（取得はworkflow側で行う）。
+export type ComparableListing = {
+  listingId: string;
+  title: string;
+  description: string;
+  price: number;
+  currency: string;
+  condition: string;
+  category: string;
+};
+
+export type CompareListingsInput = {
+  listings: ComparableListing[];
+};
+
+export type CompareListingsResult = {
+  summary: string;
+  items: Array<{
+    listingId: string;
+    pros: string[];
+    cons: string[];
+  }>;
+};
+
 export interface AiAssistant {
   suggestListingFields(input: SuggestListingFieldsInput): Promise<SuggestListingFieldsResult>;
   suggestPrice(input: SuggestPriceInput): Promise<SuggestPriceResult>;
   suggestReview(input: SuggestReviewInput): Promise<SuggestReviewResult>;
+  suggestMessage(input: SuggestMessageInput): Promise<SuggestMessageResult>;
+  compareListings(input: CompareListingsInput): Promise<CompareListingsResult>;
 }
