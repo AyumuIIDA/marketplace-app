@@ -11,17 +11,29 @@ import {
   CreateAgentUseCase,
   DisableAgentUseCase,
   ListAgentsUseCase,
+  RecordMcpToolCallUseCase,
 } from "../modules/agents/application/index.js";
 import {
   Agent,
+  McpToolCall,
   type AgentRepository,
+  type McpToolCallRepository,
   type SearchAgentsInput,
 } from "../modules/agents/domain/index.js";
+import { McpToolRunner } from "../modules/mcp/index.js";
 import {
   GetCurrentUserUseCase,
+  LinkWorldIdUseCase,
   UpsertCurrentUserUseCase,
 } from "../modules/identity/application/index.js";
-import { User, type UserRepository } from "../modules/identity/domain/index.js";
+import {
+  User,
+  type AuthIdentity,
+  type AuthIdentityRepository,
+  type AuthProvider,
+  type CreateAuthIdentityInput,
+  type UserRepository,
+} from "../modules/identity/domain/index.js";
 import {
   CreateListingUseCase,
   GetListingUseCase,
@@ -235,10 +247,10 @@ describe("createApiApp", () => {
       body: JSON.stringify(createListingRequest()),
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(401);
     expect(await response.json()).toMatchObject({
       error: {
-        code: "NOT_AUTHORIZED",
+        code: "NOT_AUTHENTICATED",
       },
     });
   });
@@ -251,7 +263,7 @@ describe("createApiApp", () => {
       headers: { "content-type": "application/json" },
       body: "{}",
     });
-    expect(unauthorized.status).toBe(403);
+    expect(unauthorized.status).toBe(401);
 
     const initialize = await app.request("/mcp", {
       method: "POST",
@@ -628,6 +640,7 @@ describe("createApiApp", () => {
 
 function createTestApp() {
   const agentRepository = new FakeAgentRepository();
+  const authIdentityRepository = new FakeAuthIdentityRepository();
   const userRepository = new FakeUserRepository();
   const listingRepository = new FakeListingRepository();
   const messageRepository = new FakeMessageRepository();
@@ -740,6 +753,13 @@ function createTestApp() {
       getCurrentUserUseCase: new GetCurrentUserUseCase({
         userRepository,
       }),
+      linkWorldIdUseCase: new LinkWorldIdUseCase({
+        userRepository,
+        authIdentityRepository,
+        worldIdVerifier: new FakeWorldIdVerifier(),
+        idGenerator: new FixedIdGenerator(["auth-identity-1"]),
+        clock,
+      }),
       upsertCurrentUserUseCase: new UpsertCurrentUserUseCase({
         userRepository,
         clock,
@@ -800,9 +820,24 @@ function createTestApp() {
       }),
     },
     mcpTools: [],
-  });
+    mcpToolRunner: new McpToolRunner({
+      recordMcpToolCallUseCase: new RecordMcpToolCallUseCase({
+        mcpToolCallRepository: new InMemoryMcpToolCallRepository(),
+        idGenerator: new FixedIdGenerator(["mcp-tool-call-1"]),
+        clock,
+      }),
+    }),
+  }, { allowDevUserHeader: true });
 
   return { app, listingRepository, userRepository };
+}
+
+class InMemoryMcpToolCallRepository implements McpToolCallRepository {
+  toolCalls: McpToolCall[] = [];
+
+  async save(toolCall: McpToolCall): Promise<void> {
+    this.toolCalls.push(toolCall);
+  }
 }
 
 async function createDraftListing(app: ReturnType<typeof createApiApp>): Promise<void> {
@@ -1027,6 +1062,35 @@ class FakeUserRepository implements UserRepository {
 
   async findByEmail(email: string): Promise<User | undefined> {
     return [...this.users.values()].find((user) => user.snapshot.email === email);
+  }
+}
+
+class FakeAuthIdentityRepository implements AuthIdentityRepository {
+  identities = new Map<string, AuthIdentity>();
+
+  async save(input: CreateAuthIdentityInput): Promise<AuthIdentity> {
+    const identity: AuthIdentity = {
+      id: input.id,
+      userId: input.userId,
+      provider: input.provider,
+      providerSubject: input.providerSubject,
+      createdAt: input.createdAt,
+    };
+
+    this.identities.set(this.key(input.provider, input.providerSubject), identity);
+
+    return identity;
+  }
+
+  async findByProviderSubject(
+    provider: AuthProvider,
+    providerSubject: string,
+  ): Promise<AuthIdentity | undefined> {
+    return this.identities.get(this.key(provider, providerSubject));
+  }
+
+  private key(provider: AuthProvider, providerSubject: string): string {
+    return `${provider}:${providerSubject}`;
   }
 }
 

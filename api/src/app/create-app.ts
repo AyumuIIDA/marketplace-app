@@ -1,8 +1,13 @@
 import { Hono } from "hono";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 
-import { getCurrentUser, handleHttpError } from "../interface/http/index.js";
-import { createMcpServer, type McpTool } from "../modules/mcp/index.js";
+import {
+  createBffAuthMiddleware,
+  getCurrentUser,
+  handleHttpError,
+  type BffAuthConfig,
+} from "../interface/http/index.js";
+import { createMcpServer, type McpTool, type McpToolRunner } from "../modules/mcp/index.js";
 import { createAgentController, type AgentControllerDeps } from "../modules/agents/interface/index.js";
 import { createIdentityController, type IdentityControllerDeps } from "../modules/identity/interface/index.js";
 import { createListingController, type ListingControllerDeps } from "../modules/listings/interface/index.js";
@@ -22,18 +27,24 @@ export type ApiAppDeps = {
   orderControllerDeps: OrderControllerDeps;
   reviewControllerDeps: ReviewControllerDeps;
   mcpTools: McpTool[];
+  // 全MCP tool呼び出しを監査記録するrunner。createMcpServerへ渡す。
+  mcpToolRunner: McpToolRunner;
 };
 
-export function createApiApp(deps: ApiAppDeps): Hono {
+export function createApiApp(deps: ApiAppDeps, authConfig: BffAuthConfig): Hono {
   const app = new Hono();
 
   app.onError(handleHttpError);
 
+  // /health は認証不要。以降の route はBFF認証ミドルウェアを通す。
   app.get("/health", (c) =>
     c.json({
       status: "ok",
     }),
   );
+
+  app.use("*", createBffAuthMiddleware(authConfig));
+
   app.route("/agents", createAgentController(deps.agentControllerDeps));
   app.route("/", createIdentityController(deps.identityControllerDeps));
   app.route("/listings", createListingController(deps.listingControllerDeps));
@@ -45,10 +56,14 @@ export function createApiApp(deps: ApiAppDeps): Hono {
   // MCP transport（stateless）。同一Hono appの1 pathとして公開し、リクエストごとに構築する。
   app.all("/mcp", async (c) => {
     const { userId } = getCurrentUser(c);
-    const server = createMcpServer(deps.mcpTools, {
-      userId,
-      agentId: c.req.header("x-agent-id"),
-    });
+    const server = createMcpServer(
+      deps.mcpTools,
+      {
+        userId,
+        agentId: c.req.header("x-agent-id"),
+      },
+      deps.mcpToolRunner,
+    );
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,

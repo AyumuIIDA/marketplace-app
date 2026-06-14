@@ -1,3 +1,6 @@
+import OpenAI from "openai";
+import { importJWK, type JWK } from "jose";
+
 import { createDb, type Db } from "../db/client.js";
 import { UuidGenerator, SystemClock } from "../shared/index.js";
 import {
@@ -7,16 +10,26 @@ import {
   SuggestListingFieldsUseCase,
   SuggestPriceUseCase,
   SuggestReviewUseCase,
+  SuggestMessageUseCase,
+  CompareListingsUseCase,
+  RecordMcpToolCallUseCase,
+  type AiAssistant,
 } from "../modules/agents/index.js";
 import {
   DrizzleAgentRepository,
+  DrizzleMcpToolCallRepository,
   DeterministicAiAssistant,
+  OpenAiAiAssistant,
 } from "../modules/agents/infrastructure/index.js";
 import {
   GetCurrentUserUseCase,
+  LinkWorldIdUseCase,
   UpsertCurrentUserUseCase,
 } from "../modules/identity/index.js";
-import { DrizzleUserRepository } from "../modules/identity/infrastructure/index.js";
+import {
+  DrizzleAuthIdentityRepository,
+  DrizzleUserRepository,
+} from "../modules/identity/infrastructure/index.js";
 import {
   CreateListingUseCase,
   GetListingUseCase,
@@ -67,6 +80,15 @@ import {
   SuggestPriceTool,
   SuggestReviewTool,
   UpdateListingTool,
+  GetCurrentUserTool,
+  GetListingTool,
+  ListOrdersTool,
+  ListMessagesTool,
+  MarkShippedTool,
+  MarkReceivedTool,
+  SuggestMessageTool,
+  CompareListingsTool,
+  McpToolRunner,
   type McpTool,
 } from "../modules/mcp/index.js";
 import {
@@ -77,6 +99,7 @@ import {
   SendOrderMessageWorkflow,
   SubmitReviewWithHumanSignatureWorkflow,
   UpdateListingWithHumanSignatureWorkflow,
+  CompareListingsWorkflow,
 } from "./workflows/index.js";
 import {
   DrizzleHumanSignatureWorkflowTransaction,
@@ -87,10 +110,11 @@ import {
 
 import { createApiApp } from "./create-app.js";
 
-export function createProductionApp(db: Db = createDb()) {
+export async function createProductionApp(db: Db = createDb()) {
   const idGenerator = new UuidGenerator();
   const clock = new SystemClock();
   const agentRepository = new DrizzleAgentRepository(db);
+  const authIdentityRepository = new DrizzleAuthIdentityRepository(db);
   const userRepository = new DrizzleUserRepository(db);
   const listingRepository = new DrizzleListingRepository(db);
   const messageRepository = new DrizzleMessageRepository(db);
@@ -177,11 +201,43 @@ export function createProductionApp(db: Db = createDb()) {
     sendMessageUseCase,
   });
 
-  // AI出品支援。MVPはLLM未接続の決定論fakeで配線する（AiAssistant port経由）。
-  const aiAssistant = new DeterministicAiAssistant();
+  // AI出品支援。AiAssistant port経由。providerはenvで選択（既定はデモ安定優先の決定論fake）。
+  const aiAssistant: AiAssistant =
+    process.env.AI_ASSISTANT_PROVIDER === "openai"
+      ? new OpenAiAiAssistant({
+          client: new OpenAI({ apiKey: requiredEnv("OPENAI_API_KEY") }),
+          model: requiredEnv("OPENAI_MODEL"),
+        })
+      : new DeterministicAiAssistant();
   const suggestListingFieldsUseCase = new SuggestListingFieldsUseCase({ aiAssistant });
   const suggestPriceUseCase = new SuggestPriceUseCase({ aiAssistant });
   const suggestReviewUseCase = new SuggestReviewUseCase({ aiAssistant });
+  const suggestMessageUseCase = new SuggestMessageUseCase({ aiAssistant });
+  const compareListingsUseCase = new CompareListingsUseCase({ aiAssistant });
+
+  // 読取/ライフサイクル系。REST controller と MCP tool で同一インスタンスを共有する。
+  const getCurrentUserUseCase = new GetCurrentUserUseCase({ userRepository });
+  const getListingUseCase = new GetListingUseCase({ listingRepository });
+  const listOrdersUseCase = new ListOrdersUseCase({ orderRepository });
+  const markOrderShippedUseCase = new MarkOrderShippedUseCase({
+    orderFulfillmentService,
+    orderContext,
+    clock,
+  });
+  const markOrderReceivedUseCase = new MarkOrderReceivedUseCase({
+    orderFulfillmentService,
+    orderContext,
+    clock,
+  });
+  const listOrderMessagesWorkflow = new ListOrderMessagesWorkflow({
+    transaction: messageWorkflowTransaction,
+    orderFulfillmentService,
+    listMessagesUseCase: new ListMessagesUseCase({ messageRepository }),
+  });
+  const compareListingsWorkflow = new CompareListingsWorkflow({
+    getListingUseCase,
+    compareListingsUseCase,
+  });
 
   const mcpTools: McpTool[] = [
     new CreateListingDraftTool({ createListingUseCase }),
@@ -195,7 +251,36 @@ export function createProductionApp(db: Db = createDb()) {
     new SuggestListingFieldsTool({ suggestListingFieldsUseCase }),
     new SuggestPriceTool({ suggestPriceUseCase }),
     new SuggestReviewTool({ suggestReviewUseCase }),
+    new GetCurrentUserTool({ getCurrentUserUseCase }),
+    new GetListingTool({ getListingUseCase }),
+    new ListOrdersTool({ listOrdersUseCase }),
+    new ListMessagesTool({ listOrderMessagesWorkflow }),
+    new MarkShippedTool({ markOrderShippedUseCase }),
+    new MarkReceivedTool({ markOrderReceivedUseCase }),
+    new SuggestMessageTool({ suggestMessageUseCase }),
+    new CompareListingsTool({ compareListingsWorkflow }),
   ];
+
+  // MCP tool呼び出しの監査記録。全tool実行をrunner経由で mcp_tool_calls へ残す。
+  const mcpToolRunner = new McpToolRunner({
+    recordMcpToolCallUseCase: new RecordMcpToolCallUseCase({
+      mcpToolCallRepository: new DrizzleMcpToolCallRepository(db),
+      idGenerator,
+      clock,
+    }),
+  });
+
+  // BFF内部トークンの検証鍵（EdDSA公開鍵）を起動時にimportし、fail-fastする。
+  const authConfig = {
+    publicKey: await importJWK(
+      JSON.parse(requiredEnv("BFF_INTERNAL_JWT_PUBLIC_KEY")) as JWK,
+      "EdDSA",
+    ),
+    // fail-safe: 本番では env を誤設定しても dev ヘッダ認証を絶対に有効化しない。
+    allowDevUserHeader:
+      process.env.BFF_ALLOW_DEV_USER_HEADER === "true" &&
+      process.env.NODE_ENV !== "production",
+  };
 
   return createApiApp({
     agentControllerDeps: {
@@ -214,9 +299,7 @@ export function createProductionApp(db: Db = createDb()) {
     },
     listingControllerDeps: {
       createListingUseCase,
-      getListingUseCase: new GetListingUseCase({
-        listingRepository,
-      }),
+      getListingUseCase,
       searchListingsUseCase,
       updateDraftListingUseCase: new UpdateDraftListingUseCase({
         listingRepository,
@@ -231,8 +314,13 @@ export function createProductionApp(db: Db = createDb()) {
       purchaseItemWorkflow,
     },
     identityControllerDeps: {
-      getCurrentUserUseCase: new GetCurrentUserUseCase({
+      getCurrentUserUseCase,
+      linkWorldIdUseCase: new LinkWorldIdUseCase({
         userRepository,
+        authIdentityRepository,
+        worldIdVerifier,
+        idGenerator,
+        clock,
       }),
       upsertCurrentUserUseCase: new UpsertCurrentUserUseCase({
         userRepository,
@@ -244,32 +332,16 @@ export function createProductionApp(db: Db = createDb()) {
         orderFulfillmentService,
         orderContext,
       }),
-      listOrdersUseCase: new ListOrdersUseCase({
-        orderRepository,
-      }),
-      markOrderShippedUseCase: new MarkOrderShippedUseCase({
-        orderFulfillmentService,
-        orderContext,
-        clock,
-      }),
-      markOrderReceivedUseCase: new MarkOrderReceivedUseCase({
-        orderFulfillmentService,
-        orderContext,
-        clock,
-      }),
+      listOrdersUseCase,
+      markOrderShippedUseCase,
+      markOrderReceivedUseCase,
     },
     messageControllerDeps: {
       hideMessageUseCase: new HideMessageUseCase({
         messageRepository,
         clock,
       }),
-      listOrderMessagesWorkflow: new ListOrderMessagesWorkflow({
-        transaction: messageWorkflowTransaction,
-        orderFulfillmentService,
-        listMessagesUseCase: new ListMessagesUseCase({
-          messageRepository,
-        }),
-      }),
+      listOrderMessagesWorkflow,
       sendOrderMessageWorkflow,
     },
     reviewControllerDeps: {
@@ -280,7 +352,8 @@ export function createProductionApp(db: Db = createDb()) {
       submitReviewWithHumanSignatureWorkflow,
     },
     mcpTools,
-  });
+    mcpToolRunner,
+  }, authConfig);
 }
 
 function requiredEnv(name: string): string {
