@@ -34,6 +34,13 @@ export class NotFoundError extends AppError {
   }
 }
 
+export class AuthenticationError extends AppError {
+  constructor(message = "Not authenticated", details?: ErrorDetails) {
+    super("NOT_AUTHENTICATED", message, 401, details);
+    this.name = "AuthenticationError";
+  }
+}
+
 export class AuthorizationError extends AppError {
   constructor(message = "Not authorized", details?: ErrorDetails) {
     super("NOT_AUTHORIZED", message, 403, details);

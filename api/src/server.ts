@@ -1,9 +1,11 @@
+import "dotenv/config";
+
 import { serve } from "@hono/node-server";
 
 import { createProductionApp } from "./app/create-production-app.js";
 import { createServerConfig } from "./app/server-config.js";
 
-const app = createProductionApp();
+const app = await createProductionApp();
 const config = createServerConfig();
 
 serve(
