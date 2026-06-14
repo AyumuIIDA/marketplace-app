@@ -1,0 +1,92 @@
+name: marketplace-local
+
+# ローカル一括起動: db → migrate(one-shot) → api → web。
+# 起動モードはDevホットリロード（ソースbind mount + tsx watch / next dev）。
+# 認証はAuth.js(Google/GitHub OAuth)。auth/domainは単一Postgresの2DBに論理分離。
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      # 初回起動時に marketplace_auth / marketplace_domain を作成
+      - ./docker/db-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # ワンショット: 両DBへdrizzle migrationを適用して終了。api/webはこの成功を待つ。
+  # アプリ秘密(鍵類)は不要。DB接続URLのみをinlineで渡す（env_fileを付けない）。
+  migrate:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    environment:
+      DOMAIN_DATABASE_URL: postgres://app:app@db:5432/marketplace_domain
+      AUTH_DATABASE_URL: postgres://app:app@db:5432/marketplace_auth
+    command: ["sh", "docker/migrate.sh"]
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    # api専用env。BFF内部JWTは【公開鍵のみ】。秘密鍵は注入されない。
+    env_file:
+      - .env.api
+    environment:
+      DATABASE_URL: postgres://app:app@db:5432/marketplace_domain
+      PORT: "8080"
+      # Docker既定のHOSTNAME(コンテナ名)を上書きし、全interfaceにbindする。
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    # context=リポジトリroot。web/tsconfigが../tsconfig.jsonを継承するためroot tsconfigを同梱する（apiと対称）。
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    # web専用env。BFF内部JWTは【秘密鍵のみ】。公開鍵側(api)とは別ファイル。
+    env_file:
+      - .env.web
+    environment:
+      DATABASE_URL: postgres://app:app@db:5432/marketplace_auth
+      # BFF→APIはサービス名で到達（サーバ間通信）
+      HONO_API_BASE_URL: http://api:8080
+      # ブラウザ向けオリジン（Origin検証・OAuthコールバック）
+      NEXT_PUBLIC_APP_BASE_URL: http://localhost:3000
+      AUTH_URL: http://localhost:3000/api/auth
+      AUTH_TRUST_HOST: "true"
+    ports:
+      - "3000:3000"
+    # 全リポジトリを /app にbind（root tsconfig含む）。WORKDIRは/app/web。
+    volumes:
+      - ./:/app
+      - /app/web/node_modules
+      - /app/web/.next
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  dbdata:

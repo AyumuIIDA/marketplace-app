@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+**/.next
+build
+api/build
+web/build
+.git
+.gitignore
+*.log
+.env
+.env.api
+.env.web
+.codex
+prj_context
+docs
