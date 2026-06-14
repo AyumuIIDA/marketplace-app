@@ -53,6 +53,19 @@ const compareListingsSchema = z.object({
   ),
 });
 
+// adapter境界の二重定義ガード。各zod schemaのinfer型がport result型と双方向一致することを
+// 型レベルで強制する。片方向でもズレるとコンパイルエラーになり、OpenAI応答とportの構造不一致
+// （実行時502 = output_parsedが期待形でない）を未然に防ぐ。
+type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+const _schemaContracts: [
+  Exact<z.infer<typeof suggestListingFieldsSchema>, SuggestListingFieldsResult>,
+  Exact<z.infer<typeof suggestPriceSchema>, SuggestPriceResult>,
+  Exact<z.infer<typeof suggestReviewSchema>, SuggestReviewResult>,
+  Exact<z.infer<typeof suggestMessageSchema>, SuggestMessageResult>,
+  Exact<z.infer<typeof compareListingsSchema>, CompareListingsResult>,
+] = [true, true, true, true, true];
+void _schemaContracts;
+
 export type OpenAiAiAssistantDeps = {
   client: OpenAI;
   model: string;

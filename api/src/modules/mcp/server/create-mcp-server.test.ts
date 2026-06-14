@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 
-import { RecordMcpToolCallUseCase, SuggestPriceUseCase } from "../../agents/index.js";
+import {
+  RecordMcpToolCallUseCase,
+  SuggestPriceUseCase,
+  type AiAssistant,
+} from "../../agents/index.js";
 import { McpToolCall, type McpToolCallRepository } from "../../agents/domain/index.js";
 import { DeterministicAiAssistant } from "../../agents/infrastructure/index.js";
 import { FixedClock, FixedIdGenerator } from "../../../shared/index.js";
@@ -100,6 +104,49 @@ describe("createMcpServer", () => {
       arguments: { title: "Earbuds", category: "electronics", condition: "good" },
     });
     expect((priceResult.content as Array<{ text: string }>)[0]?.text).toContain("15000");
+
+    await client.close();
+    await server.close();
+  });
+
+  it("runs an AI tool through assistant→usecase→transport and audits the call (OpenAI-equivalent path)", async () => {
+    const { runner, repo } = createRunner();
+    // OpenAIのstructured outputを模した固定応答のassistant。実ネットワークのみを差し替え、
+    // AI tool → UseCase → AiAssistant → structuredContent + 監査 の配線を検証する。
+    const aiAssistant = {
+      suggestPrice: async () => ({
+        suggestedPrice: 7800,
+        currency: "JPY",
+        reason: "相場より少し低め。",
+      }),
+    } as unknown as AiAssistant;
+    const suggestPriceUseCase = new SuggestPriceUseCase({ aiAssistant });
+
+    const server = createMcpServer(
+      [new SuggestPriceTool({ suggestPriceUseCase })],
+      { userId: "user-1", agentId: "agent-1" },
+      runner,
+    );
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+
+    const client = new Client({ name: "test-client", version: "0.0.0" });
+    await client.connect(clientTransport);
+
+    const priceResult = await client.callTool({
+      name: "suggest_price",
+      arguments: { title: "中古スニーカー", category: "fashion_shoes", condition: "good" },
+    });
+    expect((priceResult.content as Array<{ text: string }>)[0]?.text).toContain("7800");
+
+    // AI tool呼び出しも監査記録される。
+    expect(repo.toolCalls).toHaveLength(1);
+    expect(repo.toolCalls[0]?.snapshot).toMatchObject({
+      agentId: "agent-1",
+      userId: "user-1",
+      toolName: "suggest_price",
+      status: "SUCCEEDED",
+    });
 
     await client.close();
     await server.close();
