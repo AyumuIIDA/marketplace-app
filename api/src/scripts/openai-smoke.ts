@@ -1,7 +1,7 @@
 import "dotenv/config";
 import OpenAI from "openai";
 
-import { OpenAiAiAssistant } from "../modules/agents/infrastructure/index.js";
+import { OpenAiAiAssistant } from "../modules/ai-assistance/infrastructure/index.js";
 
 // OpenAI実接続のsmoke。OPENAI_API_KEY / OPENAI_MODEL 設定時のみ実行する。
 //   npm run ai:smoke

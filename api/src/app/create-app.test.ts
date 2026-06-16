@@ -11,15 +11,19 @@ import {
   CreateAgentUseCase,
   DisableAgentUseCase,
   ListAgentsUseCase,
-  RecordMcpToolCallUseCase,
 } from "../modules/agents/application/index.js";
 import {
   Agent,
-  McpToolCall,
   type AgentRepository,
-  type McpToolCallRepository,
   type SearchAgentsInput,
 } from "../modules/agents/domain/index.js";
+import {
+  McpToolCall,
+  RecordMcpToolCallUseCase,
+  type McpToolCallRepository,
+} from "../modules/mcp-audit/index.js";
+import { SuggestListingFieldsUseCase } from "../modules/ai-assistance/index.js";
+import { DeterministicAiAssistant } from "../modules/ai-assistance/infrastructure/index.js";
 import { McpToolRunner } from "../modules/mcp/index.js";
 import {
   GetCurrentUserUseCase,
@@ -149,7 +153,7 @@ describe("createApiApp", () => {
 
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual({
-      listingId: "listing-1",
+      listingId: "00000000-0000-4000-8000-000000000001",
       status: "DRAFT",
     });
   });
@@ -236,6 +240,29 @@ describe("createApiApp", () => {
     });
   });
 
+  it("should suggest listing fields through REST", async () => {
+    const { app } = createTestApp();
+
+    const response = await app.request("/ai-assistance/listing-fields", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-user-id": "seller-1",
+      },
+      body: JSON.stringify({
+        userHint: "去年買った黒いスニーカー",
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      title: "去年買った黒いスニーカー",
+      description: expect.stringContaining("去年買った黒いスニーカー"),
+      category: "general",
+      condition: "good",
+    });
+  });
+
   it("should reject requests without MVP current user header", async () => {
     const { app } = createTestApp();
 
@@ -295,7 +322,7 @@ describe("createApiApp", () => {
     const { app } = createTestApp();
     await createDraftListing(app);
 
-    const response = await app.request("/listings/listing-1/publish", {
+    const response = await app.request("/listings/00000000-0000-4000-8000-000000000001/publish", {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -309,7 +336,7 @@ describe("createApiApp", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
-      listingId: "listing-1",
+      listingId: "00000000-0000-4000-8000-000000000001",
       signatureId: "signature-1",
       worldIdVerificationId: "verification-1",
       verificationCount: 1,
@@ -320,7 +347,7 @@ describe("createApiApp", () => {
   it("should return a published listing and search results", async () => {
     const { app } = createTestApp();
     await createDraftListing(app);
-    await app.request("/listings/listing-1/publish", {
+    await app.request("/listings/00000000-0000-4000-8000-000000000001/publish", {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -331,7 +358,7 @@ describe("createApiApp", () => {
       }),
     });
 
-    const getResponse = await app.request("/listings/listing-1", {
+    const getResponse = await app.request("/listings/00000000-0000-4000-8000-000000000001", {
       headers: {
         "x-user-id": "buyer-1",
       },
@@ -344,7 +371,7 @@ describe("createApiApp", () => {
 
     expect(getResponse.status).toBe(200);
     expect(await getResponse.json()).toMatchObject({
-      listingId: "listing-1",
+      listingId: "00000000-0000-4000-8000-000000000001",
       status: "PUBLISHED",
       title: "Sneakers",
     });
@@ -352,7 +379,7 @@ describe("createApiApp", () => {
     expect(await searchResponse.json()).toMatchObject({
       items: [
         {
-          listingId: "listing-1",
+          listingId: "00000000-0000-4000-8000-000000000001",
           status: "PUBLISHED",
         },
       ],
@@ -363,7 +390,7 @@ describe("createApiApp", () => {
     const { app, listingRepository } = createTestApp();
     await createDraftListing(app);
 
-    const response = await app.request("/listings/listing-1/draft", {
+    const response = await app.request("/listings/00000000-0000-4000-8000-000000000001/draft", {
       method: "PATCH",
       headers: {
         "content-type": "application/json",
@@ -383,17 +410,17 @@ describe("createApiApp", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
-      listingId: "listing-1",
+      listingId: "00000000-0000-4000-8000-000000000001",
       title: "Draft Sneakers",
       status: "DRAFT",
     });
-    expect(listingRepository.listings.get("listing-1")?.snapshot.title).toBe("Draft Sneakers");
+    expect(listingRepository.listings.get("00000000-0000-4000-8000-000000000001")?.snapshot.title).toBe("Draft Sneakers");
   });
 
   it("should update a published listing with an IDKit result", async () => {
     const { app, listingRepository } = createTestApp();
     await createDraftListing(app);
-    await app.request("/listings/listing-1/publish", {
+    await app.request("/listings/00000000-0000-4000-8000-000000000001/publish", {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -404,7 +431,7 @@ describe("createApiApp", () => {
       }),
     });
 
-    const response = await app.request("/listings/listing-1", {
+    const response = await app.request("/listings/00000000-0000-4000-8000-000000000001", {
       method: "PATCH",
       headers: {
         "content-type": "application/json",
@@ -425,19 +452,19 @@ describe("createApiApp", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
-      listingId: "listing-1",
+      listingId: "00000000-0000-4000-8000-000000000001",
       signatureId: "signature-2",
       worldIdVerificationId: "verification-2",
       verificationCount: 1,
       status: "PUBLISHED",
     });
-    expect(listingRepository.listings.get("listing-1")?.snapshot.title).toBe("Updated Sneakers");
+    expect(listingRepository.listings.get("00000000-0000-4000-8000-000000000001")?.snapshot.title).toBe("Updated Sneakers");
   });
 
   it("should purchase, ship, and receive an order", async () => {
     const { app } = createTestApp();
     await createDraftListing(app);
-    await app.request("/listings/listing-1/publish", {
+    await app.request("/listings/00000000-0000-4000-8000-000000000001/publish", {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -448,7 +475,7 @@ describe("createApiApp", () => {
       }),
     });
 
-    const purchaseResponse = await app.request("/listings/listing-1/purchase", {
+    const purchaseResponse = await app.request("/listings/00000000-0000-4000-8000-000000000001/purchase", {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -476,7 +503,7 @@ describe("createApiApp", () => {
       status: "PAID",
       order: {
         orderId: "order-1",
-        listingId: "listing-1",
+        listingId: "00000000-0000-4000-8000-000000000001",
         buyerId: "buyer-1",
         sellerId: "seller-1",
         status: "PAID",
@@ -656,7 +683,7 @@ function createTestApp() {
     transaction.worldIdVerificationRepository,
   );
   const idGenerator = new FixedIdGenerator([
-    "listing-1",
+    "00000000-0000-4000-8000-000000000001",
     "verification-1",
     "signature-1",
     "verification-2",
@@ -710,6 +737,11 @@ function createTestApp() {
       disableAgentUseCase: new DisableAgentUseCase({
         agentRepository,
         clock,
+      }),
+    },
+    aiAssistanceControllerDeps: {
+      suggestListingFieldsUseCase: new SuggestListingFieldsUseCase({
+        aiAssistant: new DeterministicAiAssistant(),
       }),
     },
     listingControllerDeps: {
@@ -853,7 +885,7 @@ async function createDraftListing(app: ReturnType<typeof createApiApp>): Promise
 
 async function createReceivedOrder(app: ReturnType<typeof createApiApp>): Promise<void> {
   await createDraftListing(app);
-  await app.request("/listings/listing-1/publish", {
+  await app.request("/listings/00000000-0000-4000-8000-000000000001/publish", {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -863,7 +895,7 @@ async function createReceivedOrder(app: ReturnType<typeof createApiApp>): Promis
       idKitResult: createIdKitResult("LISTING_PUBLISH", createListingPayloadHash()),
     }),
   });
-  await app.request("/listings/listing-1/purchase", {
+  await app.request("/listings/00000000-0000-4000-8000-000000000001/purchase", {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -900,7 +932,7 @@ function createListingRequest() {
 
 function createListingPayloadHash(): string {
   return computeListingPayloadHash({
-    listingId: "listing-1",
+    listingId: "00000000-0000-4000-8000-000000000001",
     sellerId: "seller-1",
     agentId: undefined,
     title: "Sneakers",
@@ -914,7 +946,7 @@ function createListingPayloadHash(): string {
 
 function createUpdatedListingPayloadHash(): string {
   return computeListingPayloadHash({
-    listingId: "listing-1",
+    listingId: "00000000-0000-4000-8000-000000000001",
     sellerId: "seller-1",
     agentId: undefined,
     title: "Updated Sneakers",

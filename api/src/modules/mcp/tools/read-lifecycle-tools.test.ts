@@ -49,9 +49,9 @@ describe("MCP read/lifecycle tools", () => {
       getListingUseCase: c.stub as unknown as GetListingUseCase,
     });
 
-    await tool.execute({ listingId: "listing-1" }, { userId: "user-1" });
+    await tool.execute({ listingId: "00000000-0000-4000-8000-000000000001" }, { userId: "user-1" });
 
-    expect(c.get()).toEqual({ listingId: "listing-1", requesterId: "user-1" });
+    expect(c.get()).toEqual({ listingId: "00000000-0000-4000-8000-000000000001", requesterId: "user-1" });
   });
 
   it("list_orders scopes to participantId from context", async () => {

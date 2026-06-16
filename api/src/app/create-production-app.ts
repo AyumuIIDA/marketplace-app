@@ -7,20 +7,25 @@ import {
   CreateAgentUseCase,
   DisableAgentUseCase,
   ListAgentsUseCase,
-  SuggestListingFieldsUseCase,
-  SuggestPriceUseCase,
-  SuggestReviewUseCase,
-  SuggestMessageUseCase,
-  CompareListingsUseCase,
-  RecordMcpToolCallUseCase,
-  type AiAssistant,
 } from "../modules/agents/index.js";
 import {
   DrizzleAgentRepository,
-  DrizzleMcpToolCallRepository,
-  DeterministicAiAssistant,
-  OpenAiAiAssistant,
 } from "../modules/agents/infrastructure/index.js";
+import {
+  CompareListingsUseCase,
+  SuggestListingFieldsUseCase,
+  SuggestMessageUseCase,
+  SuggestPriceUseCase,
+  SuggestReviewUseCase,
+  type AiAssistant,
+} from "../modules/ai-assistance/index.js";
+import {
+  DeterministicAiAssistant,
+  GeminiAiAssistant,
+  OpenAiAiAssistant,
+} from "../modules/ai-assistance/infrastructure/index.js";
+import { RecordMcpToolCallUseCase } from "../modules/mcp-audit/index.js";
+import { DrizzleMcpToolCallRepository } from "../modules/mcp-audit/infrastructure/index.js";
 import {
   GetCurrentUserUseCase,
   LinkWorldIdUseCase,
@@ -202,13 +207,7 @@ export async function createProductionApp(db: Db = createDb()) {
   });
 
   // AI出品支援。AiAssistant port経由。providerはenvで選択（既定はデモ安定優先の決定論fake）。
-  const aiAssistant: AiAssistant =
-    process.env.AI_ASSISTANT_PROVIDER === "openai"
-      ? new OpenAiAiAssistant({
-          client: new OpenAI({ apiKey: requiredEnv("OPENAI_API_KEY") }),
-          model: requiredEnv("OPENAI_MODEL"),
-        })
-      : new DeterministicAiAssistant();
+  const aiAssistant: AiAssistant = createAiAssistant();
   const suggestListingFieldsUseCase = new SuggestListingFieldsUseCase({ aiAssistant });
   const suggestPriceUseCase = new SuggestPriceUseCase({ aiAssistant });
   const suggestReviewUseCase = new SuggestReviewUseCase({ aiAssistant });
@@ -297,6 +296,9 @@ export async function createProductionApp(db: Db = createDb()) {
         clock,
       }),
     },
+    aiAssistanceControllerDeps: {
+      suggestListingFieldsUseCase,
+    },
     listingControllerDeps: {
       createListingUseCase,
       getListingUseCase,
@@ -364,4 +366,23 @@ function requiredEnv(name: string): string {
   }
 
   return value;
+}
+
+function createAiAssistant(): AiAssistant {
+  if (process.env.AI_ASSISTANT_PROVIDER === "gemini") {
+    return new GeminiAiAssistant({
+      project: requiredEnv("GOOGLE_CLOUD_PROJECT"),
+      location: process.env.GOOGLE_CLOUD_LOCATION ?? "global",
+      model: requiredEnv("GEMINI_MODEL"),
+    });
+  }
+
+  if (process.env.AI_ASSISTANT_PROVIDER === "openai") {
+    return new OpenAiAiAssistant({
+      client: new OpenAI({ apiKey: requiredEnv("OPENAI_API_KEY") }),
+      model: requiredEnv("OPENAI_MODEL"),
+    });
+  }
+
+  return new DeterministicAiAssistant();
 }

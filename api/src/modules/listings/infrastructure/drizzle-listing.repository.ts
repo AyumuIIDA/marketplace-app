@@ -56,13 +56,23 @@ export class DrizzleListingRepository implements ListingRepository {
   }
 
   async findById(listingId: string): Promise<Listing | undefined> {
-    const [row] = await this.db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
+    try {
+      const [row] = await this.db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
 
-    if (row === undefined) {
-      return undefined;
+      if (row === undefined) {
+        return undefined;
+      }
+
+      return rehydrateListing(row);
+    } catch (error: unknown) {
+      // uuidカラムへ非uuid文字列が渡るとPostgresが 22P02 を投げる。
+      // 「存在しないid」と同義として undefined を返し、usecaseの NotFound→404 へ集約する。
+      if (isInvalidUuid(error)) {
+        return undefined;
+      }
+
+      throw error;
     }
-
-    return rehydrateListing(row);
   }
 
   async claimForPurchase(input: ClaimListingForPurchaseInput): Promise<Listing | undefined> {
@@ -113,6 +123,15 @@ export class DrizzleListingRepository implements ListingRepository {
 
     return rows.map(rehydrateListing);
   }
+}
+
+// Postgres invalid_text_representation。uuidカラムへ非uuid文字列を渡したときに発生する。
+function isInvalidUuid(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+
+  return (error as Record<string, unknown>).code === "22P02";
 }
 
 type ListingRow = typeof listings.$inferSelect;

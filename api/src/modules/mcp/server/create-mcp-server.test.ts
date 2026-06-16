@@ -4,11 +4,13 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 
 import {
   RecordMcpToolCallUseCase,
+} from "../../mcp-audit/index.js";
+import {
   SuggestPriceUseCase,
   type AiAssistant,
-} from "../../agents/index.js";
-import { McpToolCall, type McpToolCallRepository } from "../../agents/domain/index.js";
-import { DeterministicAiAssistant } from "../../agents/infrastructure/index.js";
+} from "../../ai-assistance/index.js";
+import { McpToolCall, type McpToolCallRepository } from "../../mcp-audit/index.js";
+import { DeterministicAiAssistant } from "../../ai-assistance/infrastructure/index.js";
 import { FixedClock, FixedIdGenerator } from "../../../shared/index.js";
 import { McpToolRunner } from "../mcp-tool-runner.js";
 import type { GetCurrentUserUseCase } from "../../identity/index.js";
@@ -22,7 +24,7 @@ import type {
   CompareListingsOperation,
   ListOrderMessagesOperation,
 } from "../../../app/workflows/index.js";
-import type { SuggestMessageUseCase } from "../../agents/index.js";
+import type { SuggestMessageUseCase } from "../../ai-assistance/index.js";
 import {
   CompareListingsTool,
   GetCurrentUserTool,
@@ -67,7 +69,7 @@ describe("createMcpServer", () => {
   it("registers tools and routes calls through the bridge to the use cases", async () => {
     const searchListingsUseCase = {
       execute: async () => ({
-        listings: [{ id: "listing-1", title: "Wireless Earbuds" }],
+        listings: [{ id: "00000000-0000-4000-8000-000000000001", title: "Wireless Earbuds" }],
       }),
     } as unknown as SearchListingsUseCase;
     const suggestPriceUseCase = new SuggestPriceUseCase({
@@ -97,7 +99,7 @@ describe("createMcpServer", () => {
       name: "search_listings",
       arguments: { keyword: "earbuds" },
     });
-    expect((searchResult.content as Array<{ text: string }>)[0]?.text).toContain("listing-1");
+    expect((searchResult.content as Array<{ text: string }>)[0]?.text).toContain("00000000-0000-4000-8000-000000000001");
 
     const priceResult = await client.callTool({
       name: "suggest_price",
@@ -206,9 +208,9 @@ describe("createMcpServer", () => {
 
     const getListing = await client.callTool({
       name: "get_listing",
-      arguments: { listingId: "listing-42" },
+      arguments: { listingId: "00000000-0000-4000-8000-000000000042" },
     });
-    expect((getListing.content as Array<{ text: string }>)[0]?.text).toContain("listing-42");
+    expect((getListing.content as Array<{ text: string }>)[0]?.text).toContain("00000000-0000-4000-8000-000000000042");
 
     // #2 監査: tool呼び出しが mcp_tool_calls へ記録される。
     expect(repo.toolCalls).toHaveLength(1);
@@ -216,7 +218,7 @@ describe("createMcpServer", () => {
       agentId: "agent-1",
       userId: "user-1",
       toolName: "get_listing",
-      inputSummary: { listingId: "listing-42" },
+      inputSummary: { listingId: "00000000-0000-4000-8000-000000000042" },
       outputSummary: { status: "SUCCEEDED" },
       status: "SUCCEEDED",
     });

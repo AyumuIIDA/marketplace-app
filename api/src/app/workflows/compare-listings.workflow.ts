@@ -2,10 +2,11 @@ import { GetListingUseCase } from "../../modules/listings/index.js";
 import {
   CompareListingsUseCase,
   type CompareListingsResult,
-} from "../../modules/agents/index.js";
+} from "../../modules/ai-assistance/index.js";
+import type { Uuid } from "../../shared/index.js";
 
 export type CompareListingsWorkflowInput = {
-  listingIds: string[];
+  listingIds: Uuid[];
   requesterId: string;
 };
 

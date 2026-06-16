@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import { getCurrentUser } from "../../../interface/http/index.js";
+import { NotFoundError, parseUuid } from "../../../shared/index.js";
 import type {
   CreateListingUseCase,
   GetListingUseCase,
@@ -81,7 +82,14 @@ export function createListingController(deps: ListingControllerDeps): Hono {
 
   app.get("/:listingId", async (c) => {
     const currentUser = getCurrentUser(c);
-    const listingId = c.req.param("listingId");
+    const raw = c.req.param("listingId");
+    const listingId = parseUuid(raw);
+
+    if (listingId === undefined) {
+      // 非uuidは如何なるリソースにも対応し得ない → 404（存在しないidと同義）。
+      throw new NotFoundError("Listing", raw);
+    }
+
     const output = await deps.getListingUseCase.execute({
       listingId,
       requesterId: currentUser.userId,

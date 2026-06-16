@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { FixedClock, FixedIdGenerator } from "../../../shared/index.js";
-import { McpToolCall, type McpToolCallRepository } from "../../agents/domain/index.js";
-import { RecordMcpToolCallUseCase } from "../../agents/application/index.js";
+import {
+  McpToolCall,
+  RecordMcpToolCallUseCase,
+  type McpToolCallRepository,
+} from "../../mcp-audit/index.js";
 import type { MessageOutput } from "../../messages/index.js";
 import type { PublishListingWithHumanSignatureOutput } from "../../../app/workflows/index.js";
 import { McpToolRunner } from "../mcp-tool-runner.js";

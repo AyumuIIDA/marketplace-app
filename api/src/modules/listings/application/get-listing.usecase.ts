@@ -1,10 +1,10 @@
-import { AuthorizationError, NotFoundError } from "../../../shared/index.js";
+import { AuthorizationError, NotFoundError, type Uuid } from "../../../shared/index.js";
 import { isSearchableListing, type ListingRepository } from "../domain/index.js";
 
 import { toListingOutput, type ListingOutput } from "./listing.presenter.js";
 
 export type GetListingInput = {
-  listingId: string;
+  listingId: Uuid;
   requesterId?: string;
 };
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { AuthorizationError, FixedClock } from "../../../shared/index.js";
+import { AuthorizationError, FixedClock, type Uuid } from "../../../shared/index.js";
 import { Listing, type ListingRepository, type SearchListingsInput } from "../domain/index.js";
 
 import { GetListingUseCase } from "./get-listing.usecase.js";
@@ -8,6 +8,8 @@ import { SearchListingsUseCase } from "./search-listings.usecase.js";
 import { UpdateDraftListingUseCase } from "./update-draft-listing.usecase.js";
 
 const fixedNow = new Date("2026-06-09T00:00:00.000Z");
+// GetListingUseCase の入力は branded Uuid。fixtureのidも実uuidに揃える。
+const LISTING_ID = "00000000-0000-4000-8000-000000000001" as Uuid;
 
 describe("Listing query use cases", () => {
   it("should allow anyone to get a published listing", async () => {
@@ -18,12 +20,12 @@ describe("Listing query use cases", () => {
     const useCase = new GetListingUseCase({ listingRepository });
 
     const output = await useCase.execute({
-      listingId: "listing-1",
+      listingId: LISTING_ID,
       requesterId: "buyer-1",
     });
 
     expect(output).toMatchObject({
-      listingId: "listing-1",
+      listingId: LISTING_ID,
       status: "PUBLISHED",
     });
   });
@@ -35,7 +37,7 @@ describe("Listing query use cases", () => {
 
     await expect(
       useCase.execute({
-        listingId: "listing-1",
+        listingId: LISTING_ID,
         requesterId: "buyer-1",
       }),
     ).rejects.toThrow(AuthorizationError);
@@ -53,7 +55,7 @@ describe("Listing query use cases", () => {
     });
 
     expect(output.items).toHaveLength(1);
-    expect(output.items[0]?.listingId).toBe("listing-1");
+    expect(output.items[0]?.listingId).toBe(LISTING_ID);
   });
 
   it("should update a draft listing", async () => {
@@ -65,7 +67,7 @@ describe("Listing query use cases", () => {
     });
 
     const output = await useCase.execute({
-      listingId: "listing-1",
+      listingId: LISTING_ID,
       sellerId: "seller-1",
       fields: {
         title: "Updated Draft",
@@ -78,7 +80,7 @@ describe("Listing query use cases", () => {
     });
 
     expect(output).toMatchObject({
-      listingId: "listing-1",
+      listingId: LISTING_ID,
       title: "Updated Draft",
       status: "DRAFT",
     });
@@ -87,7 +89,7 @@ describe("Listing query use cases", () => {
 
 function createDraftListing(): Listing {
   return Listing.createDraft({
-    id: "listing-1",
+    id: LISTING_ID,
     sellerId: "seller-1",
     title: "Sneakers",
     description: "Used a few times.",

@@ -9,6 +9,10 @@ import {
 } from "../interface/http/index.js";
 import { createMcpServer, type McpTool, type McpToolRunner } from "../modules/mcp/index.js";
 import { createAgentController, type AgentControllerDeps } from "../modules/agents/interface/index.js";
+import {
+  createAiAssistanceController,
+  type AiAssistanceControllerDeps,
+} from "../modules/ai-assistance/interface/index.js";
 import { createIdentityController, type IdentityControllerDeps } from "../modules/identity/interface/index.js";
 import { createListingController, type ListingControllerDeps } from "../modules/listings/interface/index.js";
 import {
@@ -21,6 +25,7 @@ import { createReviewController, type ReviewControllerDeps } from "../modules/re
 
 export type ApiAppDeps = {
   agentControllerDeps: AgentControllerDeps;
+  aiAssistanceControllerDeps: AiAssistanceControllerDeps;
   identityControllerDeps: IdentityControllerDeps;
   listingControllerDeps: ListingControllerDeps;
   messageControllerDeps: MessageControllerDeps;
@@ -46,6 +51,7 @@ export function createApiApp(deps: ApiAppDeps, authConfig: BffAuthConfig): Hono 
   app.use("*", createBffAuthMiddleware(authConfig));
 
   app.route("/agents", createAgentController(deps.agentControllerDeps));
+  app.route("/ai-assistance", createAiAssistanceController(deps.aiAssistanceControllerDeps));
   app.route("/", createIdentityController(deps.identityControllerDeps));
   app.route("/listings", createListingController(deps.listingControllerDeps));
   app.route("/orders", createOrderController(deps.orderControllerDeps));

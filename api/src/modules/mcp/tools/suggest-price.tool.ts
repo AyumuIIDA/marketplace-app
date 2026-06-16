@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { SuggestPriceUseCase } from "../../agents/index.js";
+import type { SuggestPriceUseCase } from "../../ai-assistance/index.js";
 import type { McpTool } from "../mcp-tool.js";
 import type { ToolContext } from "../tool-context.js";
 import { toolSucceeded, type ToolResult } from "../tool-result.js";

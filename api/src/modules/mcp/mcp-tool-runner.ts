@@ -1,4 +1,4 @@
-import type { RecordMcpToolCallUseCase } from "../agents/application/index.js";
+import type { RecordMcpToolCallUseCase } from "../mcp-audit/index.js";
 
 import type { McpTool } from "./mcp-tool.js";
 import type { ToolContext } from "./tool-context.js";
