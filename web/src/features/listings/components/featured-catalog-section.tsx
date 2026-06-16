@@ -8,13 +8,13 @@ type FeaturedCatalogSectionProps = {
 
 export function FeaturedCatalogSection({ listings }: FeaturedCatalogSectionProps) {
   return (
-    <section className="mt-12">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-neutral-500">Featured catalog</h2>
+    <section>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-sm font-semibold text-neutral-500">Available items</h2>
         <SegmentedFilter
           options={[
             { label: "All", active: true },
-            { label: "Human" },
+            { label: "Verified" },
             { label: "New" },
           ]}
         />
