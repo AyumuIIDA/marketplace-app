@@ -18,8 +18,13 @@ export type Listing = {
   soldAt?: string;
 };
 
-export async function searchListings(input: { limit?: number } = {}): Promise<Listing[]> {
+export async function searchListings(input: { keyword?: string; limit?: number } = {}): Promise<Listing[]> {
   const params = new URLSearchParams();
+  const keyword = input.keyword?.trim();
+
+  if (keyword !== undefined && keyword.length > 0) {
+    params.set("keyword", keyword);
+  }
 
   if (input.limit !== undefined) {
     params.set("limit", input.limit.toString());
@@ -38,4 +43,95 @@ export async function searchListings(input: { limit?: number } = {}): Promise<Li
 
     throw error;
   }
+}
+
+export async function searchMyListings(input: { limit?: number } = {}): Promise<Listing[]> {
+  const params = new URLSearchParams({ mine: "true" });
+
+  if (input.limit !== undefined) {
+    params.set("limit", input.limit.toString());
+  }
+
+  try {
+    const output = await bffJson<{ items: Listing[] }>(`/listings?${params.toString()}`);
+
+    return output.items;
+  } catch (error) {
+    if (isBffError(error) && error.status === 401) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+export async function getListing(listingId: string): Promise<Listing | undefined> {
+  try {
+    return await bffJson<Listing>(`/listings/${listingId}`);
+  } catch (error) {
+    if (isBffError(error) && (error.status === 401 || error.status === 404)) {
+      return undefined;
+    }
+
+    throw error;
+  }
+}
+
+export async function createListing(input: {
+  title: string;
+  description: string;
+  price: number;
+  category: string;
+  condition: string;
+}): Promise<Listing> {
+  return bffJson<Listing>("/listings", {
+    method: "POST",
+    body: {
+      ...input,
+      currency: "JPY",
+    },
+  });
+}
+
+export type PurchaseListingOutput =
+  | {
+      status: "REQUIRES_CONFIRMATION";
+      listingId: string;
+    }
+  | {
+      status: "PAID";
+      order: {
+        orderId: string;
+      };
+    };
+
+export async function purchaseListing(listingId: string): Promise<PurchaseListingOutput> {
+  return bffJson<PurchaseListingOutput>(`/listings/${listingId}/purchase`, {
+    method: "POST",
+    body: {
+      confirmed: true,
+    },
+  });
+}
+
+export async function publishListing(input: {
+  listingId: string;
+  idKitResult: unknown;
+  expectedEnvironment?: string;
+}): Promise<{
+  listingId: string;
+  signatureId: string;
+  status: "PUBLISHED";
+}> {
+  return bffJson<{
+    listingId: string;
+    signatureId: string;
+    status: "PUBLISHED";
+  }>(`/listings/${input.listingId}/publish`, {
+    method: "POST",
+    body: {
+      idKitResult: input.idKitResult,
+      expectedEnvironment: input.expectedEnvironment,
+    },
+  });
 }

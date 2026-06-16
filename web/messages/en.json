@@ -1,0 +1,24 @@
+{
+  "brand": {
+    "name": "Human-backed"
+  },
+  "search": {
+    "label": "Search listings",
+    "placeholder": "Search listings",
+    "submit": "Search"
+  },
+  "actions": {
+    "createListing": "Create listing",
+    "signIn": "Sign in"
+  },
+  "account": {
+    "label": "Account",
+    "profile": "Account",
+    "orders": "Orders"
+  },
+  "locale": {
+    "label": "Language",
+    "en": "English",
+    "ja": "日本語"
+  }
+}

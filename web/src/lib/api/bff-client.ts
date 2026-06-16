@@ -5,7 +5,12 @@ export type BffError = {
   code?: string;
 };
 
-export async function bffJson<T>(path: string): Promise<T> {
+type BffJsonInit = {
+  body?: unknown;
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+};
+
+export async function bffJson<T>(path: string, init: BffJsonInit = {}): Promise<T> {
   const requestHeaders = await headers();
   const host = requestHeaders.get("host");
 
@@ -14,10 +19,16 @@ export async function bffJson<T>(path: string): Promise<T> {
   }
 
   const protocol = requestHeaders.get("x-forwarded-proto") ?? "http";
+  const method = init.method ?? "GET";
+  const isStateChanging = method !== "GET";
   const response = await fetch(`${protocol}://${host}/api/bff${path}`, {
+    method,
     headers: {
+      ...(isStateChanging ? { "content-type": "application/json" } : {}),
       cookie: requestHeaders.get("cookie") ?? "",
+      ...(isStateChanging ? { origin: process.env.NEXT_PUBLIC_APP_BASE_URL ?? `${protocol}://${host}` } : {}),
     },
+    body: init.body === undefined ? undefined : JSON.stringify(init.body),
     cache: "no-store",
   });
 

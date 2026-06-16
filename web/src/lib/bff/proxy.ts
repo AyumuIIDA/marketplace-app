@@ -6,6 +6,7 @@ import { signInternalToken } from "../auth/internal-token";
 
 const allowedPrefixes = [
   "agents",
+  "ai-assistance",
   "listings",
   "messages",
   "orders",

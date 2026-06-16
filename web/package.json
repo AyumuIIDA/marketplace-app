@@ -3,19 +3,26 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "test:e2e": "playwright test",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
     "@auth/pg-adapter": "^1.7.4",
+    "@worldcoin/idkit": "^4.1.8",
+    "@worldcoin/idkit-server": "^1.1.1",
+    "@worldcoin/minikit-js": "^2.0.3",
     "jose": "^6.2.3",
     "next": "^15.3.4",
     "next-auth": "^5.0.0-beta.25",
+    "next-intl": "^4.13.0",
     "pg": "^8.21.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "viem": "^2.52.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4.3.0",
     "@types/node": "^25.9.2",
     "@types/pg": "^8.20.0",
