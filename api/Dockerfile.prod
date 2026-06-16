@@ -1,0 +1,28 @@
+# api(Hono) 本番イメージ（Cloud Run用）。dev用 api/Dockerfile とは別物。
+# build context = リポジトリroot（API依存はroot package.json、tsconfigは ../tsconfig.json を継承）。
+#   docker build -f api/Dockerfile.prod -t <image> .
+# 起動: node api/build/server.js（PORT環境変数、既定8080、bind 0.0.0.0）。
+
+# --- builder: 全依存をinstallしtscでapi/buildへコンパイル ---
+FROM node:22-bookworm-slim AS builder
+WORKDIR /app
+# lock整合済みのため npm ci で再現性確保。
+COPY package.json package-lock.json ./
+RUN npm ci
+# tscに必要なものだけ投入（root tsconfig継承 + api配下）。
+COPY tsconfig.json ./
+COPY api ./api
+RUN npm run api:build
+
+# --- runtime: prod依存のみ + ビルド成果物 ---
+FROM node:22-bookworm-slim AS runtime
+ENV NODE_ENV=production
+WORKDIR /app
+# devDeps(tsx/drizzle-kit/tsc/vitest)は実行時に不要。
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+COPY --from=builder /app/api/build ./api/build
+# 非root実行。
+USER node
+EXPOSE 8080
+CMD ["node", "api/build/server.js"]

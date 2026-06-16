@@ -49,17 +49,28 @@ services:
       - .env.api
     environment:
       DATABASE_URL: postgres://app:app@db:5432/marketplace_domain
+      # ローカルDockerからGemini/Vertex AIを呼ぶため、ホストのADCを明示的に使う。
+      GOOGLE_APPLICATION_CREDENTIALS: /gcp/application_default_credentials.json
       PORT: "8080"
       # Docker既定のHOSTNAME(コンテナ名)を上書きし、全interfaceにbindする。
       HOSTNAME: 0.0.0.0
+      # 画像ストレージ。ローカルはfake-gcs、prodはGCSへ endpoint/creds 差し替えのみ。
+      # SDK(@google-cloud/storage)は STORAGE_EMULATOR_HOST を自動認識する。
+      STORAGE_BUCKET: marketplace-images
+      STORAGE_EMULATOR_HOST: http://storage:4443
+      # 公開読取URLの基底（ブラウザ到達ホスト）。seed時に listing_images.url を組み立てる。
+      PUBLIC_IMAGE_BASE_URL: http://localhost:4443/marketplace-images
     ports:
       - "8080:8080"
     volumes:
       - ./:/app
+      - ${HOME}/.config/gcloud/application_default_credentials.json:/gcp/application_default_credentials.json:ro
       - /app/node_modules
     depends_on:
       migrate:
         condition: service_completed_successfully
+      storage:
+        condition: service_started
 
   web:
     # context=リポジトリroot。web/tsconfigが../tsconfig.jsonを継承するためroot tsconfigを同梱する（apiと対称）。
@@ -77,6 +88,8 @@ services:
       NEXT_PUBLIC_APP_BASE_URL: http://localhost:3000
       AUTH_URL: http://localhost:3000/api/auth
       AUTH_TRUST_HOST: "true"
+      # 画像はブラウザが storage を直接読む（BFF非経由の公開アセット）。ブラウザ到達のホスト。
+      NEXT_PUBLIC_IMAGE_BASE_URL: http://localhost:4443/marketplace-images
     ports:
       - "3000:3000"
     # 全リポジトリを /app にbind（root tsconfig含む）。WORKDIRは/app/web。
@@ -88,5 +101,22 @@ services:
       api:
         condition: service_started
 
+  # GCSエミュレータ。prodと同じ @google-cloud/storage SDK で endpoint だけ差し替える。
+  # 商品画像はブラウザが直接読む公開アセット（BFF非経由）。
+  storage:
+    image: fsouza/fake-gcs-server:latest
+    command:
+      - "-scheme=http"
+      - "-port=4443"
+      - "-public-host=localhost:4443"
+      - "-external-url=http://localhost:4443"
+      - "-backend=filesystem"
+      - "-data=/data"
+    ports:
+      - "4443:4443"
+    volumes:
+      - gcsdata:/data
+
 volumes:
   dbdata:
+  gcsdata:

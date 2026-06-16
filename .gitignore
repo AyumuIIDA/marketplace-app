@@ -17,3 +17,7 @@ prj_context/
 .env
 .env.*
 !.env.*.example
+
+# 外部クラウドCLIのローカル設定
+.neon
+/data/
