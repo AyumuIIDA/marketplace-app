@@ -7,7 +7,7 @@ import { toolSucceeded, type ToolResult } from "../tool-result.js";
 
 const suggestListingFieldsToolInputSchema = z.object({
   userHint: z.string().trim().min(1).optional(),
-  imageIds: z.array(z.string().min(1)).optional(),
+  imageUrls: z.array(z.string().url()).max(10).optional(),
 });
 
 export type SuggestListingFieldsToolDeps = {
@@ -24,7 +24,7 @@ export class SuggestListingFieldsTool implements McpTool {
     const parsed = suggestListingFieldsToolInputSchema.parse(input);
     const output = await this.deps.suggestListingFieldsUseCase.execute({
       userHint: parsed.userHint,
-      imageIds: parsed.imageIds,
+      imageUrls: parsed.imageUrls,
     });
 
     return toolSucceeded(output);

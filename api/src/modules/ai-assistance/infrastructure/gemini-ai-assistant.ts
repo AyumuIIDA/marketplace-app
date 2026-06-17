@@ -2,6 +2,7 @@ import { GoogleGenAI, type GenerateContentParameters } from "@google/genai";
 import { z } from "zod";
 
 import { AppError } from "../../../shared/index.js";
+import { fetchInlineImages, type InlineImage } from "./image-content.js";
 import type {
   AiAssistant,
   CompareListingsInput,
@@ -147,15 +148,20 @@ export class GeminiAiAssistant implements AiAssistant {
   async suggestListingFields(
     input: SuggestListingFieldsInput,
   ): Promise<SuggestListingFieldsResult> {
+    const images = await fetchInlineImages(input.imageUrls ?? []);
+
     return this.generateStructured(
       suggestListingFieldsSchema,
       suggestListingFieldsJsonSchema,
       [
         "あなたはフリマアプリの出品支援AIです。以下の情報から出品項目を日本語で提案してください。",
         `ヒント: ${input.userHint ?? "(なし)"}`,
-        `画像ID: ${(input.imageIds ?? []).join(", ") || "(なし)"}`,
+        images.length > 0
+          ? "添付された商品画像を読み取り、見た目・状態・カテゴリを反映してください。"
+          : "画像はありません。テキストのヒントから推定してください。",
         "confidenceNotesには推定の根拠や不確実な点を記載してください。",
       ].join("\n"),
+      images,
     );
   }
 
@@ -220,13 +226,30 @@ export class GeminiAiAssistant implements AiAssistant {
     schema: z.ZodType<T>,
     jsonSchema: JsonSchema,
     prompt: string,
+    images: InlineImage[] = [],
   ): Promise<T> {
     let response;
+
+    // 画像があればtextとinlineDataのpartsで送る。なければ従来どおりテキストのみ。
+    const contents =
+      images.length > 0
+        ? [
+            {
+              role: "user",
+              parts: [
+                { text: prompt },
+                ...images.map((image) => ({
+                  inlineData: { mimeType: image.mimeType, data: image.base64 },
+                })),
+              ],
+            },
+          ]
+        : prompt;
 
     try {
       response = await this.client.models.generateContent({
         model: this.deps.model,
-        contents: prompt,
+        contents,
         config: {
           responseMimeType: "application/json",
           responseJsonSchema: jsonSchema,

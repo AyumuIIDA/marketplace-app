@@ -17,7 +17,7 @@ export function createAiAssistanceController(deps: AiAssistanceControllerDeps): 
     const body = suggestListingFieldsRequestSchema.parse(await c.req.json());
     const output = await deps.suggestListingFieldsUseCase.execute({
       userHint: body.userHint,
-      imageIds: body.imageIds,
+      imageUrls: body.imageUrls,
     });
 
     return c.json(output, 200);

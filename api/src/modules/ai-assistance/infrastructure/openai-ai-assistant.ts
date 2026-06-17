@@ -3,6 +3,7 @@ import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 
 import { AppError } from "../../../shared/index.js";
+import { fetchInlineImages, toDataUrl, type InlineImage } from "./image-content.js";
 import type {
   AiAssistant,
   CompareListingsInput,
@@ -77,15 +78,20 @@ export class OpenAiAiAssistant implements AiAssistant {
   async suggestListingFields(
     input: SuggestListingFieldsInput,
   ): Promise<SuggestListingFieldsResult> {
+    const images = await fetchInlineImages(input.imageUrls ?? []);
+
     return this.parse(
       suggestListingFieldsSchema,
       "suggest_listing_fields",
       [
         "あなたはフリマアプリの出品支援AIです。以下の情報から出品項目を日本語で提案してください。",
         `ヒント: ${input.userHint ?? "(なし)"}`,
-        `画像ID: ${(input.imageIds ?? []).join(", ") || "(なし)"}`,
+        images.length > 0
+          ? "添付された商品画像を読み取り、見た目・状態・カテゴリを反映してください。"
+          : "画像はありません。テキストのヒントから推定してください。",
         "confidenceNotesには推定の根拠や不確実な点を記載してください。",
       ].join("\n"),
+      images,
     );
   }
 
@@ -146,7 +152,30 @@ export class OpenAiAiAssistant implements AiAssistant {
     );
   }
 
-  private async parse<T>(schema: z.ZodType<T>, name: string, input: string): Promise<T> {
+  private async parse<T>(
+    schema: z.ZodType<T>,
+    name: string,
+    prompt: string,
+    images: InlineImage[] = [],
+  ): Promise<T> {
+    // 画像があればinput_text + input_imageのcontent配列で送る。なければテキストのみ。
+    const input =
+      images.length > 0
+        ? [
+            {
+              role: "user" as const,
+              content: [
+                { type: "input_text" as const, text: prompt },
+                ...images.map((image) => ({
+                  type: "input_image" as const,
+                  image_url: toDataUrl(image),
+                  detail: "auto" as const,
+                })),
+              ],
+            },
+          ]
+        : prompt;
+
     const response = await this.deps.client.responses.parse({
       model: this.deps.model,
       input,
