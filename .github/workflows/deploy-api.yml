@@ -79,7 +79,7 @@ jobs:
             --service-account "${RUNTIME_SA}" \
             --add-cloudsql-instances "${CLOUDSQL_INSTANCE}" \
             --set-secrets "DATABASE_URL=DATABASE_URL:latest,BFF_INTERNAL_JWT_PUBLIC_KEY=BFF_INTERNAL_JWT_PUBLIC_KEY:latest,HUMAN_SIGNATURE_JWS_SECRET=HUMAN_SIGNATURE_JWS_SECRET:latest" \
-            --set-env-vars "BFF_ALLOW_DEV_USER_HEADER=false,AI_ASSISTANT_PROVIDER=${{ vars.AI_ASSISTANT_PROVIDER || 'gemini' }},GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=${{ vars.GOOGLE_CLOUD_LOCATION || 'global' }},GEMINI_MODEL=${{ vars.GEMINI_MODEL || 'gemini-3.5-flash' }},HUMAN_SIGNATURE_ISSUER=${{ vars.HUMAN_SIGNATURE_ISSUER || 'local-marketplace' }},WORLD_ID_RP_ID=${{ vars.WORLD_ID_RP_ID || 'local' }}" \
+            --set-env-vars "BFF_ALLOW_DEV_USER_HEADER=false,AI_ASSISTANT_PROVIDER=${{ vars.AI_ASSISTANT_PROVIDER || 'gemini' }},GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=${{ vars.GOOGLE_CLOUD_LOCATION || 'global' }},GEMINI_MODEL=${{ vars.GEMINI_MODEL || 'gemini-3.5-flash' }},HUMAN_SIGNATURE_ISSUER=${{ vars.HUMAN_SIGNATURE_ISSUER || 'local-marketplace' }},WORLD_ID_RP_ID=${{ vars.WORLD_ID_RP_ID || 'local' }},STORAGE_BUCKET=${{ vars.STORAGE_BUCKET }},PUBLIC_IMAGE_BASE_URL=${{ vars.PUBLIC_IMAGE_BASE_URL }}" \
             --allow-unauthenticated \
             --port 8080 \
             --cpu 1 --memory 512Mi --min-instances 0 --max-instances 3
