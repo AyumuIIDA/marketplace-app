@@ -1,0 +1,91 @@
+name: Deploy API (Cloud Run)
+
+# main への API 変更 push でビルド→Cloud Run へデプロイ。
+# 認証は Workload Identity Federation（鍵レス）。runtime secret は Secret Manager 参照。
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - '.github/workflows/deploy-api.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write  # WIF の OIDC トークン発行に必須
+
+concurrency:
+  group: deploy-api-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy API to Cloud Run
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PROJECT: ${{ vars.GCP_PROJECT }}
+      REGION: ${{ vars.GCP_REGION }}
+      AR_REPO: ${{ vars.AR_REPO }}
+      SERVICE: ${{ vars.API_SERVICE }}
+      CLOUDSQL_INSTANCE: ${{ vars.CLOUDSQL_INSTANCE }}
+      RUNTIME_SA: ${{ vars.RUNTIME_SA }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test API (deploy gate)
+        run: npm run api:test
+
+      - name: Authenticate to Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and push image
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${AR_REPO}/api"
+          docker build -f api/Dockerfile.prod -t "${IMAGE}:${GITHUB_SHA}" -t "${IMAGE}:latest" .
+          docker push "${IMAGE}:${GITHUB_SHA}"
+          docker push "${IMAGE}:latest"
+          echo "IMAGE=${IMAGE}:${GITHUB_SHA}" >> "$GITHUB_ENV"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "${SERVICE}" \
+            --image "${IMAGE}" \
+            --project "${PROJECT}" \
+            --region "${REGION}" \
+            --service-account "${RUNTIME_SA}" \
+            --add-cloudsql-instances "${CLOUDSQL_INSTANCE}" \
+            --set-secrets "DATABASE_URL=DATABASE_URL:latest,BFF_INTERNAL_JWT_PUBLIC_KEY=BFF_INTERNAL_JWT_PUBLIC_KEY:latest,HUMAN_SIGNATURE_JWS_SECRET=HUMAN_SIGNATURE_JWS_SECRET:latest" \
+            --set-env-vars "BFF_ALLOW_DEV_USER_HEADER=false,AI_ASSISTANT_PROVIDER=${{ vars.AI_ASSISTANT_PROVIDER || 'gemini' }},GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=${{ vars.GOOGLE_CLOUD_LOCATION || 'global' }},GEMINI_MODEL=${{ vars.GEMINI_MODEL || 'gemini-3.5-flash' }},HUMAN_SIGNATURE_ISSUER=${{ vars.HUMAN_SIGNATURE_ISSUER || 'local-marketplace' }},WORLD_ID_RP_ID=${{ vars.WORLD_ID_RP_ID || 'local' }}" \
+            --allow-unauthenticated \
+            --port 8080 \
+            --cpu 1 --memory 512Mi --min-instances 0 --max-instances 3
+
+      - name: Show service URL
+        run: |
+          gcloud run services describe "${SERVICE}" \
+            --project "${PROJECT}" --region "${REGION}" \
+            --format='value(status.url)'
