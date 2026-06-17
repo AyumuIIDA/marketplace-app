@@ -111,7 +111,8 @@ services:
       - "-public-host=localhost:4443"
       - "-external-url=http://localhost:4443"
       - "-backend=filesystem"
-      - "-data=/data"
+      # 永続ルート。volume(gcsdata)にマウントし、再起動で bucket/objects を復元する。
+      - "-filesystem-root=/data"
     ports:
       - "4443:4443"
     volumes:
