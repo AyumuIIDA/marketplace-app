@@ -1,13 +1,14 @@
 import { Hono } from "hono";
 
 import { getCurrentUser } from "../../../interface/http/index.js";
-import { NotFoundError, parseUuid } from "../../../shared/index.js";
+import { NotFoundError, ValidationAppError, parseUuid } from "../../../shared/index.js";
 import type {
   CreateListingUseCase,
   GetListingUseCase,
   HideListingUseCase,
   SearchListingsUseCase,
   UpdateDraftListingUseCase,
+  UploadListingImageUseCase,
 } from "../application/index.js";
 import type {
   PublishListingWithHumanSignatureOperation,
@@ -26,6 +27,7 @@ import {
 
 export type ListingControllerDeps = {
   createListingUseCase: CreateListingUseCase;
+  uploadListingImageUseCase: UploadListingImageUseCase;
   getListingUseCase: GetListingUseCase;
   searchListingsUseCase: SearchListingsUseCase;
   updateDraftListingUseCase: UpdateDraftListingUseCase;
@@ -34,6 +36,9 @@ export type ListingControllerDeps = {
   updateListingWithHumanSignatureWorkflow: UpdateListingWithHumanSignatureOperation;
   purchaseItemWorkflow: PurchaseItemOperation;
 };
+
+// アップロード上限（15MB）。sharpで縮小する前段の受け入れ上限。
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 
 export function createListingController(deps: ListingControllerDeps): Hono {
   const app = new Hono();
@@ -50,7 +55,30 @@ export function createListingController(deps: ListingControllerDeps): Hono {
       currency: body.currency,
       category: body.category,
       condition: body.condition,
+      images: body.images,
     });
+
+    return c.json(output, 201);
+  });
+
+  // 画像アップロード（multipart）。出品作成前に先行アップロードし、戻りの{url,hash}を
+  // 作成リクエストやAI提案に渡す。商品画像の公開配信はstorage直（BFF非経由）だが、
+  // アップロード経路はBFF→API→ObjectStorageで認証保護する。
+  app.post("/images", async (c) => {
+    getCurrentUser(c);
+    const form = await c.req.formData();
+    const file = form.get("file");
+
+    if (!(file instanceof File)) {
+      throw new ValidationAppError("Image file is required.", { field: "file" });
+    }
+
+    if (file.size > MAX_IMAGE_BYTES) {
+      throw new ValidationAppError("Image file is too large.", { maxBytes: MAX_IMAGE_BYTES });
+    }
+
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const output = await deps.uploadListingImageUseCase.execute({ bytes });
 
     return c.json(output, 201);
   });

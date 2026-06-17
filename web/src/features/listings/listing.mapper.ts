@@ -13,6 +13,7 @@ export function mapListingToViewModel(listing: Listing, index: number): ListingV
     currency: listing.currency,
     surface: fixture.surface,
     object: fixture.object,
+    imageUrl: listing.images?.[0]?.url,
   };
 }
 

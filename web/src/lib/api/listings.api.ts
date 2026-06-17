@@ -12,6 +12,7 @@ export type Listing = {
   condition: string;
   status: "DRAFT" | "PUBLISHED" | "SOLD" | "HIDDEN";
   signatureId?: string;
+  images: { url: string; sortOrder: number }[];
   createdAt: string;
   updatedAt: string;
   publishedAt?: string;
@@ -83,6 +84,7 @@ export async function createListing(input: {
   price: number;
   category: string;
   condition: string;
+  images?: { url: string; hash: string; sortOrder: number }[];
 }): Promise<Listing> {
   return bffJson<Listing>("/listings", {
     method: "POST",

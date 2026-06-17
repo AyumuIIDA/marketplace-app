@@ -1,12 +1,14 @@
-import { and, asc, eq, gte, ilike, lte, ne, or } from "drizzle-orm";
+import { and, asc, eq, gte, ilike, inArray, lte, ne, or } from "drizzle-orm";
 
 import type { Db } from "../../../db/client.js";
-import { listings } from "../../../db/schema/index.js";
+import { listingImages, listings } from "../../../db/schema/index.js";
 import {
   Listing,
   type ClaimListingForPurchaseInput,
+  type ListingImageRef,
   type ListingRepository,
   type ListingStatus,
+  type SaveListingImagesInput,
   type SearchListingsInput,
 } from "../domain/index.js";
 
@@ -55,6 +57,45 @@ export class DrizzleListingRepository implements ListingRepository {
       });
   }
 
+  // listing_images へ画像行を追記する（出品作成時の添付）。空配列はno-op。
+  async saveImages(input: SaveListingImagesInput): Promise<void> {
+    if (input.images.length === 0) {
+      return;
+    }
+
+    await this.db.insert(listingImages).values(
+      input.images.map((image) => ({
+        listingId: input.listingId,
+        url: image.url,
+        imageHash: image.hash,
+        sortOrder: image.sortOrder,
+      })),
+    );
+  }
+
+  // listing_images を listingId ごとに sort_order 順でロード（読み取り表示用）。
+  private async loadImages(ids: string[]): Promise<Map<string, ListingImageRef[]>> {
+    const map = new Map<string, ListingImageRef[]>();
+
+    if (ids.length === 0) {
+      return map;
+    }
+
+    const rows = await this.db
+      .select()
+      .from(listingImages)
+      .where(inArray(listingImages.listingId, ids))
+      .orderBy(asc(listingImages.sortOrder));
+
+    for (const row of rows) {
+      const list = map.get(row.listingId) ?? [];
+      list.push({ url: row.url, sortOrder: row.sortOrder });
+      map.set(row.listingId, list);
+    }
+
+    return map;
+  }
+
   async findById(listingId: string): Promise<Listing | undefined> {
     try {
       const [row] = await this.db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
@@ -63,7 +104,9 @@ export class DrizzleListingRepository implements ListingRepository {
         return undefined;
       }
 
-      return rehydrateListing(row);
+      const images = (await this.loadImages([row.id])).get(row.id) ?? [];
+
+      return rehydrateListing(row, images);
     } catch (error: unknown) {
       // uuidカラムへ非uuid文字列が渡るとPostgresが 22P02 を投げる。
       // 「存在しないid」と同義として undefined を返し、usecaseの NotFound→404 へ集約する。
@@ -121,7 +164,9 @@ export class DrizzleListingRepository implements ListingRepository {
       .orderBy(asc(listings.createdAt))
       .limit(input.limit ?? 50);
 
-    return rows.map(rehydrateListing);
+    const imageMap = await this.loadImages(rows.map((row) => row.id));
+
+    return rows.map((row) => rehydrateListing(row, imageMap.get(row.id) ?? []));
   }
 }
 
@@ -136,8 +181,9 @@ function isInvalidUuid(error: unknown): boolean {
 
 type ListingRow = typeof listings.$inferSelect;
 
-function rehydrateListing(row: ListingRow): Listing {
+function rehydrateListing(row: ListingRow, images: ListingImageRef[] = []): Listing {
   return Listing.rehydrate({
+      images,
       id: row.id,
       sellerId: row.sellerId,
       agentId: row.agentId ?? undefined,

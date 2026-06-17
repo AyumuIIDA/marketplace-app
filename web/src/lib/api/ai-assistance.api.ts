@@ -9,12 +9,14 @@ export type SuggestedListingFields = {
 };
 
 export async function suggestListingFields(input: {
-  userHint: string;
+  userHint?: string;
+  imageUrls?: string[];
 }): Promise<SuggestedListingFields> {
   return bffJson<SuggestedListingFields>("/ai-assistance/listing-fields", {
     method: "POST",
     body: {
       userHint: input.userHint,
+      imageUrls: input.imageUrls,
     },
   });
 }

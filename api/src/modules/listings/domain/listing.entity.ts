@@ -3,6 +3,12 @@ import { DomainError } from "../../../shared/index.js";
 import type { ListingFields } from "./listing-fields.type.js";
 import type { ListingStatus } from "./listing-status.type.js";
 
+// 表示用の画像参照（読み取り専用属性。entityの振る舞いには影響しない）。
+export type ListingImageRef = {
+  url: string;
+  sortOrder: number;
+};
+
 export type ListingProps = ListingFields & {
   id: string;
   sellerId: string;
@@ -13,6 +19,7 @@ export type ListingProps = ListingFields & {
   updatedAt: Date;
   publishedAt?: Date;
   soldAt?: Date;
+  images?: ListingImageRef[];
 };
 
 export type CreateDraftListingProps = Omit<ListingFields, "currency"> & {

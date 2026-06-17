@@ -10,6 +10,8 @@ export type CreateListingInput = {
   currency?: "JPY";
   category: string;
   condition: string;
+  // アップロード済み画像の参照（POST /listings/images で先行アップロード済み）。
+  images?: { url: string; hash: string; sortOrder: number }[];
 };
 
 export type CreateListingOutput = {
@@ -41,6 +43,13 @@ export class CreateListingUseCase {
     });
 
     await this.deps.listingRepository.save(listing);
+
+    if (input.images !== undefined && input.images.length > 0) {
+      await this.deps.listingRepository.saveImages({
+        listingId: listing.id,
+        images: input.images,
+      });
+    }
 
     return {
       listingId: listing.id,

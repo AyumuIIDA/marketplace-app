@@ -6,6 +6,7 @@ export type ListingViewModel = {
   currency: "JPY";
   surface: string;
   object: ProductVisualKind;
+  imageUrl?: string;
 };
 
 export type ProductVisualKind = "camera" | "keyboard" | "monitor" | "watch" | "speaker" | "lamp";

@@ -2,6 +2,13 @@ import { z } from "zod";
 
 import type { IdKitResult } from "../../signatures/index.js";
 
+// 先行アップロード済み画像の参照。URL/hashは POST /listings/images の戻り値をそのまま渡す。
+export const listingImageRefSchema = z.object({
+  url: z.string().url(),
+  hash: z.string().trim().min(1),
+  sortOrder: z.number().int().min(0),
+});
+
 export const createListingRequestSchema = z.object({
   agentId: z.string().trim().min(1).optional(),
   title: z.string().trim().min(1),
@@ -10,6 +17,7 @@ export const createListingRequestSchema = z.object({
   currency: z.literal("JPY").optional(),
   category: z.string().trim().min(1),
   condition: z.string().trim().min(1),
+  images: z.array(listingImageRefSchema).max(10).optional(),
 });
 
 export type CreateListingRequest = z.infer<typeof createListingRequestSchema>;
@@ -59,7 +67,7 @@ export type PublishListingRequest = z.infer<typeof publishListingRequestSchema> 
 };
 
 export const updateListingRequestSchema = z.object({
-  fields: createListingRequestSchema.omit({ agentId: true }),
+  fields: createListingRequestSchema.omit({ agentId: true, images: true }),
   idKitResult: idKitResultSchema,
   expectedEnvironment: z.string().optional(),
 });
@@ -69,7 +77,7 @@ export type UpdateListingRequest = z.infer<typeof updateListingRequestSchema> & 
 };
 
 export const updateDraftListingRequestSchema = z.object({
-  fields: createListingRequestSchema.omit({ agentId: true }),
+  fields: createListingRequestSchema.omit({ agentId: true, images: true }),
 });
 
 export type UpdateDraftListingRequest = z.infer<typeof updateDraftListingRequestSchema>;

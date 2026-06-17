@@ -1,4 +1,4 @@
-import type { Listing } from "../domain/index.js";
+import type { Listing, ListingImageRef } from "../domain/index.js";
 import type { ListingStatus } from "../domain/index.js";
 
 export type ListingOutput = {
@@ -13,6 +13,7 @@ export type ListingOutput = {
   condition: string;
   status: ListingStatus;
   signatureId?: string;
+  images: ListingImageRef[];
   createdAt: string;
   updatedAt: string;
   publishedAt?: string;
@@ -34,6 +35,7 @@ export function toListingOutput(listing: Listing): ListingOutput {
     condition: snapshot.condition,
     status: snapshot.status,
     signatureId: snapshot.signatureId,
+    images: snapshot.images ?? [],
     createdAt: snapshot.createdAt.toISOString(),
     updatedAt: snapshot.updatedAt.toISOString(),
     publishedAt: snapshot.publishedAt?.toISOString(),

@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { importJWK, type JWK } from "jose";
 
 import { createDb, type Db } from "../db/client.js";
-import { UuidGenerator, SystemClock } from "../shared/index.js";
+import { GcsObjectStorage, UuidGenerator, SystemClock } from "../shared/index.js";
 import {
   CreateAgentUseCase,
   DisableAgentUseCase,
@@ -43,8 +43,12 @@ import {
   ListingPurchaseService,
   SearchListingsUseCase,
   UpdateDraftListingUseCase,
+  UploadListingImageUseCase,
 } from "../modules/listings/index.js";
-import { DrizzleListingRepository } from "../modules/listings/infrastructure/index.js";
+import {
+  DrizzleListingRepository,
+  SharpListingImageStore,
+} from "../modules/listings/infrastructure/index.js";
 import {
   HideMessageUseCase,
   ListMessagesUseCase,
@@ -122,6 +126,14 @@ export async function createProductionApp(db: Db = createDb()) {
   const authIdentityRepository = new DrizzleAuthIdentityRepository(db);
   const userRepository = new DrizzleUserRepository(db);
   const listingRepository = new DrizzleListingRepository(db);
+  // 画像オブジェクトストレージ。local=fake-gcs / prod=GCS（endpoint/credsのみ差し替え）。
+  const objectStorage = new GcsObjectStorage({
+    bucket: requiredEnv("STORAGE_BUCKET"),
+    publicBaseUrl: requiredEnv("PUBLIC_IMAGE_BASE_URL"),
+  });
+  const uploadListingImageUseCase = new UploadListingImageUseCase({
+    listingImageStore: new SharpListingImageStore(objectStorage),
+  });
   const messageRepository = new DrizzleMessageRepository(db);
   const orderRepository = new DrizzleOrderRepository(db);
   const reviewRepository = new DrizzleReviewRepository(db);
@@ -301,6 +313,7 @@ export async function createProductionApp(db: Db = createDb()) {
     },
     listingControllerDeps: {
       createListingUseCase,
+      uploadListingImageUseCase,
       getListingUseCase,
       searchListingsUseCase,
       updateDraftListingUseCase: new UpdateDraftListingUseCase({

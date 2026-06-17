@@ -304,6 +304,8 @@ class FakeHumanSignatureWorkflowTransaction implements HumanSignatureWorkflowTra
 class FakeListingRepository implements ListingRepository {
   listings = new Map<string, Listing>();
 
+  async saveImages(_input: { listingId: string; images: { url: string; hash: string; sortOrder: number }[] }): Promise<void> {}
+
   async save(listing: Listing): Promise<void> {
     this.listings.set(listing.id, listing);
   }

@@ -46,6 +46,7 @@ import {
   ListingPublicationService,
   SearchListingsUseCase,
   UpdateDraftListingUseCase,
+  UploadListingImageUseCase,
   computeListingPayloadHash,
 } from "../modules/listings/application/index.js";
 import {
@@ -750,6 +751,13 @@ function createTestApp() {
         idGenerator,
         clock,
       }),
+      uploadListingImageUseCase: new UploadListingImageUseCase({
+        listingImageStore: {
+          async upload() {
+            return { url: "http://storage.test/listings/test.jpg", hash: "test" };
+          },
+        },
+      }),
       getListingUseCase: new GetListingUseCase({
         listingRepository,
       }),
@@ -1005,6 +1013,8 @@ function createIdKitResult(
 
 class FakeListingRepository implements ListingRepository {
   listings = new Map<string, Listing>();
+
+  async saveImages(_input: { listingId: string; images: { url: string; hash: string; sortOrder: number }[] }): Promise<void> {}
 
   async save(listing: Listing): Promise<void> {
     this.listings.set(listing.id, listing);

@@ -1,6 +1,15 @@
 import type { ProductVisualKind } from "../listing-view-model";
 
-export function ProductVisual({ object }: { object: ProductVisualKind }) {
+export function ProductVisual({ object, imageUrl }: { object: ProductVisualKind; imageUrl?: string }) {
+  if (imageUrl !== undefined) {
+    return (
+      <div className="my-3 aspect-square flex-1 overflow-hidden rounded-[20px] bg-white">
+        {/* 商品画像はブラウザが storage を直接読む公開アセット */}
+        <img alt="" className="size-full object-cover" loading="lazy" src={imageUrl} />
+      </div>
+    );
+  }
+
   return (
     <div className="grid flex-1 place-items-center py-5">
       {object === "camera" && (

@@ -27,6 +27,29 @@ export function ListingDetailView({ currentUser, listing }: ListingDetailViewPro
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
       <GlassPanel className="p-6">
+        {listing.images.length > 0 && (
+          <div className="mb-5 overflow-hidden rounded-[24px] bg-white">
+            {/* 商品画像はブラウザが storage を直接読む公開アセット */}
+            <img
+              alt={listing.title}
+              className="aspect-square w-full object-contain"
+              src={listing.images[0].url}
+            />
+            {listing.images.length > 1 && (
+              <div className="flex gap-2 p-2">
+                {listing.images.map((image) => (
+                  <img
+                    alt=""
+                    className="size-16 rounded-lg object-cover"
+                    key={image.sortOrder}
+                    loading="lazy"
+                    src={image.url}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <StatusBadge tone={listing.status === "PUBLISHED" ? "good" : "neutral"}>{listing.status}</StatusBadge>
           <StatusBadge tone={listing.signatureId === undefined ? "warn" : "good"}>

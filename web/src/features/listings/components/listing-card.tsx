@@ -25,7 +25,7 @@ export function ListingCard({ featured = false, item }: ListingCardProps) {
           <span className="font-semibold text-neutral-500">{item.currency}</span>
         </div>
 
-        <ProductVisual object={item.object} />
+        <ProductVisual imageUrl={item.imageUrl} object={item.object} />
 
         <div className="mt-auto rounded-[20px] bg-white/84 p-3 shadow-sm">
           <h3 className="text-sm font-semibold leading-5 text-neutral-950">{item.title}</h3>
