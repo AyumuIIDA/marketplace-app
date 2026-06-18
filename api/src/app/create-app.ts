@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 
 import {
@@ -48,7 +48,19 @@ export function createApiApp(deps: ApiAppDeps, authConfig: BffAuthConfig): Hono 
     }),
   );
 
-  app.use("*", createBffAuthMiddleware(authConfig));
+  // 未ログインでも閲覧できる公開GET（商品一覧・商品詳細のみ）。
+  // 一覧 GET /listings と 詳細 GET /listings/:id（1セグメント）に限定する。
+  const isPublicRequest = (c: Context): boolean => {
+    if (c.req.method !== "GET") {
+      return false;
+    }
+
+    const path = c.req.path;
+
+    return path === "/listings" || /^\/listings\/[^/]+$/.test(path);
+  };
+
+  app.use("*", createBffAuthMiddleware({ ...authConfig, isPublicRequest }));
 
   app.route("/agents", createAgentController(deps.agentControllerDeps));
   app.route("/ai-assistance", createAiAssistanceController(deps.aiAssistanceControllerDeps));

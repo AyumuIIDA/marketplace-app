@@ -6,7 +6,10 @@ describe("DeterministicAiAssistant", () => {
   const assistant = new DeterministicAiAssistant();
 
   it("derives listing fields from the user hint", async () => {
-    const result = await assistant.suggestListingFields({ userHint: "去年買ったスニーカー" });
+    const result = await assistant.suggestListingFields({
+      userHint: "去年買ったスニーカー",
+      imageUrls: ["http://storage.test/listings/shoes.jpg"],
+    });
 
     expect(result.title).toBe("去年買ったスニーカー");
     expect(result.condition).toBe("good");

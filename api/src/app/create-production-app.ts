@@ -7,9 +7,16 @@ import {
   CreateAgentUseCase,
   DisableAgentUseCase,
   ListAgentsUseCase,
+  RunDiscoverAgentUseCase,
 } from "../modules/agents/index.js";
 import {
+  DeterministicDiscoverAgentPlanner,
+  DeterministicDiscoverAgentResponder,
   DrizzleAgentRepository,
+  GeminiDiscoverAgentPlanner,
+  GeminiDiscoverAgentResponder,
+  OpenAiDiscoverAgentPlanner,
+  OpenAiDiscoverAgentResponder,
 } from "../modules/agents/infrastructure/index.js";
 import {
   CompareListingsUseCase,
@@ -41,6 +48,7 @@ import {
   HideListingUseCase,
   ListingPublicationService,
   ListingPurchaseService,
+  PublishListingUseCase,
   SearchListingsUseCase,
   UpdateDraftListingUseCase,
   UploadListingImageUseCase,
@@ -91,12 +99,14 @@ import {
   UpdateListingTool,
   GetCurrentUserTool,
   GetListingTool,
+  PresentDiscoverOutputTool,
   ListOrdersTool,
   ListMessagesTool,
   MarkShippedTool,
   MarkReceivedTool,
   SuggestMessageTool,
   CompareListingsTool,
+  InProcessMcpToolGateway,
   McpToolRunner,
   type McpTool,
 } from "../modules/mcp/index.js";
@@ -130,6 +140,7 @@ export async function createProductionApp(db: Db = createDb()) {
   const objectStorage = new GcsObjectStorage({
     bucket: requiredEnv("STORAGE_BUCKET"),
     publicBaseUrl: requiredEnv("PUBLIC_IMAGE_BASE_URL"),
+    fetchBaseUrl: process.env.IMAGE_FETCH_BASE_URL,
   });
   const uploadListingImageUseCase = new UploadListingImageUseCase({
     listingImageStore: new SharpListingImageStore(objectStorage),
@@ -225,6 +236,8 @@ export async function createProductionApp(db: Db = createDb()) {
   const suggestReviewUseCase = new SuggestReviewUseCase({ aiAssistant });
   const suggestMessageUseCase = new SuggestMessageUseCase({ aiAssistant });
   const compareListingsUseCase = new CompareListingsUseCase({ aiAssistant });
+  const discoverAgentPlanner = createDiscoverAgentPlanner();
+  const discoverAgentResponder = createDiscoverAgentResponder();
 
   // 読取/ライフサイクル系。REST controller と MCP tool で同一インスタンスを共有する。
   const getCurrentUserUseCase = new GetCurrentUserUseCase({ userRepository });
@@ -270,6 +283,7 @@ export async function createProductionApp(db: Db = createDb()) {
     new MarkReceivedTool({ markOrderReceivedUseCase }),
     new SuggestMessageTool({ suggestMessageUseCase }),
     new CompareListingsTool({ compareListingsWorkflow }),
+    new PresentDiscoverOutputTool(),
   ];
 
   // MCP tool呼び出しの監査記録。全tool実行をrunner経由で mcp_tool_calls へ残す。
@@ -307,6 +321,16 @@ export async function createProductionApp(db: Db = createDb()) {
         agentRepository,
         clock,
       }),
+      runDiscoverAgentUseCase: new RunDiscoverAgentUseCase({
+        createMcpToolGateway: (context) =>
+          new InProcessMcpToolGateway({
+            tools: mcpTools,
+            runner: mcpToolRunner,
+            context,
+          }),
+        discoverAgentPlanner,
+        discoverAgentResponder,
+      }),
     },
     aiAssistanceControllerDeps: {
       suggestListingFieldsUseCase,
@@ -321,6 +345,10 @@ export async function createProductionApp(db: Db = createDb()) {
         clock,
       }),
       hideListingUseCase: new HideListingUseCase({
+        listingRepository,
+        clock,
+      }),
+      publishListingUseCase: new PublishListingUseCase({
         listingRepository,
         clock,
       }),
@@ -398,4 +426,42 @@ function createAiAssistant(): AiAssistant {
   }
 
   return new DeterministicAiAssistant();
+}
+
+function createDiscoverAgentPlanner() {
+  if (process.env.AI_ASSISTANT_PROVIDER === "gemini") {
+    return new GeminiDiscoverAgentPlanner({
+      project: requiredEnv("GOOGLE_CLOUD_PROJECT"),
+      location: process.env.GOOGLE_CLOUD_LOCATION ?? "global",
+      model: requiredEnv("GEMINI_MODEL"),
+    });
+  }
+
+  if (process.env.AI_ASSISTANT_PROVIDER === "openai") {
+    return new OpenAiDiscoverAgentPlanner({
+      client: new OpenAI({ apiKey: requiredEnv("OPENAI_API_KEY") }),
+      model: requiredEnv("OPENAI_MODEL"),
+    });
+  }
+
+  return new DeterministicDiscoverAgentPlanner();
+}
+
+function createDiscoverAgentResponder() {
+  if (process.env.AI_ASSISTANT_PROVIDER === "gemini") {
+    return new GeminiDiscoverAgentResponder({
+      project: requiredEnv("GOOGLE_CLOUD_PROJECT"),
+      location: process.env.GOOGLE_CLOUD_LOCATION ?? "global",
+      model: requiredEnv("GEMINI_MODEL"),
+    });
+  }
+
+  if (process.env.AI_ASSISTANT_PROVIDER === "openai") {
+    return new OpenAiDiscoverAgentResponder({
+      client: new OpenAI({ apiKey: requiredEnv("OPENAI_API_KEY") }),
+      model: requiredEnv("OPENAI_MODEL"),
+    });
+  }
+
+  return new DeterministicDiscoverAgentResponder();
 }

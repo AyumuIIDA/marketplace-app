@@ -114,7 +114,9 @@ export class Listing {
     };
   }
 
-  publish(signatureId: string, now: Date): void {
+  // signatureId は任意。World ID署名なし(login のみ)でも公開できる。署名があれば
+  // 「人間が出品した証」として付与され、未署名は signatureId=undefined のまま公開される。
+  publish(signatureId: string | undefined, now: Date): void {
     if (this.props.status !== "DRAFT") {
       throw new DomainError(
         "LISTING_NOT_PUBLISHABLE",

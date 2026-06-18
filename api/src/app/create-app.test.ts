@@ -11,6 +11,7 @@ import {
   CreateAgentUseCase,
   DisableAgentUseCase,
   ListAgentsUseCase,
+  RunDiscoverAgentUseCase,
 } from "../modules/agents/application/index.js";
 import {
   Agent,
@@ -24,7 +25,18 @@ import {
 } from "../modules/mcp-audit/index.js";
 import { SuggestListingFieldsUseCase } from "../modules/ai-assistance/index.js";
 import { DeterministicAiAssistant } from "../modules/ai-assistance/infrastructure/index.js";
-import { McpToolRunner } from "../modules/mcp/index.js";
+import {
+  InProcessMcpToolGateway,
+  GetListingTool,
+  McpToolRunner,
+  PresentDiscoverOutputTool,
+  SearchListingsTool,
+  type McpTool,
+} from "../modules/mcp/index.js";
+import {
+  DeterministicDiscoverAgentPlanner,
+  DeterministicDiscoverAgentResponder,
+} from "../modules/agents/infrastructure/index.js";
 import {
   GetCurrentUserUseCase,
   LinkWorldIdUseCase,
@@ -44,6 +56,7 @@ import {
   HideListingUseCase,
   ListingPurchaseService,
   ListingPublicationService,
+  PublishListingUseCase,
   SearchListingsUseCase,
   UpdateDraftListingUseCase,
   UploadListingImageUseCase,
@@ -241,6 +254,171 @@ describe("createApiApp", () => {
     });
   });
 
+  it("should run the discover agent through an audited MCP tool", async () => {
+    const { app } = createTestApp();
+    await createDraftListing(app);
+    await app.request("/listings/00000000-0000-4000-8000-000000000001/publish", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-user-id": "seller-1",
+      },
+      body: JSON.stringify({}),
+    });
+
+    const response = await app.request("/agents/runs", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-user-id": "buyer-1",
+      },
+      body: JSON.stringify({
+        message: "Find Sneakers under 50000 JPY",
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      status: "COMPLETED",
+      assistantMessage: expect.stringContaining("Sneakers"),
+      listings: [
+        {
+          title: "Sneakers",
+        },
+      ],
+      steps: [
+        {
+          actor: "llm",
+          phase: "plan",
+          status: "COMPLETED",
+          toolName: "search_listings",
+        },
+        {
+          actor: "mcp",
+          phase: "tool_call",
+          status: "COMPLETED",
+          toolName: "search_listings",
+        },
+        {
+          actor: "llm",
+          phase: "plan",
+          status: "SKIPPED",
+          toolName: "search_listings",
+        },
+        {
+          actor: "llm",
+          phase: "reply",
+          status: "COMPLETED",
+        },
+        {
+          actor: "mcp",
+          phase: "output",
+          status: "COMPLETED",
+          toolName: "present_discover_output",
+        },
+      ],
+      toolCalls: [
+        {
+          toolName: "search_listings",
+          status: "SUCCEEDED",
+        },
+        {
+          toolName: "present_discover_output",
+          status: "SUCCEEDED",
+        },
+      ],
+    });
+  });
+
+  it("should let the discover agent planner choose a non-search MCP tool first", async () => {
+    const { app } = createTestApp();
+    await createDraftListing(app);
+    await app.request("/listings/00000000-0000-4000-8000-000000000001/publish", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-user-id": "seller-1",
+      },
+      body: JSON.stringify({}),
+    });
+
+    const response = await app.request("/agents/runs", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-user-id": "buyer-1",
+      },
+      body: JSON.stringify({
+        message: "Show detail for 00000000-0000-4000-8000-000000000001",
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      status: "COMPLETED",
+      listings: [
+        {
+          listingId: "00000000-0000-4000-8000-000000000001",
+          title: "Sneakers",
+        },
+      ],
+      toolCalls: [
+        {
+          toolName: "get_listing",
+          status: "SUCCEEDED",
+        },
+        {
+          toolName: "present_discover_output",
+          status: "SUCCEEDED",
+        },
+      ],
+    });
+  });
+
+  it("should not inject session history into the first MCP tool selection", async () => {
+    const { app } = createTestApp();
+    await createDraftListing(app);
+    await app.request("/listings/00000000-0000-4000-8000-000000000001/publish", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-user-id": "seller-1",
+      },
+      body: JSON.stringify({}),
+    });
+
+    const response = await app.request("/agents/runs", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-user-id": "buyer-1",
+      },
+      body: JSON.stringify({
+        message: "Find Sneakers",
+        messages: [
+          {
+            role: "user",
+            content: "Show detail for 00000000-0000-4000-8000-000000000001",
+          },
+        ],
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      toolCalls: [
+        {
+          toolName: "search_listings",
+          status: "SUCCEEDED",
+        },
+        {
+          toolName: "present_discover_output",
+          status: "SUCCEEDED",
+        },
+      ],
+    });
+  });
+
   it("should suggest listing fields through REST", async () => {
     const { app } = createTestApp();
 
@@ -252,6 +430,7 @@ describe("createApiApp", () => {
       },
       body: JSON.stringify({
         userHint: "去年買った黒いスニーカー",
+        imageUrls: ["http://storage.test/listings/shoes.jpg"],
       }),
     });
 
@@ -725,6 +904,24 @@ function createTestApp() {
     clock,
   });
   const reviewSubmissionService = new ReviewSubmissionService();
+  const searchListingsUseCase = new SearchListingsUseCase({
+    listingRepository,
+  });
+  const getListingUseCase = new GetListingUseCase({
+    listingRepository,
+  });
+  const mcpTools: McpTool[] = [
+    new SearchListingsTool({ searchListingsUseCase }),
+    new GetListingTool({ getListingUseCase }),
+    new PresentDiscoverOutputTool(),
+  ];
+  const mcpToolRunner = new McpToolRunner({
+    recordMcpToolCallUseCase: new RecordMcpToolCallUseCase({
+      mcpToolCallRepository: new InMemoryMcpToolCallRepository(),
+      idGenerator: new FixedIdGenerator(["mcp-tool-call-1", "mcp-tool-call-2"]),
+      clock,
+    }),
+  });
   const app = createApiApp({
     agentControllerDeps: {
       createAgentUseCase: new CreateAgentUseCase({
@@ -738,6 +935,16 @@ function createTestApp() {
       disableAgentUseCase: new DisableAgentUseCase({
         agentRepository,
         clock,
+      }),
+      runDiscoverAgentUseCase: new RunDiscoverAgentUseCase({
+        createMcpToolGateway: (context) =>
+          new InProcessMcpToolGateway({
+            tools: mcpTools,
+            runner: mcpToolRunner,
+            context,
+          }),
+        discoverAgentPlanner: new DeterministicDiscoverAgentPlanner(),
+        discoverAgentResponder: new DeterministicDiscoverAgentResponder(),
       }),
     },
     aiAssistanceControllerDeps: {
@@ -754,21 +961,25 @@ function createTestApp() {
       uploadListingImageUseCase: new UploadListingImageUseCase({
         listingImageStore: {
           async upload() {
-            return { url: "http://storage.test/listings/test.jpg", hash: "test" };
+            return {
+              url: "http://storage.test/listings/test.jpg",
+              aiUrl: "http://storage.test/listings/test.jpg",
+              hash: "test",
+            };
           },
         },
       }),
-      getListingUseCase: new GetListingUseCase({
-        listingRepository,
-      }),
-      searchListingsUseCase: new SearchListingsUseCase({
-        listingRepository,
-      }),
+      getListingUseCase,
+      searchListingsUseCase,
       updateDraftListingUseCase: new UpdateDraftListingUseCase({
         listingRepository,
         clock,
       }),
       hideListingUseCase: new HideListingUseCase({
+        listingRepository,
+        clock,
+      }),
+      publishListingUseCase: new PublishListingUseCase({
         listingRepository,
         clock,
       }),
@@ -859,14 +1070,8 @@ function createTestApp() {
         clock,
       }),
     },
-    mcpTools: [],
-    mcpToolRunner: new McpToolRunner({
-      recordMcpToolCallUseCase: new RecordMcpToolCallUseCase({
-        mcpToolCallRepository: new InMemoryMcpToolCallRepository(),
-        idGenerator: new FixedIdGenerator(["mcp-tool-call-1"]),
-        clock,
-      }),
-    }),
+    mcpTools,
+    mcpToolRunner,
   }, { allowDevUserHeader: true });
 
   return { app, listingRepository, userRepository };

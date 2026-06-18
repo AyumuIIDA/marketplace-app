@@ -99,13 +99,24 @@ describe("createMcpServer", () => {
       name: "search_listings",
       arguments: { keyword: "earbuds" },
     });
-    expect((searchResult.content as Array<{ text: string }>)[0]?.text).toContain("00000000-0000-4000-8000-000000000001");
+    expect(searchResult.structuredContent).toMatchObject({
+      status: "SUCCEEDED",
+      data: {
+        listings: [{ id: "00000000-0000-4000-8000-000000000001" }],
+      },
+    });
+    expect((searchResult.content as Array<{ text: string }>)[0]?.text).toBe("Tool call succeeded.");
 
     const priceResult = await client.callTool({
       name: "suggest_price",
       arguments: { title: "Earbuds", category: "electronics", condition: "good" },
     });
-    expect((priceResult.content as Array<{ text: string }>)[0]?.text).toContain("15000");
+    expect(priceResult.structuredContent).toMatchObject({
+      status: "SUCCEEDED",
+      data: {
+        suggestedPrice: 15000,
+      },
+    });
 
     await client.close();
     await server.close();
@@ -139,7 +150,12 @@ describe("createMcpServer", () => {
       name: "suggest_price",
       arguments: { title: "中古スニーカー", category: "fashion_shoes", condition: "good" },
     });
-    expect((priceResult.content as Array<{ text: string }>)[0]?.text).toContain("7800");
+    expect(priceResult.structuredContent).toMatchObject({
+      status: "SUCCEEDED",
+      data: {
+        suggestedPrice: 7800,
+      },
+    });
 
     // AI tool呼び出しも監査記録される。
     expect(repo.toolCalls).toHaveLength(1);
@@ -210,7 +226,12 @@ describe("createMcpServer", () => {
       name: "get_listing",
       arguments: { listingId: "00000000-0000-4000-8000-000000000042" },
     });
-    expect((getListing.content as Array<{ text: string }>)[0]?.text).toContain("00000000-0000-4000-8000-000000000042");
+    expect(getListing.structuredContent).toMatchObject({
+      status: "SUCCEEDED",
+      data: {
+        id: "00000000-0000-4000-8000-000000000042",
+      },
+    });
 
     // #2 監査: tool呼び出しが mcp_tool_calls へ記録される。
     expect(repo.toolCalls).toHaveLength(1);

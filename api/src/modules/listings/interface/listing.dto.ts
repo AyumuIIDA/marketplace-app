@@ -33,6 +33,7 @@ export const listingSearchQuerySchema = z.object({
     .transform((value) => value === "true")
     .optional(),
   limit: z.coerce.number().int().positive().max(100).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
 });
 
 export type ListingSearchQuery = z.infer<typeof listingSearchQuerySchema>;
@@ -57,13 +58,14 @@ export const idKitResultSchema = z
   })
   .passthrough();
 
+// idKitResult は任意。あれば人間署名付きで公開（高評価の印）、なければlogin のみで公開。
 export const publishListingRequestSchema = z.object({
-  idKitResult: idKitResultSchema,
+  idKitResult: idKitResultSchema.optional(),
   expectedEnvironment: z.string().optional(),
 });
 
 export type PublishListingRequest = z.infer<typeof publishListingRequestSchema> & {
-  idKitResult: IdKitResult;
+  idKitResult?: IdKitResult;
 };
 
 export const updateListingRequestSchema = z.object({

@@ -16,6 +16,7 @@ export type SearchListingsInput = {
   status?: ListingStatus;
   sellerId?: string;
   limit?: number;
+  offset?: number;
 };
 
 // listing_images への永続化入力。hashは保存に必要（重複検出・content-addressed key）。

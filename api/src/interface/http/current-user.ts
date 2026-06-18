@@ -17,6 +17,9 @@ export type BffAuthConfig = {
   publicKey?: BffVerificationKey;
   // x-user-id dev fallbackを許可するか（test / 明示的なdev環境のみ）。
   allowDevUserHeader: boolean;
+  // 認証任意の公開リクエスト判定（例: 未ログインでも見られる商品閲覧GET）。
+  // トークンがあれば currentUser を設定し、無くても 401 にせず通す。
+  isPublicRequest?: (c: Context) => boolean;
 };
 
 const INTERNAL_ISSUER = "next-bff";
@@ -56,11 +59,17 @@ export function createBffAuthMiddleware(config: BffAuthConfig): MiddlewareHandle
       }
     }
 
+    // 公開リクエストは未認証でも通す（currentUser未設定＝匿名）。
+    if (config.isPublicRequest?.(c) === true) {
+      await next();
+      return;
+    }
+
     throw new AuthenticationError("Authentication is required.");
   };
 }
 
-// controllerはここからCurrentUserを取得する（ミドルウェアが設定済み）。
+// controllerはここからCurrentUserを取得する（ミドルウェアが設定済み）。認証必須routeで使う。
 export function getCurrentUser(c: Context): CurrentUser {
   const currentUser = c.get("currentUser");
 
@@ -69,6 +78,11 @@ export function getCurrentUser(c: Context): CurrentUser {
   }
 
   return currentUser;
+}
+
+// 認証任意route用。匿名なら undefined を返す。
+export function getOptionalUser(c: Context): CurrentUser | undefined {
+  return c.get("currentUser");
 }
 
 // EdDSA署名のBFF内部トークンを検証し、CurrentUserへ確定する。

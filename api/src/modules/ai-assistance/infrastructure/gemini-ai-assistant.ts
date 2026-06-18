@@ -284,9 +284,29 @@ function readGeminiText(value: string | undefined): string {
 }
 
 function parseJson(text: string): unknown {
+  const jsonText = extractJsonText(text);
+
   try {
-    return JSON.parse(text);
+    return JSON.parse(jsonText);
   } catch {
     throw new AppError("AI_ASSIST_FAILED", "Gemini assistant returned non-JSON output.", 502);
   }
+}
+
+function extractJsonText(text: string): string {
+  const trimmed = text.trim();
+  const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(trimmed);
+
+  if (fenced?.[1] !== undefined) {
+    return fenced[1].trim();
+  }
+
+  const firstObjectIndex = trimmed.indexOf("{");
+  const lastObjectIndex = trimmed.lastIndexOf("}");
+
+  if (firstObjectIndex !== -1 && lastObjectIndex > firstObjectIndex) {
+    return trimmed.slice(firstObjectIndex, lastObjectIndex + 1);
+  }
+
+  return trimmed;
 }

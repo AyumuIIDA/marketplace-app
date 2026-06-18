@@ -6,4 +6,7 @@ export interface ObjectStorage {
 
   // 公開GET用の絶対URL。ブラウザが直接読む（BFF非経由の公開アセット）。
   publicUrl(key: string): string;
+
+  // サーバサイド処理がGETする絶対URL。local Dockerでは service name、prodではpublicUrlと同一でよい。
+  fetchUrl(key: string): string;
 }
