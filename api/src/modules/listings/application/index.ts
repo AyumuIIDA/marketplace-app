@@ -5,6 +5,7 @@ export * from "./listing-image.port.js";
 export * from "./upload-listing-image.usecase.js";
 export * from "./listing-payload-hash.service.js";
 export * from "./listing-publication.service.js";
+export * from "./publish-listing.usecase.js";
 export * from "./listing-purchase.service.js";
 export * from "./listing.presenter.js";
 export * from "./search-listings.usecase.js";

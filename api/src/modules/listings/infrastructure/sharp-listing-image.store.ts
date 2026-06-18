@@ -33,6 +33,6 @@ export class SharpListingImageStore implements ListingImageStore {
 
     await this.objectStorage.put(key, normalized, "image/jpeg");
 
-    return { url: this.objectStorage.publicUrl(key), hash };
+    return { url: this.objectStorage.publicUrl(key), aiUrl: this.objectStorage.fetchUrl(key), hash };
   }
 }

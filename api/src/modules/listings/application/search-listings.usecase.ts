@@ -12,6 +12,7 @@ export type SearchListingsInput = {
   sellerId?: string;
   includeDraftsForSeller?: boolean;
   limit?: number;
+  offset?: number;
 };
 
 export type SearchListingsOutput = {
@@ -46,6 +47,7 @@ export class SearchListingsUseCase {
       sellerId: input.sellerId,
       status: input.includeDraftsForSeller === true ? undefined : "PUBLISHED",
       limit: input.limit,
+      offset: input.offset,
     });
 
     return {

@@ -1,11 +1,12 @@
 import { Hono } from "hono";
 
-import { getCurrentUser } from "../../../interface/http/index.js";
+import { getCurrentUser, getOptionalUser } from "../../../interface/http/index.js";
 import { NotFoundError, ValidationAppError, parseUuid } from "../../../shared/index.js";
 import type {
   CreateListingUseCase,
   GetListingUseCase,
   HideListingUseCase,
+  PublishListingUseCase,
   SearchListingsUseCase,
   UpdateDraftListingUseCase,
   UploadListingImageUseCase,
@@ -32,6 +33,7 @@ export type ListingControllerDeps = {
   searchListingsUseCase: SearchListingsUseCase;
   updateDraftListingUseCase: UpdateDraftListingUseCase;
   hideListingUseCase: HideListingUseCase;
+  publishListingUseCase: PublishListingUseCase;
   publishListingWithHumanSignatureWorkflow: PublishListingWithHumanSignatureOperation;
   updateListingWithHumanSignatureWorkflow: UpdateListingWithHumanSignatureOperation;
   purchaseItemWorkflow: PurchaseItemOperation;
@@ -84,7 +86,8 @@ export function createListingController(deps: ListingControllerDeps): Hono {
   });
 
   app.get("/", async (c) => {
-    const currentUser = getCurrentUser(c);
+    // 認証任意。匿名はPUBLISHEDのみ閲覧、mineは無効。
+    const currentUser = getOptionalUser(c);
     const query = listingSearchQuerySchema.parse({
       keyword: c.req.query("keyword"),
       category: c.req.query("category"),
@@ -93,23 +96,27 @@ export function createListingController(deps: ListingControllerDeps): Hono {
       condition: c.req.query("condition"),
       mine: c.req.query("mine"),
       limit: c.req.query("limit"),
+      offset: c.req.query("offset"),
     });
+    const mineForSeller = query.mine === true && currentUser !== undefined;
     const output = await deps.searchListingsUseCase.execute({
       keyword: query.keyword,
       category: query.category,
       minPrice: query.minPrice,
       maxPrice: query.maxPrice,
       condition: query.condition,
-      sellerId: query.mine === true ? currentUser.userId : undefined,
-      includeDraftsForSeller: query.mine === true,
+      sellerId: mineForSeller ? currentUser.userId : undefined,
+      includeDraftsForSeller: mineForSeller,
       limit: query.limit,
+      offset: query.offset,
     });
 
     return c.json(output, 200);
   });
 
   app.get("/:listingId", async (c) => {
-    const currentUser = getCurrentUser(c);
+    // 認証任意。匿名はPUBLISHEDのみ閲覧可（下書き/HIDDENは出品者のみ）。
+    const currentUser = getOptionalUser(c);
     const raw = c.req.param("listingId");
     const listingId = parseUuid(raw);
 
@@ -120,7 +127,7 @@ export function createListingController(deps: ListingControllerDeps): Hono {
 
     const output = await deps.getListingUseCase.execute({
       listingId,
-      requesterId: currentUser.userId,
+      requesterId: currentUser?.userId,
     });
 
     return c.json(output, 200);
@@ -130,6 +137,17 @@ export function createListingController(deps: ListingControllerDeps): Hono {
     const currentUser = getCurrentUser(c);
     const listingId = c.req.param("listingId");
     const body = publishListingRequestSchema.parse(await c.req.json());
+
+    // idKitResult があれば人間署名付き公開（高評価の印）、なければlogin のみで公開。
+    if (body.idKitResult === undefined) {
+      const output = await deps.publishListingUseCase.execute({
+        listingId,
+        sellerId: currentUser.userId,
+      });
+
+      return c.json(output, 200);
+    }
+
     const output = await deps.publishListingWithHumanSignatureWorkflow.execute({
       listingId,
       sellerId: currentUser.userId,

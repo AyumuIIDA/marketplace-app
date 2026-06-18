@@ -17,3 +17,4 @@ export * from "./mark-shipped.tool.js";
 export * from "./mark-received.tool.js";
 export * from "./suggest-message.tool.js";
 export * from "./compare-listings.tool.js";
+export * from "./present-discover-output.tool.js";

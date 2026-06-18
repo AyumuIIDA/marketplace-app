@@ -5,14 +5,20 @@ import type {
   CreateAgentUseCase,
   DisableAgentUseCase,
   ListAgentsUseCase,
+  RunDiscoverAgentUseCase,
 } from "../application/index.js";
 
-import { createAgentRequestSchema, listAgentsQuerySchema } from "./agent.dto.js";
+import {
+  createAgentRequestSchema,
+  listAgentsQuerySchema,
+  runDiscoverAgentRequestSchema,
+} from "./agent.dto.js";
 
 export type AgentControllerDeps = {
   createAgentUseCase: CreateAgentUseCase;
   listAgentsUseCase: ListAgentsUseCase;
   disableAgentUseCase: DisableAgentUseCase;
+  runDiscoverAgentUseCase: RunDiscoverAgentUseCase;
 };
 
 export function createAgentController(deps: AgentControllerDeps): Hono {
@@ -49,6 +55,19 @@ export function createAgentController(deps: AgentControllerDeps): Hono {
     const output = await deps.disableAgentUseCase.execute({
       agentId: c.req.param("agentId"),
       userId: currentUser.userId,
+    });
+
+    return c.json(output, 200);
+  });
+
+  app.post("/runs", async (c) => {
+    const currentUser = getCurrentUser(c);
+    const body = runDiscoverAgentRequestSchema.parse(await c.req.json());
+    const output = await deps.runDiscoverAgentUseCase.execute({
+      userId: currentUser.userId,
+      agentId: body.agentId,
+      message: body.message,
+      messages: body.messages,
     });
 
     return c.json(output, 200);

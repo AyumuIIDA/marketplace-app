@@ -2,6 +2,7 @@
 // 公開URLとhashを返す。実装(infrastructure)はObjectStorage + 画像処理に依存する。
 export type UploadedListingImage = {
   url: string;
+  aiUrl: string;
   hash: string;
 };
 

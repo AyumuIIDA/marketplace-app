@@ -6,6 +6,8 @@ export type GcsObjectStorageConfig = {
   bucket: string;
   // 公開読取URLの基底。ブラウザ到達のホスト（local=fake-gcs / prod=GCS or CDN）。
   publicBaseUrl: string;
+  // API/LLM adapter到達のホスト。local Dockerでは http://storage:4443/... を使う。
+  fetchBaseUrl?: string;
 };
 
 // @google-cloud/storage を用いた実装。
@@ -27,5 +29,13 @@ export class GcsObjectStorage implements ObjectStorage {
 
   publicUrl(key: string): string {
     return `${this.config.publicBaseUrl}/${key}`;
+  }
+
+  fetchUrl(key: string): string {
+    if (this.config.fetchBaseUrl === undefined || this.config.fetchBaseUrl.trim().length === 0) {
+      return this.publicUrl(key);
+    }
+
+    return `${this.config.fetchBaseUrl.replace(/\/$/, "")}/${encodeURIComponent(key)}?alt=media`;
   }
 }

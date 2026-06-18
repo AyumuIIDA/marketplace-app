@@ -7,7 +7,8 @@ import { toolFailed } from "../tool-result.js";
 
 // 既存McpToolをSDKのregisterToolへ橋渡しするadapter。
 // runner経由で実行し、全呼び出しをmcp_tool_callsへ監査記録する（要約/redactionはrunner責務）。
-// ToolResultをMCPのCallToolResultへmapする（FAILEDのみisError、他はstructured payloadをtextで返す）。
+// ToolResultをMCPのCallToolResultへmapする。
+// 機械可読値はstructuredContentへ置き、content textは人間/LLM向けの短い要約にする。
 export function registerMcpTool(
   server: McpServer,
   tool: McpTool,
@@ -21,13 +22,31 @@ export function registerMcpTool(
 
     if (result.status === "FAILED") {
       return {
-        content: [{ type: "text" as const, text: JSON.stringify(result.error) }],
+        content: [{ type: "text" as const, text: formatToolResultText(result) }],
+        structuredContent: result,
         isError: true,
       };
     }
 
     return {
-      content: [{ type: "text" as const, text: JSON.stringify(result) }],
+      content: [{ type: "text" as const, text: formatToolResultText(result) }],
+      structuredContent: result,
     };
   });
+}
+
+function formatToolResultText(result: Awaited<ReturnType<McpTool["execute"]>>): string {
+  if (result.status === "FAILED") {
+    return `${result.error.code}: ${result.error.message}`;
+  }
+
+  if (result.status === "REQUIRES_CONFIRMATION") {
+    return "This tool requires user confirmation before it can continue.";
+  }
+
+  if (result.status === "REQUIRES_HUMAN_SIGNATURE") {
+    return "This tool requires a human signature before it can continue.";
+  }
+
+  return "Tool call succeeded.";
 }

@@ -3,8 +3,8 @@
 
 export type SuggestListingFieldsInput = {
   userHint?: string;
-  // 商品画像の公開URL（POST /listings/images の戻り値）。LLM adapterが取得しマルチモーダル入力にする。
-  imageUrls?: string[];
+  // 商品画像のAPI到達可能URL（POST /listings/images の戻り値）。LLM adapterが取得しマルチモーダル入力にする。
+  imageUrls: string[];
 };
 
 export type SuggestListingFieldsResult = {

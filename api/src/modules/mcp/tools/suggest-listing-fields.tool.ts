@@ -7,7 +7,7 @@ import { toolSucceeded, type ToolResult } from "../tool-result.js";
 
 const suggestListingFieldsToolInputSchema = z.object({
   userHint: z.string().trim().min(1).optional(),
-  imageUrls: z.array(z.string().url()).max(10).optional(),
+  imageUrls: z.array(z.string().url()).min(1).max(10),
 });
 
 export type SuggestListingFieldsToolDeps = {

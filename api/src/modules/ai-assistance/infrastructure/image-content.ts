@@ -1,6 +1,8 @@
+import { AppError } from "../../../shared/index.js";
+
 // LLMマルチモーダル入力のための画像取得ユーティリティ。
-// 公開URL（local=fake-gcs / prod=GCS）からバイトを取得しbase64へ変換する。
-// 外部I/O境界: 取得失敗は画像を落として継続し（テキストのみで生成）、提案全体は失敗させない。
+// APIプロセスから到達可能なURL（local=fake-gcs / prod=GCS）からバイトを取得しbase64へ変換する。
+// 商品写真はAI出品支援の必須入力なので、取得失敗は握りつぶさず境界エラーにする。
 export type InlineImage = {
   mimeType: string;
   base64: string;
@@ -8,29 +10,76 @@ export type InlineImage = {
 
 export async function fetchInlineImages(urls: string[]): Promise<InlineImage[]> {
   if (urls.length === 0) {
-    return [];
+    throw new AppError("AI_IMAGE_REQUIRED", "At least one product image is required.", 400);
   }
 
   const results = await Promise.all(urls.map(fetchInlineImage));
 
-  return results.filter((image): image is InlineImage => image !== undefined);
+  return results;
 }
 
-async function fetchInlineImage(url: string): Promise<InlineImage | undefined> {
-  try {
-    const response = await fetch(url);
+async function fetchInlineImage(url: string): Promise<InlineImage> {
+  const fetchUrl = toFetchableImageUrl(url);
+  let response: Response;
 
-    if (!response.ok) {
-      return undefined;
+  try {
+    response = await fetch(fetchUrl);
+  } catch {
+    throw new AppError("AI_IMAGE_FETCH_FAILED", "Product image could not be fetched.", 502, {
+      imageUrl: url,
+      fetchUrl,
+    });
+  }
+
+  if (!response.ok) {
+    throw new AppError("AI_IMAGE_FETCH_FAILED", "Product image fetch returned an error.", 502, {
+      imageUrl: url,
+      fetchUrl,
+      status: response.status,
+    });
+  }
+
+  const mimeType = response.headers.get("content-type") ?? "image/jpeg";
+
+  if (!mimeType.startsWith("image/")) {
+    throw new AppError("AI_IMAGE_INVALID_CONTENT_TYPE", "Product image URL did not return an image.", 502, {
+      imageUrl: url,
+      fetchUrl,
+      mimeType,
+    });
+  }
+
+  const base64 = Buffer.from(await response.arrayBuffer()).toString("base64");
+
+  return { mimeType, base64 };
+}
+
+function toFetchableImageUrl(url: string): string {
+  const fetchBaseUrl = process.env.IMAGE_FETCH_BASE_URL;
+
+  if (fetchBaseUrl === undefined || fetchBaseUrl.trim().length === 0) {
+    return url;
+  }
+
+  try {
+    const parsed = new URL(url);
+
+    if (parsed.pathname.includes("/storage/v1/b/") && parsed.searchParams.get("alt") === "media") {
+      return url;
     }
 
-    const mimeType = response.headers.get("content-type") ?? "image/jpeg";
-    const base64 = Buffer.from(await response.arrayBuffer()).toString("base64");
+    const marker = "/marketplace-images/";
+    const markerIndex = parsed.pathname.indexOf(marker);
 
-    return { mimeType, base64 };
+    if (markerIndex === -1) {
+      return url;
+    }
+
+    const key = parsed.pathname.slice(markerIndex + marker.length);
+
+    return `${fetchBaseUrl.replace(/\/$/, "")}/${encodeURIComponent(key)}?alt=media`;
   } catch {
-    // ネットワーク/ホスト到達不可など。画像なしで継続する。
-    return undefined;
+    return url;
   }
 }
 

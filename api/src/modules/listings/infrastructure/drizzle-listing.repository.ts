@@ -162,7 +162,8 @@ export class DrizzleListingRepository implements ListingRepository {
       .from(listings)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(asc(listings.createdAt))
-      .limit(input.limit ?? 50);
+      .limit(input.limit ?? 50)
+      .offset(input.offset ?? 0);
 
     const imageMap = await this.loadImages(rows.map((row) => row.id));
 
