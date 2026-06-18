@@ -1,7 +1,4 @@
-import { getTranslations } from "next-intl/server";
-
 import { MarketplaceShell } from "../../../src/components/layout/marketplace-shell";
-import { PageHeader } from "../../../src/components/layout/page-header";
 import { toShellUserLabels } from "../../../src/features/current-user/shell-user";
 import { ListingDetailView } from "../../../src/features/listings/components/listing-detail-view";
 import { getCurrentUser } from "../../../src/lib/api/current-user.api";
@@ -18,10 +15,9 @@ type ListingPageProps = {
 
 export default async function ListingPage({ params }: ListingPageProps) {
   const { listingId } = await params;
-  const [currentUser, listing, t, likedIds] = await Promise.all([
+  const [currentUser, listing, likedIds] = await Promise.all([
     getCurrentUser(),
     getListing(listingId),
-    getTranslations("pages.listingDetail"),
     getLikedListingIds(),
   ]);
   const { humanLabel, userLabel } = toShellUserLabels(currentUser);
@@ -33,7 +29,6 @@ export default async function ListingPage({ params }: ListingPageProps) {
       humanLabel={humanLabel}
       userLabel={userLabel}
     >
-      <PageHeader eyebrow={t("eyebrow")} title={listing?.title ?? t("fallbackTitle")} />
       <ListingDetailView currentUser={currentUser} initialLiked={likedIds.has(listingId)} listing={listing} />
     </MarketplaceShell>
   );
