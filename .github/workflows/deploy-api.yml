@@ -75,7 +75,7 @@ jobs:
             --project "${PROJECT}" --region "${REGION}" \
             --service-account "${RUNTIME_SA}" \
             --set-secrets "DATABASE_URL=DATABASE_URL:latest" \
-            --add-cloudsql-instances "${CLOUDSQL_INSTANCE}" \
+            --set-cloudsql-instances "${CLOUDSQL_INSTANCE}" \
             --command /app/migrate --args up \
             --max-retries 0 --task-timeout 300s
           gcloud run jobs execute marketplace-migrate \
