@@ -82,7 +82,7 @@ export function WorldcoinPayButton({
       <ActionButton disabled={disabled || isPending} onClick={payWithWorldcoin} variant="primary">
         {isPending ? "Opening World App..." : "Pay with WLD"}
       </ActionButton>
-      {message !== undefined && <p className="text-xs leading-5 text-neutral-500">{message}</p>}
+      {message !== undefined && <p className="text-xs leading-5 text-ink-soft">{message}</p>}
     </div>
   );
 }
