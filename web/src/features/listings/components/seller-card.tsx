@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { GlassPanel } from "../../../components/ui/glass-panel";
 import { Seal } from "../../../components/ui/seal";
 import type { SellerSummary } from "../../../lib/api/sellers.api";
+import { toggleSellerLikeAction } from "../../social/actions/social.actions";
 import { LikeButton } from "../../social/components/like-button";
 import { StarRating } from "../../social/components/star-rating";
 
@@ -49,6 +50,7 @@ export async function SellerCard({ seller }: SellerCardProps) {
           initialLiked={seller.likedByMe}
           showCount
           text={{ like: t("likeSeller"), liked: t("likedSeller") }}
+          toggleAction={toggleSellerLikeAction.bind(null, seller.sellerId)}
         />
       </div>
     </GlassPanel>

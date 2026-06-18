@@ -1,4 +1,5 @@
 import { Seal } from "../../../components/ui/seal";
+import { toggleListingLikeAction } from "../../social/actions/social.actions";
 import { LikeButton } from "../../social/components/like-button";
 import type { ListingViewModel } from "../listing-view-model";
 import { ProductVisual } from "./product-visual";
@@ -47,7 +48,11 @@ export function ListingCard({ draftLabel, item, likeLabel, signedLabel, soldLabe
       </a>
 
       {/* ハートはリンクの外に重ね、遷移と分離する。 */}
-      <LikeButton ariaLabel={likeLabel} className="absolute right-2 top-2 z-10" />
+      <LikeButton
+        ariaLabel={likeLabel}
+        className="absolute right-2 top-2 z-10"
+        toggleAction={toggleListingLikeAction.bind(null, item.id)}
+      />
     </article>
   );
 }

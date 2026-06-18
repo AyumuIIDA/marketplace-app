@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 
 import { ActionButton } from "../../../components/ui/action-button";
+import { BackLink } from "../../../components/ui/back-link";
 import { DetailRow } from "../../../components/ui/detail-row";
 import { GlassPanel } from "../../../components/ui/glass-panel";
 import { Seal } from "../../../components/ui/seal";
@@ -10,6 +11,7 @@ import type { CurrentUser } from "../../../lib/api/current-user.api";
 import type { Listing } from "../../../lib/api/listings.api";
 import { getSellerSummary } from "../../../lib/api/sellers.api";
 import { WorldcoinPayButton } from "../../payments/components/worldcoin-pay-button";
+import { toggleListingLikeAction } from "../../social/actions/social.actions";
 import { LikeButton } from "../../social/components/like-button";
 import { publishListingAction, purchaseListingAction } from "../actions/listing.actions";
 import { PublishListingButton } from "./publish-listing-button";
@@ -33,7 +35,9 @@ export async function ListingDetailView({ currentUser, listing }: ListingDetailV
   const seller = await getSellerSummary(listing.sellerId);
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="space-y-5">
+      <BackLink href="/" label={t("backAction")} />
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
       <GlassPanel className="overflow-hidden p-0">
         {listing.images.length > 0 ? (
           <div className="border-b border-line bg-paper">
@@ -71,6 +75,7 @@ export async function ListingDetailView({ currentUser, listing }: ListingDetailV
             <LikeButton
               ariaLabel={social("likeItem")}
               text={{ like: social("likeItem"), liked: social("likedItem") }}
+              toggleAction={toggleListingLikeAction.bind(null, listing.listingId)}
             />
           </div>
           <p className="mt-5 whitespace-pre-line text-sm leading-7 text-ink-soft">{listing.description}</p>
@@ -108,17 +113,18 @@ export async function ListingDetailView({ currentUser, listing }: ListingDetailV
           )}
           {isSeller && listing.status === "DRAFT" && (
             <div className="mt-4 space-y-4">
-              <form action={publishListingAction} className="space-y-1.5">
+              {/* ブランドの核＝本人署名公開を主導線に。ログインのみ公開は副次に置く。 */}
+              <div className="space-y-1.5">
+                <PublishListingButton label={t("publishSigned")} listing={listing} />
+                <p className="text-xs leading-5 text-ink-soft">{t("publishSignedHint")}</p>
+              </div>
+              <form action={publishListingAction} className="space-y-1.5 border-t border-line pt-4">
                 <input name="listingId" type="hidden" value={listing.listingId} />
-                <ActionButton className="w-full" type="submit" variant="primary">
+                <ActionButton className="w-full" type="submit" variant="secondary">
                   {t("publish")}
                 </ActionButton>
                 <p className="text-xs leading-5 text-ink-soft">{t("publishUnsignedHint")}</p>
               </form>
-              <div className="space-y-1.5 border-t border-line pt-4">
-                <PublishListingButton label={t("publishSigned")} listing={listing} />
-                <p className="text-xs leading-5 text-ink-soft">{t("publishSignedHint")}</p>
-              </div>
             </div>
           )}
           {canPurchase && (
@@ -132,6 +138,9 @@ export async function ListingDetailView({ currentUser, listing }: ListingDetailV
               </form>
               {currentUser.humanVerified && (
                 <div className="space-y-1.5 border-t border-line pt-4">
+                  <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-faint">
+                    {t("payOnchain")}
+                  </p>
                   <WorldcoinPayButton jpyPrice={listing.price} listingId={listing.listingId} />
                   <p className="text-xs leading-5 text-ink-soft">{t("worldPayHint")}</p>
                 </div>
@@ -142,6 +151,7 @@ export async function ListingDetailView({ currentUser, listing }: ListingDetailV
             <p className="mt-3 text-sm leading-6 text-ink-soft">{t("notPurchasable")}</p>
           )}
         </GlassPanel>
+      </div>
       </div>
     </div>
   );

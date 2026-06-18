@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { combineClassNames } from "../../../components/ui/class-name";
 
+type LikeStatus = { likeCount: number; likedByMe: boolean };
+
 type LikeButtonProps = {
   ariaLabel: string;
   initialLiked?: boolean;
@@ -12,12 +14,13 @@ type LikeButtonProps = {
   // テキスト付き（出品者いいね等）。未指定はアイコンのみ（カードのハート）。
   text?: { like: string; liked: string };
   className?: string;
+  // いいねトグルの server action（bind 済み）。未指定ならローカル表示のみ（永続化なし）。
+  toggleAction?: (liked: boolean) => Promise<LikeStatus>;
 };
 
 /*
-  いいねトグル。現状はフロントの楽観的ローカル状態のみ（永続化なし）。
-  バックエンド実装後に toggle 呼び出しへ差し替える。契約は
-  prj_context/social-features-backend-iayu6.md 参照。
+  いいねトグル。楽観的更新 → server action で永続化 → 応答(likeCount/likedByMe)で確定。
+  失敗時は元の状態へ戻す。toggleAction 未指定時は従来どおりローカル表示のみ。
 */
 export function LikeButton({
   ariaLabel,
@@ -26,14 +29,19 @@ export function LikeButton({
   initialLiked = false,
   showCount = false,
   text,
+  toggleAction,
 }: LikeButtonProps) {
   const [liked, setLiked] = useState(initialLiked);
   const [count, setCount] = useState(initialCount ?? 0);
+  const [pending, setPending] = useState(false);
 
-  function toggle(event: React.MouseEvent) {
+  async function toggle(event: React.MouseEvent) {
     // カード内に重ねる場合があるため、リンク遷移を止める。
     event.preventDefault();
     event.stopPropagation();
+    if (pending) {
+      return;
+    }
     // state更新関数は純粋に保つ。副作用(setCount)を setLiked の updater 内で呼ぶと
     // StrictModeの updater 二重実行で count が二重加算される(dev:+2)。next はハンドラ側で導出する。
     const next = !liked;
@@ -41,7 +49,28 @@ export function LikeButton({
     if (initialCount !== undefined) {
       setCount((current) => current + (next ? 1 : -1));
     }
-    // TODO(backend): toggleListingLike / toggleSellerLike を呼ぶ。
+
+    if (toggleAction === undefined) {
+      return;
+    }
+
+    setPending(true);
+    try {
+      const status = await toggleAction(next);
+      // サーバ確定値で上書き（他ユーザーのいいねも反映）。
+      setLiked(status.likedByMe);
+      if (initialCount !== undefined) {
+        setCount(status.likeCount);
+      }
+    } catch {
+      // 失敗したら楽観的更新を巻き戻す。
+      setLiked(!next);
+      if (initialCount !== undefined) {
+        setCount((current) => current + (next ? -1 : 1));
+      }
+    } finally {
+      setPending(false);
+    }
   }
 
   if (text !== undefined) {
@@ -55,6 +84,7 @@ export function LikeButton({
             : "border-line-strong bg-surface text-ink hover:bg-paper",
           className,
         )}
+        disabled={pending}
         onClick={toggle}
         type="button"
       >
@@ -74,6 +104,7 @@ export function LikeButton({
         liked ? "text-seal" : "text-ink-soft",
         className,
       )}
+      disabled={pending}
       onClick={toggle}
       type="button"
     >
