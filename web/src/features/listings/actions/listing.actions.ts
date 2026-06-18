@@ -92,8 +92,9 @@ export async function purchaseListingAction(formData: FormData): Promise<void> {
   const listingId = requiredFormValue(formData, "listingId");
   const output = await purchaseListing(listingId);
 
+  // 購入完了は一覧(ホーム)に戻り、トーストで通知する（注文追跡ページは未実装のため遷移しない）。
   if (output.status === "PAID") {
-    redirect(`/orders/${output.order.orderId}`);
+    redirect(`/?purchased=1`);
   }
 
   redirect(`/listings/${listingId}`);
