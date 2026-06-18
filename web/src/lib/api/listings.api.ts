@@ -12,6 +12,8 @@ export type Listing = {
   condition: string;
   status: "DRAFT" | "PUBLISHED" | "SOLD" | "HIDDEN";
   signatureId?: string;
+  likeCount: number;
+  commentCount: number;
   images: { url: string; sortOrder: number }[];
   createdAt: string;
   updatedAt: string;

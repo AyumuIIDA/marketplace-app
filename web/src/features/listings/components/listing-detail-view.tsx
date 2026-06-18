@@ -10,10 +10,11 @@ import { StatusBadge } from "../../../components/ui/status-badge";
 import type { CurrentUser } from "../../../lib/api/current-user.api";
 import type { Listing } from "../../../lib/api/listings.api";
 import { getSellerSummary } from "../../../lib/api/sellers.api";
-import { WorldcoinPayButton } from "../../payments/components/worldcoin-pay-button";
-import { toggleListingLikeAction } from "../../social/actions/social.actions";
+import { listListingComments } from "../../../lib/api/social.api";
+import { createListingCommentAction, toggleListingLikeAction } from "../../social/actions/social.actions";
+import { CommentThread } from "../../social/components/comment-thread";
 import { LikeButton } from "../../social/components/like-button";
-import { publishListingAction, purchaseListingAction } from "../actions/listing.actions";
+import { publishListingAction } from "../actions/listing.actions";
 import { PublishListingButton } from "./publish-listing-button";
 import { SellerCard } from "./seller-card";
 
@@ -33,7 +34,14 @@ export async function ListingDetailView({ currentUser, initialLiked = false, lis
   const isSeller = currentUser?.userId === listing.sellerId;
   const canPurchase = currentUser !== undefined && !isSeller && listing.status === "PUBLISHED";
   const signed = listing.signatureId !== undefined;
-  const seller = await getSellerSummary(listing.sellerId);
+  const [seller, comments] = await Promise.all([
+    getSellerSummary(listing.sellerId),
+    listListingComments(listing.listingId),
+  ]);
+  // コメント投稿は本人認証済みのログインユーザーのみ。
+  const canComment = currentUser !== undefined && currentUser.humanVerified;
+  const commentDisabledReason =
+    currentUser === undefined ? "コメントするにはログインが必要です。" : "コメントするには本人認証が必要です。";
 
   return (
     <div className="space-y-5">
@@ -130,23 +138,11 @@ export async function ListingDetailView({ currentUser, initialLiked = false, lis
             </div>
           )}
           {canPurchase && (
-            <div className="mt-4 space-y-4">
-              <form action={purchaseListingAction} className="space-y-1.5">
-                <input name="listingId" type="hidden" value={listing.listingId} />
-                <ActionButton className="w-full" type="submit" variant="primary">
-                  {t("buyConfirm")}
-                </ActionButton>
-                <p className="text-xs leading-5 text-ink-soft">{t("buyConfirmHint")}</p>
-              </form>
-              {currentUser.humanVerified && (
-                <div className="space-y-1.5 border-t border-line pt-4">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-faint">
-                    {t("payOnchain")}
-                  </p>
-                  <WorldcoinPayButton jpyPrice={listing.price} listingId={listing.listingId} />
-                  <p className="text-xs leading-5 text-ink-soft">{t("worldPayHint")}</p>
-                </div>
-              )}
+            <div className="mt-4 space-y-1.5">
+              <ActionButton className="w-full" href={`/listings/${listing.listingId}/purchase`} variant="primary">
+                {t("buyConfirm")}
+              </ActionButton>
+              <p className="text-xs leading-5 text-ink-soft">{t("buyConfirmHint")}</p>
             </div>
           )}
           {!canPurchase && currentUser !== undefined && !isSeller && (
@@ -155,6 +151,15 @@ export async function ListingDetailView({ currentUser, initialLiked = false, lis
         </GlassPanel>
       </div>
       </div>
+
+      <GlassPanel className="p-5">
+        <CommentThread
+          canComment={canComment}
+          commentAction={createListingCommentAction.bind(null, listing.listingId)}
+          disabledReason={commentDisabledReason}
+          initialComments={comments}
+        />
+      </GlassPanel>
     </div>
   );
 }

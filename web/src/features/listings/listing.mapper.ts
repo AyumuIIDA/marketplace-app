@@ -15,6 +15,8 @@ export function mapListingToViewModel(listing: Listing, liked = false): ListingV
     createdAt: listing.createdAt,
     imageUrl: listing.images?.[0]?.url,
     liked,
+    likeCount: listing.likeCount,
+    commentCount: listing.commentCount,
   };
 }
 
