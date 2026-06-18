@@ -1,12 +1,15 @@
+import type { Listing } from "../../lib/api/listings.api";
+
 export type ListingViewModel = {
   id: string;
-  brand: string;
   title: string;
-  price: string;
+  price: number;
+  priceLabel: string;
   currency: "JPY";
-  surface: string;
-  object: ProductVisualKind;
+  category: string;
+  sellerId: string;
+  signed: boolean;
+  status: Listing["status"];
+  createdAt: string;
   imageUrl?: string;
 };
-
-export type ProductVisualKind = "camera" | "keyboard" | "monitor" | "watch" | "speaker" | "lamp";

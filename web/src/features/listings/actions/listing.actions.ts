@@ -7,7 +7,12 @@ import {
   suggestListingFields,
   type SuggestedListingFields,
 } from "../../../lib/api/ai-assistance.api";
-import { createListing, publishListing, purchaseListing } from "../../../lib/api/listings.api";
+import {
+  createListing,
+  publishListing,
+  publishUnsignedListing,
+  purchaseListing,
+} from "../../../lib/api/listings.api";
 import { getWorldIdEnvironment } from "../../../lib/world/world-config";
 
 export async function createListingAction(formData: FormData): Promise<void> {
@@ -20,7 +25,19 @@ export async function createListingAction(formData: FormData): Promise<void> {
     images: parseImagesField(formData.get("images")),
   });
 
+  // 「作成して公開」= login のみで即公開（World ID不要）。未指定なら下書きのまま。
+  if (formData.get("publish") === "true") {
+    await publishUnsignedListing(listing.listingId);
+  }
+
   redirect(`/listings/${listing.listingId}`);
+}
+
+// World ID署名なしの公開（出品者がログインのみで公開）。
+export async function publishListingAction(formData: FormData): Promise<void> {
+  const listingId = requiredFormValue(formData, "listingId");
+  await publishUnsignedListing(listingId);
+  redirect(`/listings/${listingId}`);
 }
 
 export async function suggestListingFieldsAction(input: {
@@ -30,13 +47,13 @@ export async function suggestListingFieldsAction(input: {
   const trimmed = input.userHint?.trim() ?? "";
   const imageUrls = input.imageUrls ?? [];
 
-  if (trimmed.length === 0 && imageUrls.length === 0) {
-    throw new Error("userHint or at least one image is required.");
+  if (imageUrls.length === 0) {
+    throw new Error("At least one image is required.");
   }
 
   return suggestListingFields({
     userHint: trimmed.length > 0 ? trimmed : undefined,
-    imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+    imageUrls,
   });
 }
 

@@ -1,3 +1,5 @@
+import { getTranslations } from "next-intl/server";
+
 import { ActionButton } from "../../../components/ui/action-button";
 import { GlassPanel } from "../../../components/ui/glass-panel";
 import { StatePanel } from "../../../components/ui/state-panel";
@@ -8,11 +10,13 @@ type OrderListViewProps = {
   orders: Order[];
 };
 
-export function OrderListView({ orders }: OrderListViewProps) {
+export async function OrderListView({ orders }: OrderListViewProps) {
+  const t = await getTranslations("orderList");
+
   if (orders.length === 0) {
     return (
-      <StatePanel actionHref="/" actionLabel="Browse catalog" title="No orders yet">
-        Purchases and sales will appear here after a listing is bought.
+      <StatePanel actionHref="/" actionLabel={t("emptyAction")} title={t("emptyTitle")}>
+        {t("emptyBody")}
       </StatePanel>
     );
   }
@@ -25,15 +29,15 @@ export function OrderListView({ orders }: OrderListViewProps) {
             <div className="min-w-0">
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <StatusBadge tone={order.status === "COMPLETED" ? "good" : "neutral"}>{order.status}</StatusBadge>
-                <span className="text-xs font-medium text-neutral-400">{order.orderId}</span>
+                <span className="font-mono text-xs text-ink-faint">{order.orderId}</span>
               </div>
-              <h2 className="text-base font-semibold text-neutral-950">Listing {order.listingId}</h2>
-              <p className="mt-1 text-sm text-neutral-500">
-                {order.price.toLocaleString("ja-JP")} {order.currency}
+              <p className="font-mono text-base font-semibold text-ink">
+                ¥{order.price.toLocaleString("ja-JP")}
               </p>
+              <p className="mt-0.5 truncate font-mono text-xs text-ink-soft">{order.listingId}</p>
             </div>
-            <ActionButton href={`/orders/${order.orderId}`} variant="primary">
-              Open
+            <ActionButton href={`/orders/${order.orderId}`} variant="secondary">
+              {t("open")}
             </ActionButton>
           </div>
         </GlassPanel>

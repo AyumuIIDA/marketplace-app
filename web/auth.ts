@@ -21,6 +21,9 @@ function getPool(): Pool {
 // NextAuthへ関数を渡す = 設定はリクエスト時に遅延評価される（lazy初期化）。
 export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
   adapter: PostgresAdapter(getPool()),
+  // sign in / sign up は同一フロー（初回ログインで events.signIn が自動provisioning）。
+  // 専用UIへ集約し、新規/既存はコピーだけ切り替える。
+  pages: { signIn: "/signin" },
   // database方式: セッション本体はサーバ(Postgres)。cookieはopaqueなsession tokenのみ。
   // 即時失効・監査・強制ログアウトが可能。BFFはリクエスト毎に auth() でDB復元する。
   session: { strategy: "database" },

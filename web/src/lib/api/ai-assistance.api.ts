@@ -10,7 +10,7 @@ export type SuggestedListingFields = {
 
 export async function suggestListingFields(input: {
   userHint?: string;
-  imageUrls?: string[];
+  imageUrls: string[];
 }): Promise<SuggestedListingFields> {
   return bffJson<SuggestedListingFields>("/ai-assistance/listing-fields", {
     method: "POST",

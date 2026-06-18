@@ -1,3 +1,5 @@
+import { getTranslations } from "next-intl/server";
+
 import { MarketplaceShell } from "../../../src/components/layout/marketplace-shell";
 import { PageHeader } from "../../../src/components/layout/page-header";
 import { StatePanel } from "../../../src/components/ui/state-panel";
@@ -8,15 +10,20 @@ import { getCurrentUser } from "../../../src/lib/api/current-user.api";
 export const dynamic = "force-dynamic";
 
 export default async function NewListingPage() {
-  const currentUser = await getCurrentUser();
+  const [currentUser, t] = await Promise.all([getCurrentUser(), getTranslations("pages.sell")]);
   const { humanLabel, userLabel } = toShellUserLabels(currentUser);
 
   return (
-    <MarketplaceShell activeSection="catalog" humanLabel={humanLabel} userLabel={userLabel}>
-      <PageHeader title="Create listing" />
+    <MarketplaceShell
+      activeSection="catalog"
+      authenticated={currentUser !== undefined}
+      humanLabel={humanLabel}
+      userLabel={userLabel}
+    >
+      <PageHeader description={t("description")} title={t("title")} />
       {currentUser === undefined ? (
-        <StatePanel actionHref="/api/auth/signin" actionLabel="Sign in" title="Sign in required">
-          Sign in to create a listing.
+        <StatePanel actionHref="/signin" actionLabel={t("signInAction")} title={t("signInTitle")}>
+          {t("signInBody")}
         </StatePanel>
       ) : (
         <ListingForm />

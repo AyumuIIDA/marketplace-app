@@ -11,6 +11,7 @@ const allowedPrefixes = [
   "messages",
   "orders",
   "reviews",
+  "recommendations",
   "me",
   "mcp",
 ] as const;
@@ -20,15 +21,17 @@ const stateChangingMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 // OAuth Proxy: Auth.js セッションを読み、EdDSA 内部トークンを付与して Hono API へ転送する。
 export async function proxyToHono(request: NextRequest, path: string[]): Promise<Response> {
   const session = await auth();
-
-  if (session?.user?.id === undefined) {
-    return NextResponse.json({ error: { code: "NOT_AUTHENTICATED" } }, { status: 401 });
-  }
-
   const prefix = path[0];
 
   if (prefix === undefined || !allowedPrefixes.includes(prefix as (typeof allowedPrefixes)[number])) {
     return NextResponse.json({ error: { code: "BFF_ROUTE_NOT_ALLOWED" } }, { status: 404 });
+  }
+
+  // 未ログインでも見られる公開GET（商品一覧・詳細）。それ以外はセッション必須。
+  const isPublicRead = request.method === "GET" && prefix === "listings" && path.length <= 2;
+
+  if (session?.user?.id === undefined && !isPublicRead) {
+    return NextResponse.json({ error: { code: "NOT_AUTHENTICATED" } }, { status: 401 });
   }
 
   // CSRF対策: 状態変更系は Origin を厳格検証する（SameSite だけでは不十分なため）。
@@ -46,12 +49,17 @@ export async function proxyToHono(request: NextRequest, path: string[]): Promise
 
   headers.delete("cookie");
   headers.delete("host");
-  headers.set(
-    "authorization",
-    `Bearer ${await signInternalToken({
-      userId: session.user.id,
-    })}`,
-  );
+  // 匿名の公開GETは内部トークンを付けない（API側で任意認証＝PUBLISHEDのみ）。
+  headers.delete("authorization");
+
+  if (session?.user?.id !== undefined) {
+    headers.set(
+      "authorization",
+      `Bearer ${await signInternalToken({
+        userId: session.user.id,
+      })}`,
+    );
+  }
 
   const response = await fetch(target, {
     method: request.method,

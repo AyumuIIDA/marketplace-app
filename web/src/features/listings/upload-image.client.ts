@@ -3,6 +3,7 @@
 // BFFがAuth.jsセッションを検証してからAPIへ内部トークンで転送する（API直叩きは不可）。
 export type UploadedImage = {
   url: string;
+  aiUrl?: string;
   hash: string;
 };
 

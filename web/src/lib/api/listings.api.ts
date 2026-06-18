@@ -19,16 +19,27 @@ export type Listing = {
   soldAt?: string;
 };
 
-export async function searchListings(input: { keyword?: string; limit?: number } = {}): Promise<Listing[]> {
+export async function searchListings(
+  input: { keyword?: string; category?: string; limit?: number; offset?: number } = {},
+): Promise<Listing[]> {
   const params = new URLSearchParams();
   const keyword = input.keyword?.trim();
+  const category = input.category?.trim();
 
   if (keyword !== undefined && keyword.length > 0) {
     params.set("keyword", keyword);
   }
 
+  if (category !== undefined && category.length > 0) {
+    params.set("category", category);
+  }
+
   if (input.limit !== undefined) {
     params.set("limit", input.limit.toString());
+  }
+
+  if (input.offset !== undefined && input.offset > 0) {
+    params.set("offset", input.offset.toString());
   }
 
   try {
@@ -113,6 +124,17 @@ export async function purchaseListing(listingId: string): Promise<PurchaseListin
     body: {
       confirmed: true,
     },
+  });
+}
+
+// World ID署名なしの公開（login のみ）。idKitResult を送らない＝通常公開。
+export async function publishUnsignedListing(listingId: string): Promise<{
+  listingId: string;
+  status: "PUBLISHED";
+}> {
+  return bffJson<{ listingId: string; status: "PUBLISHED" }>(`/listings/${listingId}/publish`, {
+    method: "POST",
+    body: {},
   });
 }
 

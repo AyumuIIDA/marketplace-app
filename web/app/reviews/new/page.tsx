@@ -1,3 +1,5 @@
+import { getTranslations } from "next-intl/server";
+
 import { MarketplaceShell } from "../../../src/components/layout/marketplace-shell";
 import { PageHeader } from "../../../src/components/layout/page-header";
 import { StatePanel } from "../../../src/components/ui/state-panel";
@@ -14,15 +16,24 @@ type NewReviewPageProps = {
 };
 
 export default async function NewReviewPage({ searchParams }: NewReviewPageProps) {
-  const [{ orderId }, currentUser] = await Promise.all([searchParams, getCurrentUser()]);
+  const [{ orderId }, currentUser, t] = await Promise.all([
+    searchParams,
+    getCurrentUser(),
+    getTranslations("pages.review"),
+  ]);
   const { humanLabel, userLabel } = toShellUserLabels(currentUser);
 
   return (
-    <MarketplaceShell activeSection="orders" humanLabel={humanLabel} userLabel={userLabel}>
-      <PageHeader title="Write review" />
+    <MarketplaceShell
+      activeSection="orders"
+      authenticated={currentUser !== undefined}
+      humanLabel={humanLabel}
+      userLabel={userLabel}
+    >
+      <PageHeader title={t("title")} />
       {currentUser === undefined ? (
-        <StatePanel actionHref="/api/auth/signin" actionLabel="Sign in" title="Sign in required">
-          Sign in to write a review.
+        <StatePanel actionHref="/signin" actionLabel={t("signInAction")} title={t("signInTitle")}>
+          {t("signInBody")}
         </StatePanel>
       ) : (
         <ReviewForm orderId={orderId} />
