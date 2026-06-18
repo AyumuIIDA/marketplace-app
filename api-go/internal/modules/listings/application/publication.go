@@ -38,7 +38,7 @@ func (ListingPublicationService) GetListingForSellerMutation(ctx context.Context
 
 // PublishWithSignature は下書きを公開(PUBLISHED)し、署名IDを紐づける。
 func (ListingPublicationService) PublishWithSignature(ctx context.Context, repo listingsdomain.ListingRepository, listing *listingsdomain.Listing, signatureID uuid.UUID, signedAt time.Time) error {
-	if err := listing.Publish(signatureID, signedAt); err != nil {
+	if err := listing.Publish(&signatureID, signedAt); err != nil {
 		return err
 	}
 	return repo.Save(ctx, listing)

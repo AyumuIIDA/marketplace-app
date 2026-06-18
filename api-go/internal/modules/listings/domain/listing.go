@@ -168,13 +168,16 @@ func (l *Listing) UpdatePublishedWithSignature(fields ListingFields, signatureID
 	return nil
 }
 
-// Publish は下書きのみ可。human signatureを付けて公開する。
-func (l *Listing) Publish(signatureID uuid.UUID, now time.Time) error {
+// Publish は下書きのみ可。signatureID は任意。World ID署名なし(login のみ)でも公開できる。
+// 署名があれば「人間が出品した証」として付与され、未署名は signatureID=nil のまま公開される。
+func (l *Listing) Publish(signatureID *uuid.UUID, now time.Time) error {
 	if l.status != ListingStatusDraft {
 		return apperr.Domain("LISTING_NOT_PUBLISHABLE", "Only draft listings can be published.")
 	}
 	l.status = ListingStatusPublished
-	l.signatureID = &signatureID
+	if signatureID != nil {
+		l.signatureID = signatureID
+	}
 	l.publishedAt = &now
 	l.updatedAt = now
 	return nil

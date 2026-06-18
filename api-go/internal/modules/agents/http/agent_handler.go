@@ -7,17 +7,19 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/outarc/marketplace/api-go/internal/app/workflows"
 	httpinterface "github.com/outarc/marketplace/api-go/internal/interface/http"
 	agentsapp "github.com/outarc/marketplace/api-go/internal/modules/agents/application"
 	agentsdomain "github.com/outarc/marketplace/api-go/internal/modules/agents/domain"
 	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
 )
 
-// Deps はエージェントHTTPの依存。runs(エージェント実行)はMCP gateway依存のため Inc 10 で追加。
+// Deps はエージェントHTTPの依存。runs(エージェント実行)はMCP gateway依存の orchestration workflow。
 type Deps struct {
-	Create  *agentsapp.CreateAgentUseCase
-	List    *agentsapp.ListAgentsUseCase
-	Disable *agentsapp.DisableAgentUseCase
+	Create      *agentsapp.CreateAgentUseCase
+	List        *agentsapp.ListAgentsUseCase
+	Disable     *agentsapp.DisableAgentUseCase
+	RunDiscover *workflows.RunDiscoverAgentWorkflow
 }
 
 // RegisterRoutes は /agents 系を認証済みグループへ登録する。
@@ -25,8 +27,56 @@ func RegisterRoutes(r chi.Router, deps Deps) {
 	r.Route("/agents", func(ar chi.Router) {
 		ar.Get("/", deps.handleList)
 		ar.Post("/", deps.handleCreate)
+		ar.Post("/runs", deps.handleRun)
 		ar.Post("/{agentId}/disable", deps.handleDisable)
 	})
+}
+
+type runDiscoverMessage struct {
+	Role    string `json:"role" validate:"required,oneof=user assistant"`
+	Content string `json:"content" validate:"required,min=1,max=2000"`
+}
+
+type runDiscoverRequest struct {
+	AgentID  *string              `json:"agentId" validate:"omitempty,min=1"`
+	Message  string               `json:"message" validate:"required,min=1,max=2000"`
+	Messages []runDiscoverMessage `json:"messages" validate:"omitempty,max=12,dive"`
+}
+
+func (deps Deps) handleRun(w http.ResponseWriter, r *http.Request) {
+	userID, err := httpinterface.CurrentUserID(r)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	var body runDiscoverRequest
+	if err := httpinterface.DecodeJSON(r, &body); err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+
+	var agentID *string
+	if body.AgentID != nil {
+		if trimmed := strings.TrimSpace(*body.AgentID); trimmed != "" {
+			agentID = &trimmed
+		}
+	}
+	messages := make([]agentsapp.DiscoverMessage, 0, len(body.Messages))
+	for _, m := range body.Messages {
+		messages = append(messages, agentsapp.DiscoverMessage{Role: m.Role, Content: m.Content})
+	}
+
+	out, err := deps.RunDiscover.Execute(r.Context(), workflows.RunDiscoverAgentInput{
+		UserID:   userID.String(),
+		AgentID:  agentID,
+		Message:  strings.TrimSpace(body.Message),
+		Messages: messages,
+	})
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	httpinterface.WriteJSON(w, http.StatusOK, out)
 }
 
 func (deps Deps) handleList(w http.ResponseWriter, r *http.Request) {

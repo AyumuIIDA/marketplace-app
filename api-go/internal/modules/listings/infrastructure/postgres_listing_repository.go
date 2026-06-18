@@ -118,16 +118,21 @@ func (r *PostgresListingRepository) Search(ctx context.Context, in listingsdomai
 	if in.Limit != nil {
 		limit = *in.Limit
 	}
+	offset := int32(0)
+	if in.Offset != nil {
+		offset = *in.Offset
+	}
 
 	rows, err := r.q.SearchListings(ctx, sqlc.SearchListingsParams{
-		Status:      status,
-		SellerID:    in.SellerID,
-		Category:    in.Category,
-		Condition:   in.Condition,
-		MinPrice:    in.MinPrice,
-		MaxPrice:    in.MaxPrice,
-		Keyword:     in.Keyword,
-		ResultLimit: limit,
+		Status:       status,
+		SellerID:     in.SellerID,
+		Category:     in.Category,
+		Condition:    in.Condition,
+		MinPrice:     in.MinPrice,
+		MaxPrice:     in.MaxPrice,
+		Keyword:      in.Keyword,
+		ResultOffset: offset,
+		ResultLimit:  limit,
 	})
 	if err != nil {
 		return nil, pgerr.FromPg(err)

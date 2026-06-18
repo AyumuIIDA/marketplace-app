@@ -61,4 +61,4 @@ WHERE (sqlc.narg('status')::listing_status IS NULL OR status = sqlc.narg('status
     OR description ILIKE '%' || sqlc.narg('keyword')::text || '%'
   )
 ORDER BY created_at ASC
-LIMIT sqlc.arg('result_limit')::integer;
+LIMIT sqlc.arg('result_limit')::integer OFFSET sqlc.arg('result_offset')::integer;

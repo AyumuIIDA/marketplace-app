@@ -11,6 +11,11 @@ func validFields() ListingFields {
 	return ListingFields{Title: "Chair", Description: "nice", Price: 5000, Currency: "JPY", Category: "furniture", Condition: "good"}
 }
 
+func newSig() *uuid.UUID {
+	id := uuid.New()
+	return &id
+}
+
 func newDraft(t *testing.T) *Listing {
 	t.Helper()
 	l, err := NewDraft(CreateDraftInput{ID: uuid.New(), SellerID: uuid.New(), Fields: validFields(), Now: time.Now()})
@@ -45,14 +50,14 @@ func TestNewDraft_RejectsNonPositivePrice(t *testing.T) {
 
 func TestPublish_OnlyFromDraft(t *testing.T) {
 	l := newDraft(t)
-	if err := l.Publish(uuid.New(), time.Now()); err != nil {
+	if err := l.Publish(newSig(), time.Now()); err != nil {
 		t.Fatalf("Publish: %v", err)
 	}
 	if l.Status() != ListingStatusPublished || l.PublishedAt() == nil || l.SignatureID() == nil {
 		t.Fatal("publish did not set published state")
 	}
 	// 二重publishは不可
-	if err := l.Publish(uuid.New(), time.Now()); err == nil {
+	if err := l.Publish(newSig(), time.Now()); err == nil {
 		t.Fatal("expected error publishing a non-draft")
 	}
 }
@@ -62,7 +67,7 @@ func TestMarkSold_OnlyFromPublished(t *testing.T) {
 	if err := l.MarkSold(time.Now()); err == nil {
 		t.Fatal("expected error: cannot sell a draft")
 	}
-	_ = l.Publish(uuid.New(), time.Now())
+	_ = l.Publish(newSig(), time.Now())
 	if err := l.MarkSold(time.Now()); err != nil {
 		t.Fatalf("MarkSold: %v", err)
 	}
@@ -73,7 +78,7 @@ func TestMarkSold_OnlyFromPublished(t *testing.T) {
 
 func TestUpdateDraft_OnlyWhenDraft(t *testing.T) {
 	l := newDraft(t)
-	_ = l.Publish(uuid.New(), time.Now())
+	_ = l.Publish(newSig(), time.Now())
 	if err := l.UpdateDraft(validFields(), time.Now()); err == nil {
 		t.Fatal("expected error: cannot draft-update a published listing")
 	}

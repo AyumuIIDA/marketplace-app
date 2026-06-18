@@ -65,6 +65,46 @@ func AuthMiddleware(verifier TokenVerifier, allowDevUserHeader bool) func(http.H
 	}
 }
 
+// OptionalAuthMiddleware は認証任意のroute用。トークン/devヘッダがあれば CurrentUser を確定し、
+// 無ければ匿名のまま通す（401にしない）。トークンが提示された場合のみ検証し、不正なら拒否する。
+// 公開閲覧GET（未ログインでも見られる商品一覧・詳細）で使う。
+func OptionalAuthMiddleware(verifier TokenVerifier, allowDevUserHeader bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authorization := r.Header.Get("Authorization")
+
+			if authorization != "" {
+				token, err := readBearerToken(authorization)
+				if err != nil {
+					WriteError(w, r, err)
+					return
+				}
+				if verifier == nil {
+					WriteError(w, r, apperr.Infrastructure("BFF token public key is not configured", nil))
+					return
+				}
+				cu, err := verifier.Verify(token)
+				if err != nil {
+					WriteError(w, r, err)
+					return
+				}
+				next.ServeHTTP(w, r.WithContext(withCurrentUser(r.Context(), cu)))
+				return
+			}
+
+			if allowDevUserHeader {
+				if userID := strings.TrimSpace(r.Header.Get("X-User-Id")); userID != "" {
+					next.ServeHTTP(w, r.WithContext(withCurrentUser(r.Context(), CurrentUser{UserID: userID})))
+					return
+				}
+			}
+
+			// 匿名のまま通す（currentUser未設定）。
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 func withCurrentUser(ctx context.Context, cu CurrentUser) context.Context {
 	return context.WithValue(ctx, currentUserKey, cu)
 }
@@ -91,6 +131,20 @@ func CurrentUserID(r *http.Request) (uuid.UUID, error) {
 		return uuid.Nil, apperr.NotFound("User", cu.UserID)
 	}
 	return id, nil
+}
+
+// OptionalCurrentUserID は認証任意route用。匿名なら (nil, nil) を返す。
+// 認証済みだが sub が非uuidの場合のみ NotFound(404) を返す。
+func OptionalCurrentUserID(r *http.Request) (*uuid.UUID, error) {
+	cu, ok := r.Context().Value(currentUserKey).(CurrentUser)
+	if !ok || cu.UserID == "" {
+		return nil, nil
+	}
+	id, perr := uuid.Parse(cu.UserID)
+	if perr != nil {
+		return nil, apperr.NotFound("User", cu.UserID)
+	}
+	return &id, nil
 }
 
 // PathUUID はpath paramをuuidとして解釈する。非uuidは「不在」と同義としてNotFound(404)に正規化する。

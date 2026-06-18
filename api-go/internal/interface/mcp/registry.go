@@ -51,5 +51,6 @@ func BuildTools(d ToolDeps) []McpTool {
 		suggestMessageTool{d.Assistant},
 		suggestReviewTool{d.Assistant},
 		compareListingsTool{d.CompareListings},
+		presentDiscoverOutputTool{},
 	}
 }
