@@ -48,9 +48,13 @@ export type DiscoverAgentMessageInput = {
   content: string;
 };
 
+// AIベンダー。UIで毎回切替できる（gemini=Gemini, openai=ChatGPT）。
+export type DiscoverProvider = "gemini" | "openai";
+
 export async function discoverAgentAction(
   message: string,
   messages: DiscoverAgentMessageInput[] = [],
+  provider: DiscoverProvider = "gemini",
 ): Promise<DiscoverAgentActionOutput> {
   const trimmed = message.trim();
 
@@ -73,6 +77,7 @@ export async function discoverAgentAction(
     body: {
       message: trimmed,
       messages,
+      provider,
     },
   });
 
