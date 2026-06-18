@@ -57,7 +57,8 @@ func mkListing(t *testing.T, seller uuid.UUID, publish bool) *listingsdomain.Lis
 		t.Fatal(err)
 	}
 	if publish {
-		sigID := uuid.New(); _ = l.Publish(&sigID, time.Now())
+		sigID := uuid.New()
+		_ = l.Publish(&sigID, time.Now())
 	}
 	return l
 }

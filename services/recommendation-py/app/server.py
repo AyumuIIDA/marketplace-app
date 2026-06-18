@@ -22,8 +22,8 @@ from .store import VectorStore  # noqa: E402
 
 class RecommendationServicer(pb_grpc.RecommendationServiceServicer):
     def __init__(self) -> None:
+        # QdrantClient 構築のみ（ネットワーク非接続）。collection 準備は listen 開始後に行う。
         self.store = VectorStore()
-        self.store.ensure_collection()
 
     def SearchByText(self, request, context):
         top_k = request.top_k or CONFIG.default_top_k
@@ -84,7 +84,8 @@ class RecommendationServicer(pb_grpc.RecommendationServiceServicer):
 
 def serve() -> None:
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=8))
-    pb_grpc.add_RecommendationServiceServicer_to_server(RecommendationServicer(), server)
+    servicer = RecommendationServicer()
+    pb_grpc.add_RecommendationServiceServicer_to_server(servicer, server)
     # 標準 gRPC health（Cloud Run / LB 用）。
     health_servicer = health.HealthServicer()
     health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)
@@ -92,6 +93,11 @@ def serve() -> None:
     server.add_insecure_port(f"[::]:{CONFIG.grpc_port}")
     server.start()
     print(f"recommendation-py gRPC listening on :{CONFIG.grpc_port}", flush=True)
+    # collection 準備は listen 開始後に best-effort。Qdrant 到達性に起動(=Cloud Run health probe)を依存させない。
+    try:
+        servicer.store.ensure_collection()
+    except Exception as e:  # noqa: BLE001
+        print(f"ensure_collection deferred (Qdrant unreachable at startup): {e}", flush=True)
     server.wait_for_termination()
 
 
