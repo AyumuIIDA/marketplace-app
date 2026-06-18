@@ -64,6 +64,23 @@ jobs:
           docker push "${IMAGE}:latest"
           echo "IMAGE=${IMAGE}:${GITHUB_SHA}" >> "$GITHUB_ENV"
 
+      - name: Run DB migrations (Cloud Run Job, expand-first)
+        # 追加(expand)型migrationを本番DBへ「デプロイ前」に適用する（旧コードは新テーブル未使用＝エラー窓ゼロ）。
+        # baseline(00001)はgoose stamp 1で採用済みのため、ここは差分の `up` のみ。
+        # 破壊的(contract)変更を入れる場合はexpand→deploy→contractの2段階リリースにすること。
+        # migrate失敗時は execute が非ゼロ終了し、後続のDeployステップは実行されない（古い版が稼働継続）。
+        run: |
+          gcloud run jobs deploy marketplace-migrate \
+            --image "${IMAGE}" \
+            --project "${PROJECT}" --region "${REGION}" \
+            --service-account "${RUNTIME_SA}" \
+            --set-secrets "DATABASE_URL=DATABASE_URL:latest" \
+            --add-cloudsql-instances "${CLOUDSQL_INSTANCE}" \
+            --command /app/migrate --args up \
+            --max-retries 0 --task-timeout 300s
+          gcloud run jobs execute marketplace-migrate \
+            --project "${PROJECT}" --region "${REGION}" --wait
+
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy "${SERVICE}" \
