@@ -41,6 +41,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
     // database方式では session callback に DB の user row が渡る（jwt callbackは使われない）。
     async session({ session, user }) {
       session.user.id = user.id;
+      // onboarding ゲートの判定信号。OAuthは実名、magic-link初回はnull。
+      session.user.name = user.name ?? null;
 
       return session;
     },

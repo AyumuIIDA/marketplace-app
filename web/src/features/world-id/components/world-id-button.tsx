@@ -2,6 +2,7 @@
 
 import { IDKitRequestWidget, type IDKitResult, orbLegacy } from "@worldcoin/idkit";
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 
 import { createWorldIdRpContext, type WorldIdRpContext } from "../../../lib/api/world-id-context.client";
 import { getWorldAppId, getWorldIdEnvironment, type WorldIdAction } from "../../../lib/world/world-config";
@@ -31,6 +32,7 @@ function WorldMark() {
 }
 
 export function WorldIdButton({ action, label, onBeforeOpen, onVerified, signal }: WorldIdButtonProps) {
+  const t = useTranslations("worldId");
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState<string | undefined>();
   const [preparedSignal, setPreparedSignal] = useState<string | undefined>();
@@ -45,7 +47,7 @@ export function WorldIdButton({ action, label, onBeforeOpen, onVerified, signal 
         setRpContext(await createWorldIdRpContext(action));
         setOpen(true);
       } catch {
-        setMessage("World ID request could not be prepared.");
+        setMessage(t("prepareFailed"));
       }
     });
   }
@@ -58,9 +60,9 @@ export function WorldIdButton({ action, label, onBeforeOpen, onVerified, signal 
         } else {
           await linkWorldIdAction(result);
         }
-        setMessage("World ID verification completed.");
+        setMessage(t("verified"));
       } catch {
-        setMessage("World ID verification failed.");
+        setMessage(t("failed"));
       }
     });
   }
@@ -74,7 +76,7 @@ export function WorldIdButton({ action, label, onBeforeOpen, onVerified, signal 
         type="button"
       >
         <WorldMark />
-        {isPending ? "Verifying…" : label}
+        {isPending ? t("verifying") : label}
       </button>
       {message !== undefined && <p className="text-xs leading-5 text-ink-soft">{message}</p>}
       {rpContext !== undefined && (
