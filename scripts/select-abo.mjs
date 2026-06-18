@@ -28,11 +28,11 @@ const CATEGORY_MAP = {
   SPORTING_GOODS: "pet_office_sports", OUTDOOR_LIVING: "pet_office_sports", TOOLS: "pet_office_sports",
 };
 
-// 段階キャップ（映え系30 / 地味系18）
+// カテゴリ上限。バランス重視で全カテゴリ一律1500（母集団がこれ未満ならその全件）。
 const CAP = {
-  shoes: 30, jewelry: 30, bags_accessories: 30, furniture: 30,
-  home_decor: 30, lighting: 30, kitchen: 30, bedding_bath: 30,
-  phone_accessories: 18, grocery: 18, beauty_health: 18, pet_office_sports: 18,
+  shoes: 1500, jewelry: 1500, bags_accessories: 1500, furniture: 1500,
+  home_decor: 1500, lighting: 1500, kitchen: 1500, bedding_bath: 1500,
+  phone_accessories: 1500, grocery: 1500, beauty_health: 1500, pet_office_sports: 1500,
 };
 
 // JPY価格レンジ
@@ -159,7 +159,7 @@ for (const f of shards) {
 const selected = [];
 const summary = {};
 for (const [cat, cands] of byCat) {
-  const cap = CAP[cat] ?? 18;
+  const cap = CAP[cat] ?? 1500;
   const score = (c) => c._res + c._rich * 200; // 解像度 + テキスト充実
   const ja = cands.filter((c) => c.isJa).sort((a, b) => score(b) - score(a));
   const en = cands.filter((c) => !c.isJa).sort((a, b) => score(b) - score(a));

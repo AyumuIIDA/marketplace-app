@@ -13,7 +13,7 @@ import sharp from "sharp";
 import { Storage } from "@google-cloud/storage";
 
 const SELECTED = "/home/iayu6/myapp/data/abo/selected.json";
-const S3_BASE = "https://amazon-berkeley-objects.s3.amazonaws.com/images/original/";
+const S3_BASE = "https://amazon-berkeley-objects.s3.amazonaws.com/images/small/";
 const BUCKET = process.env.STORAGE_BUCKET || "marketplace-images";
 const PUBLIC_BASE = process.env.PUBLIC_IMAGE_BASE_URL || "http://localhost:4443/marketplace-images";
 const CONCURRENCY = 8;

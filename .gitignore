@@ -5,6 +5,7 @@ api/build/
 web/.next/
 web/out/
 *.tsbuildinfo
+*pycache*
 
 # Local agent/tooling notes
 AGENTS.md
