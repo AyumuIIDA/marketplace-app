@@ -125,6 +125,10 @@ func (uc *SearchListingsUseCase) Execute(ctx context.Context, in SearchListingsI
 		status = &published
 	}
 
+	// 無フィルタの一覧（ホームの注目フィード）は全カテゴリを混ぜて返す。
+	// keyword/category/seller のいずれかが指定された絞り込み/ページネーション時は新着順で安定させる。
+	randomize := in.Keyword == nil && in.Category == nil && in.SellerID == nil
+
 	listings, err := uc.listings.Search(ctx, listingsdomain.SearchInput{
 		Keyword:   in.Keyword,
 		Category:  in.Category,
@@ -135,6 +139,7 @@ func (uc *SearchListingsUseCase) Execute(ctx context.Context, in SearchListingsI
 		SellerID:  in.SellerID,
 		Limit:     in.Limit,
 		Offset:    in.Offset,
+		Randomize: randomize,
 	})
 	if err != nil {
 		return SearchListingsResult{}, err
