@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 
 import { ActionButton } from "../../../components/ui/action-button";
 import { FormField, inputClassName, textareaClassName } from "../../../components/ui/form-field";
@@ -9,6 +10,7 @@ import { createListingAction, suggestListingFieldsAction } from "../actions/list
 import { uploadListingImage, type UploadedImage } from "../upload-image.client";
 
 export function ListingForm() {
+  const tf = useTranslations("listingForm");
   const [userHint, setUserHint] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -53,7 +55,7 @@ export function ListingForm() {
       try {
         const suggestion = await suggestListingFieldsAction({
           userHint,
-          imageUrls: images.map((image) => image.url),
+          imageUrls: images.map((image) => image.aiUrl ?? image.url),
         });
         setTitle(suggestion.title);
         setDescription(suggestion.description);
@@ -181,8 +183,13 @@ export function ListingForm() {
             </FormField>
           </div>
         </section>
-        <div className="flex justify-end">
-          <ActionButton type="submit" variant="primary">Create draft</ActionButton>
+        <div className="flex flex-wrap justify-end gap-2">
+          <ActionButton type="submit" variant="secondary">
+            {tf("createDraft")}
+          </ActionButton>
+          <ActionButton name="publish" type="submit" value="true" variant="primary">
+            {tf("createAndPublish")}
+          </ActionButton>
         </div>
       </form>
     </GlassPanel>

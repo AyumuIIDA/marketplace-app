@@ -2,17 +2,22 @@ import { combineClassNames } from "./class-name";
 
 type StatusBadgeProps = {
   children: string;
-  tone?: "neutral" | "good" | "warn";
+  tone?: "neutral" | "good" | "warn" | "seal";
 };
+
+const TONE = {
+  good: "bg-ok-tint text-ok",
+  warn: "bg-warn-tint text-warn",
+  neutral: "bg-paper text-ink-soft ring-1 ring-line",
+  seal: "bg-seal-tint text-seal-strong",
+} as const;
 
 export function StatusBadge({ children, tone = "neutral" }: StatusBadgeProps) {
   return (
     <span
       className={combineClassNames(
         "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
-        tone === "good" && "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
-        tone === "warn" && "bg-amber-50 text-amber-700 ring-1 ring-amber-100",
-        tone === "neutral" && "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200",
+        TONE[tone],
       )}
     >
       {children}

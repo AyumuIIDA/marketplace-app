@@ -1,24 +1,252 @@
 {
   "brand": {
-    "name": "Human-backed"
+    "name": "Human-backed",
+    "tagline": "Signed by real people"
   },
   "search": {
     "label": "Search listings",
     "placeholder": "Search listings",
     "submit": "Search"
   },
-  "actions": {
-    "createListing": "Create listing",
-    "signIn": "Sign in"
+  "nav": {
+    "catalog": "Listings",
+    "orders": "Orders",
+    "sell": "Sell",
+    "discover": "Discover with AI"
   },
   "account": {
     "label": "Account",
     "profile": "Account",
-    "orders": "Orders"
+    "orders": "Orders",
+    "signOut": "Sign out"
+  },
+  "actions": {
+    "createListing": "Create listing",
+    "signIn": "Sign in",
+    "signUp": "Sign up"
+  },
+  "auth": {
+    "signInTitle": "Welcome back",
+    "signInSubtitle": "Sign in to your account.",
+    "signUpTitle": "Create your account",
+    "signUpSubtitle": "Takes seconds — your account is created automatically on first sign in.",
+    "google": "Continue with Google",
+    "github": "Continue with GitHub",
+    "or": "or",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "emailSubmit": "Send magic link",
+    "note": "New here? Continuing creates your account automatically.",
+    "toSignUpText": "Don’t have an account?",
+    "toSignUp": "Sign up",
+    "toSignInText": "Already have an account?",
+    "toSignIn": "Sign in"
   },
   "locale": {
     "label": "Language",
     "en": "English",
     "ja": "日本語"
+  },
+  "seal": {
+    "humanSigned": "Signed by a verified human"
+  },
+  "social": {
+    "likeItem": "Like",
+    "likedItem": "Liked",
+    "likeSeller": "Like seller",
+    "likedSeller": "Liked",
+    "sellerLabel": "Seller",
+    "verifiedSeller": "Verified seller",
+    "noRating": "No ratings yet",
+    "reviewCount": "{count} reviews",
+    "likedItems": "Liked items",
+    "likedItemsEmpty": "You haven’t liked any items yet.",
+    "likedSellers": "Liked sellers",
+    "likedSellersEmpty": "You haven’t liked any sellers yet."
+  },
+  "catalog": {
+    "title": "Listings",
+    "subtitle": "Items listed by verified people.",
+    "searchResults": "Results for “{query}”",
+    "create": "Sell an item",
+    "available": "Available",
+    "count": "{count} items",
+    "draft": "Draft",
+    "sold": "Sold",
+    "showMore": "Show more",
+    "loadMore": "Load more",
+    "loading": "Loading…",
+    "noMore": "That’s everything",
+    "category": {
+      "label": "Category",
+      "all": "All categories"
+    },
+    "sort": {
+      "label": "Sort",
+      "newest": "Newest",
+      "priceAsc": "Price: low to high",
+      "priceDesc": "Price: high to low"
+    },
+    "emptyTitle": "No listings yet",
+    "emptyBody": "List your first item to open the market.",
+    "emptyAction": "Sell an item",
+    "noResultsTitle": "No matching items",
+    "noResultsBody": "Nothing matched “{query}”. Try describing it differently with AI search.",
+    "noResultsAction": "Discover with AI"
+  },
+  "pages": {
+    "orders": {
+      "title": "Orders",
+      "description": "Track the status of your purchases and sales here."
+    },
+    "sell": {
+      "title": "Sell an item",
+      "description": "Draft with photos and AI, then publish with just your login. Add a World ID signature for extra trust.",
+      "signInTitle": "Sign in required",
+      "signInBody": "Sign in to create a listing.",
+      "signInAction": "Sign in"
+    },
+    "listingDetail": {
+      "eyebrow": "Listing",
+      "fallbackTitle": "Listing detail"
+    },
+    "orderDetail": {
+      "eyebrow": "Order",
+      "title": "Transaction detail"
+    },
+    "review": {
+      "title": "Write a review",
+      "signInTitle": "Sign in required",
+      "signInBody": "Sign in to write a review.",
+      "signInAction": "Sign in"
+    },
+    "me": {
+      "title": "Account",
+      "signInTitle": "Sign in required",
+      "signInBody": "Sign in to view your account.",
+      "signInAction": "Sign in",
+      "worldIdLinked": "World ID linked",
+      "worldIdUnlinked": "World ID not linked",
+      "name": "Name",
+      "userId": "User ID",
+      "email": "Email",
+      "notProvided": "Not provided",
+      "linkWorldId": "Link World ID",
+      "orders": "Order history",
+      "ordersBody": "Review the items you’ve bought and sold.",
+      "ordersAction": "View orders",
+      "myListings": "Your listings",
+      "emptyTitle": "No listings yet",
+      "emptyBody": "Create your first listing.",
+      "emptyAction": "Sell an item"
+    }
+  },
+  "listing": {
+    "backAction": "Back to listings",
+    "unavailableTitle": "This listing is not available",
+    "signed": "Human-signed",
+    "unsigned": "Unsigned",
+    "category": "Category",
+    "condition": "Condition",
+    "seller": "Seller ID",
+    "signedTitle": "Signed by a verified human",
+    "unsignedTitle": "Unsigned listing",
+    "signedExplain": "The seller verified with World ID and digitally signed this listing — proof a real person listed it.",
+    "unsignedExplain": "This listing has no World ID signature. It can still be purchased, but it doesn’t carry the human-signed seal.",
+    "actions": "Actions",
+    "signInToBuy": "Sign in to buy",
+    "publishHint": "Sign with World ID to publish. Purchasing opens once signed.",
+    "buyConfirm": "Buy with confirmation",
+    "buyConfirmHint": "Review the order before paying. Nothing is charged at this step.",
+    "worldPayHint": "Pay on-chain with WLD inside World App.",
+    "notPurchasable": "This listing cannot be purchased right now.",
+    "publish": "Publish",
+    "publishUnsignedHint": "Publish with just your login — no verification needed. You can add a World ID signature later.",
+    "publishSigned": "Publish with World ID",
+    "publishSignedHint": "Adds the human-signed seal — buyers trust it more."
+  },
+  "listingForm": {
+    "createDraft": "Save draft",
+    "createAndPublish": "Create and publish"
+  },
+  "orderDetail": {
+    "backAction": "Back to orders",
+    "unavailableTitle": "This order is not available",
+    "unavailableBody": "Sign in with the buyer or seller account to view it.",
+    "heading": "Transaction detail",
+    "price": "Price",
+    "listing": "Listing ID",
+    "buyer": "Buyer ID",
+    "seller": "Seller ID",
+    "created": "Created",
+    "messages": "Messages",
+    "noMessages": "No messages yet.",
+    "you": "You",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Send a transaction update.",
+    "send": "Send",
+    "lifecycle": "Progress",
+    "paid": "Paid",
+    "shipped": "Shipped",
+    "received": "Received",
+    "completed": "Completed",
+    "markShipped": "Mark shipped",
+    "markReceived": "Mark received",
+    "writeReview": "Write a review",
+    "reviews": "Reviews",
+    "noReviews": "No reviews drafted yet."
+  },
+  "orderList": {
+    "emptyAction": "Browse catalog",
+    "emptyTitle": "No orders yet",
+    "emptyBody": "Purchases and sales appear here after a listing is bought.",
+    "open": "Open"
+  },
+  "reviewForm": {
+    "orderId": "Order ID",
+    "rating": "Rating",
+    "comment": "Comment",
+    "commentPlaceholder": "Share a concise transaction review.",
+    "submit": "Create review draft"
+  },
+  "discover": {
+    "brand": "AI Discovery",
+    "backToMarket": "Back to marketplace",
+    "eyebrow": "EXPERIMENTAL · AI DISCOVERY",
+    "headline": "Find it in your own words.",
+    "subhead": "Describe what you want in plain language. We search items listed by verified people.",
+    "inputLabel": "Describe what you want",
+    "placeholder": "e.g. a camera in good condition under 50,000 JPY, ready to buy with a human signature.",
+    "submit": "Search",
+    "chip0": "Camera in good condition",
+    "chip1": "Desk gear",
+    "chip2": "Human-signed listings",
+    "agentTitle": "MCP agent",
+    "agentMode": "local mcp",
+    "agentInitialMessage": "Send a shopping request in chat. The agent will call the needed MCP tool and update the listings.",
+    "agentInputLabel": "Ask the agent",
+    "agentPlaceholder": "e.g. find signed cameras under 50,000 JPY",
+    "agentSubmit": "Send",
+    "agentToolMessage": "{tool} · {status}",
+    "agentStepMessage": "#{index} {actor}/{phase} · {status} · {label}",
+    "agentActorLlm": "LLM",
+    "agentActorMcp": "MCP",
+    "agentPhase": {
+      "plan": "plan",
+      "tool_call": "tool",
+      "reply": "reply",
+      "output": "output"
+    },
+    "agentThinking": "Running LLM/MCP · maxSteps=3",
+    "agentPendingPlan": "LLM planner selects the first MCP tool",
+    "agentPendingTool": "Local MCP server runs the tool",
+    "agentPendingReply": "LLM responder composes the final reply and passes it to the output tool",
+    "featured": "Featured",
+    "resultsFor": "Results for “{query}”",
+    "searching": "Searching…",
+    "count": "{count} items",
+    "noResults": "No matching items. Try describing it differently.",
+    "matched": "keyword match",
+    "signed": "Human-signed"
   }
 }

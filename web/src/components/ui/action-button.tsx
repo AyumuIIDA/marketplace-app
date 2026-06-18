@@ -7,26 +7,34 @@ type ActionButtonProps = {
   className?: string;
   disabled?: boolean;
   href?: string;
+  name?: string;
   onClick?: () => void;
   type?: "button" | "submit";
-  variant?: "primary" | "secondary";
+  value?: string;
+  variant?: "primary" | "secondary" | "accent";
 };
+
+const VARIANT = {
+  primary: "bg-ink text-paper hover:bg-ink/90",
+  secondary: "border border-line-strong bg-surface text-ink hover:bg-paper",
+  accent: "bg-seal text-white hover:bg-seal-strong",
+} as const;
 
 export function ActionButton({
   children,
   className,
   disabled = false,
   href,
+  name,
   onClick,
   type = "button",
+  value,
   variant = "secondary",
 }: ActionButtonProps) {
   const buttonClassName = combineClassNames(
-    "inline-flex items-center justify-center rounded-full px-3 py-2 text-xs font-semibold transition",
-    variant === "primary"
-      ? "bg-neutral-950 text-white shadow-sm hover:bg-neutral-800"
-      : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200",
-    disabled && "cursor-not-allowed opacity-55",
+    "inline-flex items-center justify-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ink/30 focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
+    VARIANT[variant],
+    disabled && "pointer-events-none opacity-50",
     className,
   );
 
@@ -39,7 +47,14 @@ export function ActionButton({
   }
 
   return (
-    <button className={buttonClassName} disabled={disabled} onClick={onClick} type={type}>
+    <button
+      className={buttonClassName}
+      disabled={disabled}
+      name={name}
+      onClick={onClick}
+      type={type}
+      value={value}
+    >
       {children}
     </button>
   );

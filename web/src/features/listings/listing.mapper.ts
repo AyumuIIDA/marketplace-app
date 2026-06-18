@@ -1,18 +1,18 @@
 import type { Listing } from "../../lib/api/listings.api";
-import { catalogItemFixtures } from "./fixtures/catalog-items.fixture";
 import type { ListingViewModel } from "./listing-view-model";
 
-export function mapListingToViewModel(listing: Listing, index: number): ListingViewModel {
-  const fixture = catalogItemFixtures[index % catalogItemFixtures.length] ?? catalogItemFixtures[0];
-
+export function mapListingToViewModel(listing: Listing): ListingViewModel {
   return {
     id: listing.listingId,
-    brand: listing.category,
     title: listing.title,
-    price: listing.price.toLocaleString("ja-JP"),
+    price: listing.price,
+    priceLabel: listing.price.toLocaleString("ja-JP"),
     currency: listing.currency,
-    surface: fixture.surface,
-    object: fixture.object,
+    category: listing.category,
+    sellerId: listing.sellerId,
+    signed: listing.signatureId !== undefined,
+    status: listing.status,
+    createdAt: listing.createdAt,
     imageUrl: listing.images?.[0]?.url,
   };
 }

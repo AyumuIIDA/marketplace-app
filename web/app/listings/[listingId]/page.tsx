@@ -1,3 +1,5 @@
+import { getTranslations } from "next-intl/server";
+
 import { MarketplaceShell } from "../../../src/components/layout/marketplace-shell";
 import { PageHeader } from "../../../src/components/layout/page-header";
 import { toShellUserLabels } from "../../../src/features/current-user/shell-user";
@@ -15,17 +17,21 @@ type ListingPageProps = {
 
 export default async function ListingPage({ params }: ListingPageProps) {
   const { listingId } = await params;
-  const [currentUser, listing] = await Promise.all([getCurrentUser(), getListing(listingId)]);
+  const [currentUser, listing, t] = await Promise.all([
+    getCurrentUser(),
+    getListing(listingId),
+    getTranslations("pages.listingDetail"),
+  ]);
   const { humanLabel, userLabel } = toShellUserLabels(currentUser);
 
   return (
-    <MarketplaceShell activeSection="catalog" humanLabel={humanLabel} userLabel={userLabel}>
-      <PageHeader
-        actions={listing !== undefined ? undefined : undefined}
-        description="Inspect listing details, buyer action, and Human Signature status from one place."
-        eyebrow="Listing"
-        title={listing?.title ?? "Listing detail"}
-      />
+    <MarketplaceShell
+      activeSection="catalog"
+      authenticated={currentUser !== undefined}
+      humanLabel={humanLabel}
+      userLabel={userLabel}
+    >
+      <PageHeader eyebrow={t("eyebrow")} title={listing?.title ?? t("fallbackTitle")} />
       <ListingDetailView currentUser={currentUser} listing={listing} />
     </MarketplaceShell>
   );

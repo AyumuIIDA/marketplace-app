@@ -1,3 +1,5 @@
+import { getTranslations } from "next-intl/server";
+
 import { MarketplaceShell } from "../../../src/components/layout/marketplace-shell";
 import { PageHeader } from "../../../src/components/layout/page-header";
 import { toShellUserLabels } from "../../../src/features/current-user/shell-user";
@@ -17,17 +19,23 @@ type OrderPageProps = {
 
 export default async function OrderPage({ params }: OrderPageProps) {
   const { orderId } = await params;
-  const [currentUser, order, messages, reviews] = await Promise.all([
+  const [currentUser, order, messages, reviews, t] = await Promise.all([
     getCurrentUser(),
     getOrder(orderId),
     listOrderMessages(orderId),
     listReviews({ orderId, limit: 20 }),
+    getTranslations("pages.orderDetail"),
   ]);
   const { humanLabel, userLabel } = toShellUserLabels(currentUser);
 
   return (
-    <MarketplaceShell activeSection="orders" humanLabel={humanLabel} userLabel={userLabel}>
-      <PageHeader title={order === undefined ? "Order detail" : `Order ${order.status.toLowerCase()}`} />
+    <MarketplaceShell
+      activeSection="orders"
+      authenticated={currentUser !== undefined}
+      humanLabel={humanLabel}
+      userLabel={userLabel}
+    >
+      <PageHeader eyebrow={t("eyebrow")} title={t("title")} />
       <OrderDetailView currentUser={currentUser} messages={messages} order={order} reviews={reviews} />
     </MarketplaceShell>
   );

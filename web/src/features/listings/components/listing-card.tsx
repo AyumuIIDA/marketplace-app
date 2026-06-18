@@ -1,42 +1,53 @@
-import { ActionButton } from "../../../components/ui/action-button";
-import { combineClassNames } from "../../../components/ui/class-name";
+import { Seal } from "../../../components/ui/seal";
+import { LikeButton } from "../../social/components/like-button";
 import type { ListingViewModel } from "../listing-view-model";
 import { ProductVisual } from "./product-visual";
 
 type ListingCardProps = {
   item: ListingViewModel;
-  featured?: boolean;
+  signedLabel: string;
+  draftLabel: string;
+  soldLabel: string;
+  likeLabel: string;
 };
 
-export function ListingCard({ featured = false, item }: ListingCardProps) {
+export function ListingCard({ draftLabel, item, likeLabel, signedLabel, soldLabel }: ListingCardProps) {
   return (
-    <article
-      className={combineClassNames(
-        "group min-h-[320px] overflow-hidden rounded-[30px] bg-gradient-to-br p-3 shadow-sm ring-1 ring-black/5 transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(45,54,78,0.18)]",
-        item.surface,
-        featured && "md:col-span-2",
-      )}
-    >
-      <div className="flex h-full flex-col rounded-[24px] bg-white/34 p-3 backdrop-blur-md">
-        <div className="flex items-center justify-between text-xs">
-          <span className="rounded-full bg-white/72 px-2.5 py-1 font-semibold text-neutral-600">
-            {item.brand}
-          </span>
-          <span className="font-semibold text-neutral-500">{item.currency}</span>
+    <article className="group relative flex flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-sm transition-shadow hover:shadow-md">
+      <a
+        className="flex flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30"
+        href={`/listings/${item.id}`}
+      >
+        <div className="relative">
+          <ProductVisual imageUrl={item.imageUrl} title={item.title} />
+          {item.signed && (
+            <span className="absolute left-2 top-2">
+              <Seal label={signedLabel} size="sm" />
+            </span>
+          )}
+          {item.status === "SOLD" && (
+            <span className="absolute inset-0 grid place-items-center bg-ink/55 text-sm font-semibold tracking-wide text-paper">
+              {soldLabel}
+            </span>
+          )}
         </div>
 
-        <ProductVisual imageUrl={item.imageUrl} object={item.object} />
-
-        <div className="mt-auto rounded-[20px] bg-white/84 p-3 shadow-sm">
-          <h3 className="text-sm font-semibold leading-5 text-neutral-950">{item.title}</h3>
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold">{item.price}</p>
-            <ActionButton className="px-3 py-1.5" href={`/listings/${item.id}`} variant="primary">
-              View
-            </ActionButton>
+        <div className="flex flex-1 flex-col gap-1 p-3">
+          <div className="flex items-center gap-2">
+            <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-faint">{item.category}</p>
+            {item.status === "DRAFT" && (
+              <span className="rounded-full bg-warn-tint px-1.5 py-0.5 text-[10px] font-semibold text-warn">
+                {draftLabel}
+              </span>
+            )}
           </div>
+          <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-ink">{item.title}</h3>
+          <p className="mt-auto pt-1.5 font-mono text-base font-semibold text-ink">¥{item.priceLabel}</p>
         </div>
-      </div>
+      </a>
+
+      {/* ハートはリンクの外に重ね、遷移と分離する。 */}
+      <LikeButton ariaLabel={likeLabel} className="absolute right-2 top-2 z-10" />
     </article>
   );
 }

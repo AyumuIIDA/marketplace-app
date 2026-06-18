@@ -1,3 +1,5 @@
+import { getTranslations } from "next-intl/server";
+
 import { ActionButton } from "../../../components/ui/action-button";
 import { FormField, inputClassName, textareaClassName } from "../../../components/ui/form-field";
 import { GlassPanel } from "../../../components/ui/glass-panel";
@@ -7,22 +9,24 @@ type ReviewFormProps = {
   orderId?: string;
 };
 
-export function ReviewForm({ orderId }: ReviewFormProps) {
+export async function ReviewForm({ orderId }: ReviewFormProps) {
+  const t = await getTranslations("reviewForm");
+
   return (
     <GlassPanel className="p-5">
       <form action={createReviewAction} className="grid gap-4">
-        <FormField label="Order ID">
+        <FormField label={t("orderId")}>
           <input className={inputClassName} defaultValue={orderId} name="orderId" placeholder="order_id" required />
         </FormField>
-        <FormField label="Rating">
+        <FormField label={t("rating")}>
           <input className={inputClassName} defaultValue="5" max="5" min="1" name="rating" required type="number" />
         </FormField>
-        <FormField label="Comment">
-          <textarea className={textareaClassName} name="comment" placeholder="Share a concise transaction review." required />
+        <FormField label={t("comment")}>
+          <textarea className={textareaClassName} name="comment" placeholder={t("commentPlaceholder")} required />
         </FormField>
         <div className="flex justify-end">
           <ActionButton type="submit" variant="primary">
-            Create review draft
+            {t("submit")}
           </ActionButton>
         </div>
       </form>

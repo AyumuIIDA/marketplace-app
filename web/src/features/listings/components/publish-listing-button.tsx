@@ -10,9 +10,10 @@ import { publishListingWithWorldIdAction } from "../actions/listing.actions";
 
 type PublishListingButtonProps = {
   listing: Listing;
+  label: string;
 };
 
-export function PublishListingButton({ listing }: PublishListingButtonProps) {
+export function PublishListingButton({ label, listing }: PublishListingButtonProps) {
   const [signal, setSignal] = useState<string | undefined>();
 
   async function handleVerified(result: IDKitResult): Promise<void> {
@@ -29,7 +30,7 @@ export function PublishListingButton({ listing }: PublishListingButtonProps) {
   return (
     <WorldIdButton
       action="LISTING_PUBLISH"
-      label="Publish with World ID"
+      label={label}
       onBeforeOpen={prepareSignal}
       onVerified={handleVerified}
       signal={signal}

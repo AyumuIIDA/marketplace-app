@@ -1,3 +1,5 @@
+import { getTranslations } from "next-intl/server";
+
 import { MarketplaceShell } from "../../src/components/layout/marketplace-shell";
 import { PageHeader } from "../../src/components/layout/page-header";
 import { toShellUserLabels } from "../../src/features/current-user/shell-user";
@@ -8,12 +10,21 @@ import { listOrders } from "../../src/lib/api/orders.api";
 export const dynamic = "force-dynamic";
 
 export default async function OrdersPage() {
-  const [currentUser, orders] = await Promise.all([getCurrentUser(), listOrders({ limit: 50 })]);
+  const [currentUser, orders, t] = await Promise.all([
+    getCurrentUser(),
+    listOrders({ limit: 50 }),
+    getTranslations("pages.orders"),
+  ]);
   const { humanLabel, userLabel } = toShellUserLabels(currentUser);
 
   return (
-    <MarketplaceShell activeSection="orders" humanLabel={humanLabel} userLabel={userLabel}>
-      <PageHeader title="Orders" />
+    <MarketplaceShell
+      activeSection="orders"
+      authenticated={currentUser !== undefined}
+      humanLabel={humanLabel}
+      userLabel={userLabel}
+    >
+      <PageHeader description={t("description")} title={t("title")} />
       <OrderListView orders={orders} />
     </MarketplaceShell>
   );
