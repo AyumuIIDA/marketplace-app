@@ -1,0 +1,17 @@
+version: v2
+# 生成先:
+#   Go   -> api-go/internal/modules/recommendation/gen/recommendation/v1/*.pb.go
+#   Py   -> services/recommendation-py/gen/recommendation/v1/*_pb2*.py
+# 生成: (contracts/ で) `buf generate`
+plugins:
+  - remote: buf.build/protocolbuffers/go
+    out: ../api-go/internal/modules/recommendation/gen
+    opt: paths=source_relative
+  - remote: buf.build/grpc/go
+    out: ../api-go/internal/modules/recommendation/gen
+    opt: paths=source_relative
+  # protobuf runtime(5.29, requirements.txt の protobuf<6)に合わせて gencode を pin。
+  - remote: buf.build/protocolbuffers/python:v29.3
+    out: ../services/recommendation-py/gen
+  - remote: buf.build/grpc/python:v1.66.2
+    out: ../services/recommendation-py/gen
