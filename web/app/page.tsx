@@ -1,5 +1,8 @@
+import { getTranslations } from "next-intl/server";
+
 import { MarketplaceHomeView } from "../src/features/marketplace-home/components/marketplace-home-view";
 import { toShellUserLabels } from "../src/features/current-user/shell-user";
+import { PurchaseToast } from "../src/features/listings/components/purchase-toast";
 import { parseListingSort } from "../src/features/listings/listing-sort";
 import { mapListingsToViewModels } from "../src/features/listings/listing.mapper";
 import { getCurrentUser } from "../src/lib/api/current-user.api";
@@ -15,12 +18,13 @@ type PageProps = {
     sort?: string;
     category?: string;
     verified?: string;
+    purchased?: string;
   }>;
 };
 
 export default async function Page({ searchParams }: PageProps) {
   await ensureOnboarded("/");
-  const { category, keyword, sort, verified } = await searchParams;
+  const { category, keyword, purchased, sort, verified } = await searchParams;
   const trimmedKeyword = keyword?.trim();
   const searchQuery = trimmedKeyword === undefined || trimmedKeyword.length === 0 ? undefined : trimmedKeyword;
   const trimmedCategory = category?.trim();
@@ -40,9 +44,12 @@ export default async function Page({ searchParams }: PageProps) {
     verifiedOnly ? items.filter((item) => item.signed) : items;
   const listings = filterSigned(mapListingsToViewModels(apiListings, likedIds));
   const { humanLabel, userLabel } = toShellUserLabels(currentUser);
+  const purchaseT = await getTranslations("purchase");
 
   return (
-    <MarketplaceHomeView
+    <>
+      {purchased === "1" && <PurchaseToast message={purchaseT("completed")} />}
+      <MarketplaceHomeView
       authenticated={currentUser !== undefined}
       category={selectedCategory}
       categoryItems={filterSigned(mapListingsToViewModels(categoryPage, likedIds))}
@@ -53,6 +60,7 @@ export default async function Page({ searchParams }: PageProps) {
       sort={parseListingSort(sort)}
       userLabel={userLabel}
       verifiedOnly={verifiedOnly}
-    />
+      />
+    </>
   );
 }

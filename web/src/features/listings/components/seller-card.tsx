@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
+import { Avatar } from "../../../components/ui/avatar";
 import { GlassPanel } from "../../../components/ui/glass-panel";
 import { Seal } from "../../../components/ui/seal";
 import type { SellerSummary } from "../../../lib/api/sellers.api";
@@ -18,13 +19,13 @@ export async function SellerCard({ seller }: SellerCardProps) {
     <GlassPanel className="p-5">
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-ink-faint">{t("sellerLabel")}</p>
 
-      <div className="flex items-center gap-3">
-        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-paper text-sm font-semibold text-ink-soft ring-1 ring-line">
-          {(seller.displayName || seller.handle.replace("@", "")).slice(0, 2).toUpperCase()}
-        </span>
+      <a className="group flex items-center gap-3" href={`/sellers/${seller.sellerId}`}>
+        <Avatar alt="" className="size-11" seed={seller.displayName || seller.handle} src={seller.avatarUrl} />
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="truncate text-sm font-semibold text-ink">{seller.displayName}</span>
+            <span className="truncate text-sm font-semibold text-ink group-hover:underline">
+              {seller.displayName}
+            </span>
             {seller.humanVerified && <Seal label={t("verifiedSeller")} size="sm" />}
           </div>
           <p className="truncate font-mono text-xs text-ink-faint">{seller.handle}</p>
@@ -41,7 +42,7 @@ export async function SellerCard({ seller }: SellerCardProps) {
             )}
           </div>
         </div>
-      </div>
+      </a>
 
       <div className="mt-4">
         <LikeButton
