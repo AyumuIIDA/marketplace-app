@@ -1,6 +1,6 @@
 name: marketplace-local
 
-# ローカル一括起動: db → migrate(one-shot) → api → web。
+# ローカル一括起動: db → migrate-domain(goose) / migrate-auth(drizzle) → api → web。
 # 起動モードはDevホットリロード（ソースbind mount + tsx watch / next dev）。
 # 認証はAuth.js(Google/GitHub OAuth)。auth/domainは単一Postgresの2DBに論理分離。
 
@@ -23,19 +23,33 @@ services:
       timeout: 5s
       retries: 12
 
-  # ワンショット: 両DBへdrizzle migrationを適用して終了。api/webはこの成功を待つ。
-  # アプリ秘密(鍵類)は不要。DB接続URLのみをinlineで渡す（env_fileを付けない）。
-  migrate:
+  # ワンショット(auth): marketplace_auth へ drizzle migration を適用して終了。webはこの成功を待つ。
+  # domain DB は migrate-domain(goose) が単一管理する。アプリ秘密(鍵類)は不要。
+  migrate-auth:
     build:
       context: .
       dockerfile: api/Dockerfile
     environment:
-      DOMAIN_DATABASE_URL: postgres://app:app@db:5432/marketplace_domain
       AUTH_DATABASE_URL: postgres://app:app@db:5432/marketplace_auth
-    command: ["sh", "docker/migrate.sh"]
+    command: ["sh", "docker/migrate-auth.sh"]
     volumes:
       - ./:/app
       - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ワンショット(domain): api-go の goose で marketplace_domain へ migration を適用して終了。
+  # 新規DBは baseline(00001)+social(00002) を一括作成。apiはこの成功を待つ。
+  # 既存DB（別系統で作成済み）は事前に `stamp 1` で baseline を採用しておくこと（README参照）。
+  migrate-domain:
+    build:
+      context: api-go
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgres://app:app@db:5432/marketplace_domain
+    entrypoint: ["/app/migrate"]
+    command: ["up"]
     depends_on:
       db:
         condition: service_healthy
@@ -67,7 +81,7 @@ services:
       # ADC(Gemini用)のみマウント。Goはコンパイル済みバイナリなのでソースmountはしない。
       - ${HOME}/.config/gcloud/application_default_credentials.json:/gcp/application_default_credentials.json:ro
     depends_on:
-      migrate:
+      migrate-domain:
         condition: service_completed_successfully
       storage:
         condition: service_started
@@ -100,6 +114,8 @@ services:
     depends_on:
       api:
         condition: service_started
+      migrate-auth:
+        condition: service_completed_successfully
 
   # GCSエミュレータ。prodと同じ @google-cloud/storage SDK で endpoint だけ差し替える。
   # 商品画像はブラウザが直接読む公開アセット（BFF非経由）。
