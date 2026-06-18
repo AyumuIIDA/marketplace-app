@@ -20,9 +20,10 @@ import { SellerCard } from "./seller-card";
 type ListingDetailViewProps = {
   currentUser: CurrentUser | undefined;
   listing: Listing | undefined;
+  initialLiked?: boolean;
 };
 
-export async function ListingDetailView({ currentUser, listing }: ListingDetailViewProps) {
+export async function ListingDetailView({ currentUser, initialLiked = false, listing }: ListingDetailViewProps) {
   const [t, social] = await Promise.all([getTranslations("listing"), getTranslations("social")]);
 
   if (listing === undefined) {
@@ -74,6 +75,7 @@ export async function ListingDetailView({ currentUser, listing }: ListingDetailV
             <p className="font-mono text-2xl font-semibold text-ink">¥{listing.price.toLocaleString("ja-JP")}</p>
             <LikeButton
               ariaLabel={social("likeItem")}
+              initialLiked={initialLiked}
               text={{ like: social("likeItem"), liked: social("likedItem") }}
               toggleAction={toggleListingLikeAction.bind(null, listing.listingId)}
             />

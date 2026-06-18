@@ -12,4 +12,6 @@ export type ListingViewModel = {
   status: Listing["status"];
   createdAt: string;
   imageUrl?: string;
+  // 現在のユーザーがこの出品をいいね済みか（初期表示のhydrate用）。
+  liked: boolean;
 };

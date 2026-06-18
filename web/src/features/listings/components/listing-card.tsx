@@ -51,6 +51,7 @@ export function ListingCard({ draftLabel, item, likeLabel, signedLabel, soldLabe
       <LikeButton
         ariaLabel={likeLabel}
         className="absolute right-2 top-2 z-10"
+        initialLiked={item.liked}
         toggleAction={toggleListingLikeAction.bind(null, item.id)}
       />
     </article>
