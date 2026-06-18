@@ -6,10 +6,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'api/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'tsconfig.json'
+      - 'api-go/**'
       - '.github/workflows/deploy-api.yml'
   workflow_dispatch:
 
@@ -37,18 +34,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
+          go-version: "1.25"
+          cache-dependency-path: api-go/go.sum
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Test API (deploy gate)
-        run: npm run api:test
+      - name: Test Go API (deploy gate)
+        working-directory: api-go
+        run: go test ./...
 
       - name: Authenticate to Google Cloud (WIF)
         uses: google-github-actions/auth@v2
@@ -62,10 +56,10 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 
-      - name: Build and push image
+      - name: Build and push image (Go API)
         run: |
           IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${AR_REPO}/api"
-          docker build -f api/Dockerfile.prod -t "${IMAGE}:${GITHUB_SHA}" -t "${IMAGE}:latest" .
+          docker build -f api-go/Dockerfile -t "${IMAGE}:${GITHUB_SHA}" -t "${IMAGE}:latest" api-go
           docker push "${IMAGE}:${GITHUB_SHA}"
           docker push "${IMAGE}:latest"
           echo "IMAGE=${IMAGE}:${GITHUB_SHA}" >> "$GITHUB_ENV"

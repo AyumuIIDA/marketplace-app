@@ -1,0 +1,5 @@
+.git
+*.md
+.golangci.yml
+internal/db/sqlc/*_test.go
+**/*_test.go

@@ -1,0 +1,133 @@
+# golangci-lint 設定。depguardで層/モジュール境界をCIで機械的に強制する（coding-style §4.2）。
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - depguard
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+linters-settings:
+  depguard:
+    rules:
+      # domain層は外部I/O・framework・他層へ依存しない（純粋）。
+      domain-pure:
+        files:
+          - "**/internal/modules/*/domain/**"
+        deny:
+          - pkg: "github.com/go-chi/chi"
+            desc: "domain must not import HTTP framework"
+          - pkg: "github.com/jackc/pgx"
+            desc: "domain must not import DB driver"
+          - pkg: "net/http"
+            desc: "domain must not import net/http"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/db"
+            desc: "domain must not depend on db/sqlc"
+      # workflow(app/workflows)はinfrastructure実装に直接依存しない。Application Port経由のみ。
+      workflow-no-infra:
+        files:
+          - "**/internal/app/workflows/**"
+        deny:
+          - pkg: "github.com/jackc/pgx"
+            desc: "workflow must not import DB driver directly"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/identity/infrastructure"
+            desc: "workflow must depend on Application Port, not infrastructure"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/listings/infrastructure"
+            desc: "workflow must depend on Application Port, not infrastructure"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/orders/infrastructure"
+            desc: "workflow must depend on Application Port, not infrastructure"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/messages/infrastructure"
+            desc: "workflow must depend on Application Port, not infrastructure"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/signatures/infrastructure"
+            desc: "workflow must depend on Application Port, not infrastructure"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/reviews/infrastructure"
+            desc: "workflow must depend on Application Port, not infrastructure"
+      # peer module間importは禁止（module連携はworkflow経由）。§4で規定。
+      peer-isolation-identity:
+        files: ["**/internal/modules/identity/**"]
+        deny:
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/listings"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/orders"
+            desc: "peer module間importは禁止（workflowで連携する）"
+      peer-isolation-listings:
+        files: ["**/internal/modules/listings/**"]
+        deny:
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/identity"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/orders"
+            desc: "peer module間importは禁止（workflowで連携する）"
+      peer-isolation-orders:
+        files: ["**/internal/modules/orders/**"]
+        deny:
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/identity"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/listings"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/messages"
+            desc: "peer module間importは禁止（workflowで連携する）"
+      peer-isolation-messages:
+        files: ["**/internal/modules/messages/**"]
+        deny:
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/identity"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/listings"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/orders"
+            desc: "peer module間importは禁止（workflowで連携する）"
+      peer-isolation-reviews:
+        files: ["**/internal/modules/reviews/**"]
+        deny:
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/identity"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/listings"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/orders"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/messages"
+            desc: "peer module間importは禁止（workflowで連携する）"
+      peer-isolation-aiassistance:
+        files: ["**/internal/modules/aiassistance/**"]
+        deny:
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/identity"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/listings"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/orders"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/messages"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/reviews"
+            desc: "peer module間importは禁止（workflowで連携する）"
+      peer-isolation-agents:
+        files: ["**/internal/modules/agents/**"]
+        deny:
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/identity"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/listings"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/orders"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/messages"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/reviews"
+            desc: "peer module間importは禁止（workflowで連携する）"
+      peer-isolation-mcpaudit:
+        files: ["**/internal/modules/mcpaudit/**"]
+        deny:
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/identity"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/listings"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/orders"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/messages"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/reviews"
+            desc: "peer module間importは禁止（workflowで連携する）"
+          - pkg: "github.com/outarc/marketplace/api-go/internal/modules/agents"
+            desc: "peer module間importは禁止（workflowで連携する）"
