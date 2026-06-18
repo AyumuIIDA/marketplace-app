@@ -30,14 +30,20 @@ curl -H 'x-user-id: <uuid>' localhost:8090/me     # dev認証で現在ユーザ�
 
 ## マイグレーション
 
+**domain DB(`marketplace_domain`) は goose が単一管理**（drizzleからGoへ統一済み）。
+ローカルは compose の `migrate-domain` サービスが `up` を実行する（`api` はその完了を待つ）。
+auth DB(`marketplace_auth`) は Auth.js 専用のため `migrate-auth`(web/drizzle) が引き続き管理する。
+
 ```sh
-DATABASE_URL=... go run ./cmd/migrate up        # 新規DB(Cloud SQL)へ baseline 適用
+DATABASE_URL=... go run ./cmd/migrate up        # 新規DB: baseline(00001)+social(00002) を一括適用
 DATABASE_URL=... go run ./cmd/migrate status
+DATABASE_URL=... go run ./cmd/migrate stamp 1   # 既存DB採用: baselineを「適用済み」と記録(DDL不実行)
 ```
 
 `internal/db/migrations/00001_baseline.sql` は `../api/drizzle/0000..0003` 適用後の最終状態と等価。
-**既存 `marketplace_domain` は drizzle で同一スキーマが既存**のため、live DBへ `up` を流さないこと
-（新規provision専用。既存DBに対しては version stamp のみ運用）。
+**別系統(drizzle)で同等スキーマを作成済みの既存DB**には baseline を流さず、`stamp 1` で採用してから
+差分(`00002`〜)を `up` で適用する（Flyway baseline / Liquibase changelogSync 相当）。
+新規DB(Cloud SQL / `compose down -v` 後)は `up` だけで baseline から再現する。
 
 ## コード生成 / 検証
 
