@@ -22,6 +22,12 @@ import (
 	aiapp "marketplace/api-go/internal/modules/aiassistance/application"
 	aihttp "marketplace/api-go/internal/modules/aiassistance/http"
 	aiinfra "marketplace/api-go/internal/modules/aiassistance/infrastructure"
+	boardapp "marketplace/api-go/internal/modules/board/application"
+	boardhttp "marketplace/api-go/internal/modules/board/http"
+	boardinfra "marketplace/api-go/internal/modules/board/infrastructure"
+	dmapp "marketplace/api-go/internal/modules/dm/application"
+	dmhttp "marketplace/api-go/internal/modules/dm/http"
+	dminfra "marketplace/api-go/internal/modules/dm/infrastructure"
 	identityapp "marketplace/api-go/internal/modules/identity/application"
 	identityhttp "marketplace/api-go/internal/modules/identity/http"
 	identityinfra "marketplace/api-go/internal/modules/identity/infrastructure"
@@ -141,6 +147,15 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		Hide: messagesapp.NewHideMessageUseCase(messageRepo, sysClock),
 	}
 
+	// ユーザー間DM（注文に紐づかない）。ログインユーザーに公開。
+	dmRepo := dminfra.NewPostgresDirectMessageRepository(pool)
+	dmDeps := dmhttp.Deps{
+		Send:     dmapp.NewSendDirectMessageService(dmRepo, idGen, sysClock),
+		Thread:   dmapp.NewListThreadUseCase(dmRepo),
+		Inbox:    dmapp.NewListInboxUseCase(dmRepo),
+		MarkRead: dmapp.NewMarkThreadReadUseCase(dmRepo, sysClock),
+	}
+
 	// ai-assistance の配線。既定は決定論fake、provider=gemini ならVertex AI（失敗時は決定論へ縮退）。
 	aiAssistant := buildAiAssistant(ctx, cfg)
 	aiDeps := aihttp.Deps{
@@ -198,6 +213,15 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		ListComments:  socialapp.NewListListingCommentsUseCase(socialRepo),
 	}
 
+	// 掲示板（2ch風）の配線。閲覧は公開・投稿/返信は humanVerified（usecaseで強制）。
+	boardRepo := boardinfra.NewPostgresBoardRepository(pool)
+	boardDeps := boardhttp.Deps{
+		List:  boardapp.NewListPostsUseCase(boardRepo),
+		Get:   boardapp.NewGetPostUseCase(boardRepo),
+		Post:  boardapp.NewCreatePostUseCase(boardRepo, idGen, sysClock),
+		Reply: boardapp.NewAddReplyUseCase(boardRepo, idGen, sysClock),
+	}
+
 	// recommendation module の配線。意味検索/類似は listings(本体) と vector(recommendation-py) の合成。
 	// RECOMMENDATION_SERVICE_URL 未設定なら縮退（空結果→フロントはkeyword検索へフォールバック）。
 	vectorIndex := buildVectorIndex(ctx, cfg)
@@ -252,8 +276,7 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 	}
 	agentDeps.RunDiscover = workflows.NewRunDiscoverAgentWorkflow(
 		gatewayFactory,
-		buildDiscoverPlanner(ctx, cfg),
-		buildDiscoverResponder(ctx, cfg),
+		buildDiscoverRegistry(ctx, cfg),
 	)
 
 	// pgxpool.Pool は Ping(ctx) error を持ち HealthChecker を満たす。
@@ -263,6 +286,7 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		AllowDevUserHeader: cfg.AllowDevUserHeader,
 		RegisterPublic: func(r chi.Router) {
 			reviewshttp.RegisterPublicRoutes(r, reviewDeps)
+			boardhttp.RegisterPublicRoutes(r, boardDeps)
 			// 商品一覧・詳細は認証任意（未ログインでも閲覧可、トークンがあれば自分の下書きも見える）。
 			r.Group(func(pr chi.Router) {
 				pr.Use(httpinterface.OptionalAuthMiddleware(verifier, cfg.AllowDevUserHeader))
@@ -274,6 +298,8 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 			listingshttp.RegisterRoutes(r, listingDeps)
 			ordershttp.RegisterRoutes(r, orderDeps)
 			messageshttp.RegisterRoutes(r, messageDeps)
+			dmhttp.RegisterRoutes(r, dmDeps)
+			boardhttp.RegisterRoutes(r, boardDeps)
 			reviewshttp.RegisterRoutes(r, reviewDeps)
 			socialhttp.RegisterRoutes(r, socialDeps)
 			aihttp.RegisterRoutes(r, aiDeps)
@@ -330,48 +356,50 @@ func buildAiAssistant(ctx context.Context, cfg Config) aiapp.AiAssistant {
 	}
 }
 
-// buildDiscoverPlanner / buildDiscoverResponder は provider設定に応じて discover agent の
-// planner/responder を構築する。既定は決定論（規則ベース）。gemini/openai は初期化失敗時に決定論へ縮退する。
-func buildDiscoverPlanner(ctx context.Context, cfg Config) agentsapp.DiscoverAgentPlanner {
-	switch cfg.AIAssistantProvider {
-	case "gemini":
-		p, err := agentsinfra.NewGeminiDiscoverAgentPlanner(ctx, cfg.GoogleCloudProject, cfg.GoogleCloudLocation, cfg.GeminiModel)
-		if err != nil {
-			slog.Warn("gemini discover planner init failed; falling back to deterministic", slog.String("error", err.Error()))
-			return agentsinfra.NewDeterministicDiscoverAgentPlanner()
-		}
-		return p
-	case "openai":
-		p, err := agentsinfra.NewOpenAiDiscoverAgentPlanner(cfg.OpenAIAPIKey, cfg.OpenAIModel)
-		if err != nil {
-			slog.Warn("openai discover planner init failed; falling back to deterministic", slog.String("error", err.Error()))
-			return agentsinfra.NewDeterministicDiscoverAgentPlanner()
-		}
-		return p
-	default:
-		return agentsinfra.NewDeterministicDiscoverAgentPlanner()
-	}
-}
+// buildDiscoverRegistry は discover agent の provider別 planner/responder を構築し、
+// リクエスト単位でベンダー(gemini/openai)を選べるレジストリを返す。
+// deterministic は常に登録。gemini/openai は構築できた場合のみ登録し、実リクエスト失敗時は
+// Fallbackデコレータで deterministic へ縮退する（ADC無し/モデル不正でもAI検索を落とさない）。
+func buildDiscoverRegistry(ctx context.Context, cfg Config) *agentsapp.DiscoverAgentRegistry {
+	detPlanner := agentsinfra.NewDeterministicDiscoverAgentPlanner()
+	detResponder := agentsinfra.NewDeterministicDiscoverAgentResponder()
 
-func buildDiscoverResponder(ctx context.Context, cfg Config) agentsapp.DiscoverAgentResponder {
-	switch cfg.AIAssistantProvider {
-	case "gemini":
-		r, err := agentsinfra.NewGeminiDiscoverAgentResponder(ctx, cfg.GoogleCloudProject, cfg.GoogleCloudLocation, cfg.GeminiModel)
-		if err != nil {
-			slog.Warn("gemini discover responder init failed; falling back to deterministic", slog.String("error", err.Error()))
-			return agentsinfra.NewDeterministicDiscoverAgentResponder()
-		}
-		return r
-	case "openai":
-		r, err := agentsinfra.NewOpenAiDiscoverAgentResponder(cfg.OpenAIAPIKey, cfg.OpenAIModel)
-		if err != nil {
-			slog.Warn("openai discover responder init failed; falling back to deterministic", slog.String("error", err.Error()))
-			return agentsinfra.NewDeterministicDiscoverAgentResponder()
-		}
-		return r
-	default:
-		return agentsinfra.NewDeterministicDiscoverAgentResponder()
+	sets := map[string]agentsapp.DiscoverAgentSet{
+		"deterministic": {Planner: detPlanner, Responder: detResponder},
 	}
+
+	// gemini: 構築は認証/モデルを検証しない。実呼び出し失敗はFallbackで縮退する。
+	if gp, err := agentsinfra.NewGeminiDiscoverAgentPlanner(ctx, cfg.GoogleCloudProject, cfg.GoogleCloudLocation, cfg.GeminiModel); err != nil {
+		slog.Warn("gemini discover planner init failed; gemini disabled", slog.String("error", err.Error()))
+	} else if gr, err := agentsinfra.NewGeminiDiscoverAgentResponder(ctx, cfg.GoogleCloudProject, cfg.GoogleCloudLocation, cfg.GeminiModel); err != nil {
+		slog.Warn("gemini discover responder init failed; gemini disabled", slog.String("error", err.Error()))
+	} else {
+		sets["gemini"] = agentsapp.DiscoverAgentSet{
+			Planner:   agentsinfra.NewFallbackDiscoverAgentPlanner("gemini", gp, detPlanner),
+			Responder: agentsinfra.NewFallbackDiscoverAgentResponder("gemini", gr, detResponder),
+		}
+	}
+
+	// openai: OPENAI_API_KEY 未設定なら構築失敗→未登録（UIで選んでも既定へ縮退）。
+	if op, err := agentsinfra.NewOpenAiDiscoverAgentPlanner(cfg.OpenAIAPIKey, cfg.OpenAIModel); err != nil {
+		slog.Warn("openai discover planner init failed; openai disabled", slog.String("error", err.Error()))
+	} else if or, err := agentsinfra.NewOpenAiDiscoverAgentResponder(cfg.OpenAIAPIKey, cfg.OpenAIModel); err != nil {
+		slog.Warn("openai discover responder init failed; openai disabled", slog.String("error", err.Error()))
+	} else {
+		sets["openai"] = agentsapp.DiscoverAgentSet{
+			Planner:   agentsinfra.NewFallbackDiscoverAgentPlanner("openai", op, detPlanner),
+			Responder: agentsinfra.NewFallbackDiscoverAgentResponder("openai", or, detResponder),
+		}
+	}
+
+	// 既定プロバイダは AI_ASSISTANT_PROVIDER。未登録なら deterministic に落とす。
+	defaultProvider := cfg.AIAssistantProvider
+	if _, ok := sets[defaultProvider]; !ok {
+		slog.Warn("default AI provider unavailable; using deterministic",
+			slog.String("requested", cfg.AIAssistantProvider))
+		defaultProvider = "deterministic"
+	}
+	return agentsapp.NewDiscoverAgentRegistry(defaultProvider, sets)
 }
 
 // buildVectorIndex は recommendation サービス設定があれば gRPC client を、なければ縮退実装を返す。

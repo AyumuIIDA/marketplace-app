@@ -480,6 +480,34 @@ type AuthIdentity struct {
 	CreatedAt       pgtype.Timestamptz
 }
 
+type BoardPost struct {
+	ID        uuid.UUID
+	AuthorID  uuid.UUID
+	Title     string
+	Body      string
+	CreatedAt pgtype.Timestamptz
+	HiddenAt  pgtype.Timestamptz
+}
+
+type BoardReply struct {
+	ID        uuid.UUID
+	PostID    uuid.UUID
+	AuthorID  uuid.UUID
+	Body      string
+	CreatedAt pgtype.Timestamptz
+	HiddenAt  pgtype.Timestamptz
+}
+
+type DirectMessage struct {
+	ID          uuid.UUID
+	SenderID    uuid.UUID
+	RecipientID uuid.UUID
+	Body        string
+	Status      MessageStatus
+	ReadAt      pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
+}
+
 type HumanSignature struct {
 	ID                    uuid.UUID
 	UserID                uuid.UUID

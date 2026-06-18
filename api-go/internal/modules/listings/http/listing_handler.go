@@ -309,6 +309,17 @@ func (deps Deps) handleSearch(w http.ResponseWriter, r *http.Request) {
 		httpinterface.WriteError(w, r, err)
 		return
 	}
+	// 公開の出品者別フィルタ（プロフィールページ）。指定時は PUBLISHED のみ返す。
+	var sellerFilter *uuid.UUID
+	if s := strings.TrimSpace(q.Get("sellerId")); s != "" {
+		id, perr := uuid.Parse(s)
+		if perr != nil {
+			httpinterface.WriteError(w, r, apperr.Validation("sellerId must be a valid UUID.",
+				apperr.FieldError{Field: "sellerId", Reason: "invalid"}))
+			return
+		}
+		sellerFilter = &id
+	}
 	// 匿名は mine 無効（自分の下書きは見せない）。
 	mineForSeller := mine && currentUserID != nil
 
@@ -322,8 +333,11 @@ func (deps Deps) handleSearch(w http.ResponseWriter, r *http.Request) {
 		Offset:                 offset,
 		IncludeDraftsForSeller: mineForSeller,
 	}
-	if mineForSeller {
+	switch {
+	case mineForSeller:
 		in.SellerID = currentUserID
+	case sellerFilter != nil:
+		in.SellerID = sellerFilter
 	}
 
 	out, err := deps.Search.Execute(r.Context(), in)

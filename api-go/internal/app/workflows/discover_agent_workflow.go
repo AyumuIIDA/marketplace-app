@@ -24,6 +24,8 @@ type RunDiscoverAgentInput struct {
 	AgentID  *string
 	Message  string
 	Messages []agentsapp.DiscoverMessage
+	// Provider はリクエスト単位のベンダー選択("gemini"|"openai")。空なら既定プロバイダ。
+	Provider string
 }
 
 // DiscoverStep は実行トレースの1ステップ（LLM/MCPの各フェーズ）。
@@ -53,15 +55,14 @@ type RunDiscoverAgentResult struct {
 }
 
 // RunDiscoverAgentWorkflow は discover agent の orchestration（plan→tool_call→reply→output）。
-// MCP gateway(監査付き) + planner/responder(AI port) を合成する。
+// MCP gateway(監査付き) + provider別 planner/responder レジストリ を合成する。
 type RunDiscoverAgentWorkflow struct {
 	gatewayFactory McpToolGatewayFactory
-	planner        agentsapp.DiscoverAgentPlanner
-	responder      agentsapp.DiscoverAgentResponder
+	registry       *agentsapp.DiscoverAgentRegistry
 }
 
-func NewRunDiscoverAgentWorkflow(f McpToolGatewayFactory, p agentsapp.DiscoverAgentPlanner, r agentsapp.DiscoverAgentResponder) *RunDiscoverAgentWorkflow {
-	return &RunDiscoverAgentWorkflow{gatewayFactory: f, planner: p, responder: r}
+func NewRunDiscoverAgentWorkflow(f McpToolGatewayFactory, registry *agentsapp.DiscoverAgentRegistry) *RunDiscoverAgentWorkflow {
+	return &RunDiscoverAgentWorkflow{gatewayFactory: f, registry: registry}
 }
 
 func (w *RunDiscoverAgentWorkflow) Execute(ctx context.Context, in RunDiscoverAgentInput) (RunDiscoverAgentResult, error) {
@@ -71,6 +72,8 @@ func (w *RunDiscoverAgentWorkflow) Execute(ctx context.Context, in RunDiscoverAg
 			apperr.FieldError{Field: "message", Reason: "required"})
 	}
 
+	// リクエスト単位でベンダーを解決する（未指定/未登録は既定→決定論へ縮退）。
+	agent := w.registry.Resolve(in.Provider)
 	gateway := w.gatewayFactory(in.UserID, in.AgentID)
 
 	steps := []DiscoverStep{}
@@ -84,7 +87,7 @@ func (w *RunDiscoverAgentWorkflow) Execute(ctx context.Context, in RunDiscoverAg
 		if toolStep > 1 {
 			contextMessages = buildRunContextMessages(toolCalls, listings)
 		}
-		plan, err := w.planner.PlanTool(ctx, agentsapp.PlanDiscoverToolInput{
+		plan, err := agent.Planner.PlanTool(ctx, agentsapp.PlanDiscoverToolInput{
 			UserMessage: message,
 			Messages:    contextMessages,
 		})
@@ -132,7 +135,7 @@ func (w *RunDiscoverAgentWorkflow) Execute(ctx context.Context, in RunDiscoverAg
 			"MCP tool "+plan.ToolName+" completed", "COMPLETED", plan.ToolName))
 	}
 
-	reply, err := w.responder.BuildReply(ctx, agentsapp.BuildDiscoverReplyInput{
+	reply, err := agent.Responder.BuildReply(ctx, agentsapp.BuildDiscoverReplyInput{
 		UserMessage: message,
 		Messages:    in.Messages,
 		Listings:    toDiscoverListings(listings),

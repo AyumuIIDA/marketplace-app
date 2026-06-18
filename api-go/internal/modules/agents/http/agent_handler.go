@@ -41,6 +41,7 @@ type runDiscoverRequest struct {
 	AgentID  *string              `json:"agentId" validate:"omitempty,min=1"`
 	Message  string               `json:"message" validate:"required,min=1,max=2000"`
 	Messages []runDiscoverMessage `json:"messages" validate:"omitempty,max=12,dive"`
+	Provider string               `json:"provider" validate:"omitempty,oneof=gemini openai"`
 }
 
 func (deps Deps) handleRun(w http.ResponseWriter, r *http.Request) {
@@ -71,6 +72,7 @@ func (deps Deps) handleRun(w http.ResponseWriter, r *http.Request) {
 		AgentID:  agentID,
 		Message:  strings.TrimSpace(body.Message),
 		Messages: messages,
+		Provider: body.Provider,
 	})
 	if err != nil {
 		httpinterface.WriteError(w, r, err)
