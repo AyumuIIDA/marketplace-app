@@ -6,10 +6,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/outarc/marketplace/api-go/internal/interface/http"
-	ordersapp "github.com/outarc/marketplace/api-go/internal/modules/orders/application"
-	ordersdomain "github.com/outarc/marketplace/api-go/internal/modules/orders/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/interface/http"
+	ordersapp "marketplace/api-go/internal/modules/orders/application"
+	ordersdomain "marketplace/api-go/internal/modules/orders/domain"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // Deps は注文HTTPの依存（UseCase群）。

@@ -6,8 +6,8 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 
-	aiapp "github.com/outarc/marketplace/api-go/internal/modules/aiassistance/application"
-	listingsapp "github.com/outarc/marketplace/api-go/internal/modules/listings/application"
+	aiapp "marketplace/api-go/internal/modules/aiassistance/application"
+	listingsapp "marketplace/api-go/internal/modules/listings/application"
 )
 
 // CompareListingsWorkflow は対象出品を並列取得し、AIで比較する（listings + ai-assistance）。

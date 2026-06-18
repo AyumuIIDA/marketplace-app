@@ -3,8 +3,8 @@ package signaturesinfra
 import (
 	"context"
 
-	signaturesapp "github.com/outarc/marketplace/api-go/internal/modules/signatures/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	signaturesapp "marketplace/api-go/internal/modules/signatures/application"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // 署名/World ID が未設定の環境でも他機能の起動を妨げないためのフォールバック実装。

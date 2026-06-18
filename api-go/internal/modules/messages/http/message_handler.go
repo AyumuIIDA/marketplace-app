@@ -8,11 +8,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/outarc/marketplace/api-go/internal/app/workflows"
-	httpinterface "github.com/outarc/marketplace/api-go/internal/interface/http"
-	messagesapp "github.com/outarc/marketplace/api-go/internal/modules/messages/application"
-	messagesdomain "github.com/outarc/marketplace/api-go/internal/modules/messages/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/app/workflows"
+	httpinterface "marketplace/api-go/internal/interface/http"
+	messagesapp "marketplace/api-go/internal/modules/messages/application"
+	messagesdomain "marketplace/api-go/internal/modules/messages/domain"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // Deps はDM HTTPの依存。send/list は跨moduleworkflow、hide は単一moduleUseCase。

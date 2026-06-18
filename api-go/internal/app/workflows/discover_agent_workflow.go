@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/outarc/marketplace/api-go/internal/interface/mcp/mcpgateway"
-	agentsapp "github.com/outarc/marketplace/api-go/internal/modules/agents/application"
-	listingsapp "github.com/outarc/marketplace/api-go/internal/modules/listings/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/interface/mcp/mcpgateway"
+	agentsapp "marketplace/api-go/internal/modules/agents/application"
+	listingsapp "marketplace/api-go/internal/modules/listings/application"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // maxDiscoverToolSteps は plan→tool_call ループの上限（無限ループ/暴走防止）。

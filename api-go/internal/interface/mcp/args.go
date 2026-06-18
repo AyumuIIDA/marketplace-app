@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	signaturesapp "github.com/outarc/marketplace/api-go/internal/modules/signatures/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	signaturesapp "marketplace/api-go/internal/modules/signatures/application"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // toIdKit は args["idKitResult"](ネストobject)を IdKitResult へ再構築する。

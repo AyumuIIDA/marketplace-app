@@ -708,7 +708,7 @@ const file_recommendation_v1_recommendation_proto_rawDesc = "" +
 	"\fSimilarItems\x12&.recommendation.v1.SimilarItemsRequest\x1a!.recommendation.v1.SearchResponse\x12_\n" +
 	"\fIndexListing\x12&.recommendation.v1.IndexListingRequest\x1a'.recommendation.v1.IndexListingResponse\x12b\n" +
 	"\rDeleteListing\x12'.recommendation.v1.DeleteListingRequest\x1a(.recommendation.v1.DeleteListingResponse\x12\\\n" +
-	"\vHealthCheck\x12%.recommendation.v1.HealthCheckRequest\x1a&.recommendation.v1.HealthCheckResponseBmZkgithub.com/outarc/marketplace/api-go/internal/modules/recommendation/gen/recommendation/v1;recommendationv1b\x06proto3"
+	"\vHealthCheck\x12%.recommendation.v1.HealthCheckRequest\x1a&.recommendation.v1.HealthCheckResponseBmZkmarketplace/api-go/internal/modules/recommendation/gen/recommendation/v1;recommendationv1b\x06proto3"
 
 var (
 	file_recommendation_v1_recommendation_proto_rawDescOnce sync.Once

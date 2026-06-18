@@ -3,7 +3,7 @@ package recommendationinfra
 import (
 	"context"
 
-	recommendationapp "github.com/outarc/marketplace/api-go/internal/modules/recommendation/application"
+	recommendationapp "marketplace/api-go/internal/modules/recommendation/application"
 )
 
 // UnavailableVectorIndex は recommendation サービス未設定時の縮退実装。

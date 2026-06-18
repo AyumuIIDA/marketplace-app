@@ -5,10 +5,10 @@ import (
 
 	"github.com/google/uuid"
 
-	messagesapp "github.com/outarc/marketplace/api-go/internal/modules/messages/application"
-	messagesdomain "github.com/outarc/marketplace/api-go/internal/modules/messages/domain"
-	ordersapp "github.com/outarc/marketplace/api-go/internal/modules/orders/application"
-	ordersdomain "github.com/outarc/marketplace/api-go/internal/modules/orders/domain"
+	messagesapp "marketplace/api-go/internal/modules/messages/application"
+	messagesdomain "marketplace/api-go/internal/modules/messages/domain"
+	ordersapp "marketplace/api-go/internal/modules/orders/application"
+	ordersdomain "marketplace/api-go/internal/modules/orders/domain"
 )
 
 // MessageRepos は注文DM transaction内で使うtx-bound repository群。

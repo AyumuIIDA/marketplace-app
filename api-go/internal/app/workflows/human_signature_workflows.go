@@ -5,10 +5,10 @@ import (
 
 	"github.com/google/uuid"
 
-	listingsapp "github.com/outarc/marketplace/api-go/internal/modules/listings/application"
-	listingsdomain "github.com/outarc/marketplace/api-go/internal/modules/listings/domain"
-	signaturesapp "github.com/outarc/marketplace/api-go/internal/modules/signatures/application"
-	signaturesdomain "github.com/outarc/marketplace/api-go/internal/modules/signatures/domain"
+	listingsapp "marketplace/api-go/internal/modules/listings/application"
+	listingsdomain "marketplace/api-go/internal/modules/listings/domain"
+	signaturesapp "marketplace/api-go/internal/modules/signatures/application"
+	signaturesdomain "marketplace/api-go/internal/modules/signatures/domain"
 )
 
 // HumanSignatureRepos は human signature transaction内で使うtx-bound repository群。

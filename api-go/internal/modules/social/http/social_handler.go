@@ -9,10 +9,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/outarc/marketplace/api-go/internal/app/workflows"
-	httpinterface "github.com/outarc/marketplace/api-go/internal/interface/http"
-	socialapp "github.com/outarc/marketplace/api-go/internal/modules/social/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/app/workflows"
+	httpinterface "marketplace/api-go/internal/interface/http"
+	socialapp "marketplace/api-go/internal/modules/social/application"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // defaultPageLimit はいいね一覧の既定ページサイズ。

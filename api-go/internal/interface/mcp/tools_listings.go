@@ -5,9 +5,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/outarc/marketplace/api-go/internal/app/workflows"
-	listingsapp "github.com/outarc/marketplace/api-go/internal/modules/listings/application"
-	listingsdomain "github.com/outarc/marketplace/api-go/internal/modules/listings/domain"
+	"marketplace/api-go/internal/app/workflows"
+	listingsapp "marketplace/api-go/internal/modules/listings/application"
+	listingsdomain "marketplace/api-go/internal/modules/listings/domain"
 )
 
 // search_listings

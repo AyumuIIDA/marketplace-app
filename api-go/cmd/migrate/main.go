@@ -20,7 +20,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib" // database/sql 用に "pgx" driverを登録
 	"github.com/pressly/goose/v3"
 
-	"github.com/outarc/marketplace/api-go/internal/db"
+	"marketplace/api-go/internal/db"
 )
 
 func main() {

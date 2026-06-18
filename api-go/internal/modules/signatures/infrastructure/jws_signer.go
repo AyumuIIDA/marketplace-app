@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"strings"
 
-	signaturesapp "github.com/outarc/marketplace/api-go/internal/modules/signatures/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	signaturesapp "marketplace/api-go/internal/modules/signatures/application"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // JwsHumanSignatureSigner はHuman SignatureをJWS(HS256, compact serialization)で署名する。

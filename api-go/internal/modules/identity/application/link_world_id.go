@@ -6,11 +6,11 @@ import (
 
 	"github.com/google/uuid"
 
-	identitydomain "github.com/outarc/marketplace/api-go/internal/modules/identity/domain"
-	signaturesapp "github.com/outarc/marketplace/api-go/internal/modules/signatures/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
-	"github.com/outarc/marketplace/api-go/internal/shared/clock"
-	"github.com/outarc/marketplace/api-go/internal/shared/ids"
+	identitydomain "marketplace/api-go/internal/modules/identity/domain"
+	signaturesapp "marketplace/api-go/internal/modules/signatures/application"
+	"marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/clock"
+	"marketplace/api-go/internal/shared/ids"
 )
 
 const worldIDAccountLinkAction = "account-link"

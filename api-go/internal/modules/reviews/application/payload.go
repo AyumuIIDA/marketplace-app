@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	reviewsdomain "github.com/outarc/marketplace/api-go/internal/modules/reviews/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	reviewsdomain "marketplace/api-go/internal/modules/reviews/domain"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // ReviewSignaturePayload は署名対象の正準表現（キー順固定）。

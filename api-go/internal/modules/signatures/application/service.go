@@ -6,10 +6,10 @@ import (
 
 	"github.com/google/uuid"
 
-	signaturesdomain "github.com/outarc/marketplace/api-go/internal/modules/signatures/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
-	"github.com/outarc/marketplace/api-go/internal/shared/clock"
-	"github.com/outarc/marketplace/api-go/internal/shared/ids"
+	signaturesdomain "marketplace/api-go/internal/modules/signatures/domain"
+	"marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/clock"
+	"marketplace/api-go/internal/shared/ids"
 )
 
 // SignatureRepos は署名transaction内で使うtx-bound repository群。

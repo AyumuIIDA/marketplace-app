@@ -8,10 +8,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/outarc/marketplace/api-go/internal/app/workflows"
-	httpinterface "github.com/outarc/marketplace/api-go/internal/interface/http"
-	recommendationapp "github.com/outarc/marketplace/api-go/internal/modules/recommendation/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/app/workflows"
+	httpinterface "marketplace/api-go/internal/interface/http"
+	recommendationapp "marketplace/api-go/internal/modules/recommendation/application"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // defaultTopK は limit 未指定時の近傍件数。

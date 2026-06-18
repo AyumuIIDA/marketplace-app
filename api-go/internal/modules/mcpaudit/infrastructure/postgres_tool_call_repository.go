@@ -5,11 +5,11 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/outarc/marketplace/api-go/internal/db/pgerr"
-	"github.com/outarc/marketplace/api-go/internal/db/sqlc"
-	mcpauditdomain "github.com/outarc/marketplace/api-go/internal/modules/mcpaudit/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
-	"github.com/outarc/marketplace/api-go/internal/shared/pgconv"
+	"marketplace/api-go/internal/db/pgerr"
+	"marketplace/api-go/internal/db/sqlc"
+	mcpauditdomain "marketplace/api-go/internal/modules/mcpaudit/domain"
+	"marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/pgconv"
 )
 
 type PostgresMcpToolCallRepository struct {

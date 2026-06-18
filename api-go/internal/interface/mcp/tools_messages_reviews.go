@@ -3,7 +3,7 @@ package mcpinterface
 import (
 	"context"
 
-	"github.com/outarc/marketplace/api-go/internal/app/workflows"
+	"marketplace/api-go/internal/app/workflows"
 )
 
 // send_message

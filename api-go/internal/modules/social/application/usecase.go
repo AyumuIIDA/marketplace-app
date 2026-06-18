@@ -5,8 +5,8 @@ import (
 
 	"github.com/google/uuid"
 
-	socialdomain "github.com/outarc/marketplace/api-go/internal/modules/social/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	socialdomain "marketplace/api-go/internal/modules/social/domain"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // --- ListingLike（商品いいね） ---

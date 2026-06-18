@@ -7,11 +7,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/outarc/marketplace/api-go/internal/app/workflows"
-	httpinterface "github.com/outarc/marketplace/api-go/internal/interface/http"
-	agentsapp "github.com/outarc/marketplace/api-go/internal/modules/agents/application"
-	agentsdomain "github.com/outarc/marketplace/api-go/internal/modules/agents/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/app/workflows"
+	httpinterface "marketplace/api-go/internal/interface/http"
+	agentsapp "marketplace/api-go/internal/modules/agents/application"
+	agentsdomain "marketplace/api-go/internal/modules/agents/domain"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // Deps はエージェントHTTPの依存。runs(エージェント実行)はMCP gateway依存の orchestration workflow。

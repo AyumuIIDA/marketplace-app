@@ -7,9 +7,9 @@ import (
 
 	"github.com/google/uuid"
 
-	identitydomain "github.com/outarc/marketplace/api-go/internal/modules/identity/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
-	"github.com/outarc/marketplace/api-go/internal/shared/clock"
+	identitydomain "marketplace/api-go/internal/modules/identity/domain"
+	"marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/clock"
 )
 
 // UserView は現在ユーザーの表現（GET/PUT /me 応答）。

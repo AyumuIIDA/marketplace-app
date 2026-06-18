@@ -8,11 +8,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/outarc/marketplace/api-go/internal/db/pgerr"
-	"github.com/outarc/marketplace/api-go/internal/db/sqlc"
-	reviewsdomain "github.com/outarc/marketplace/api-go/internal/modules/reviews/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
-	"github.com/outarc/marketplace/api-go/internal/shared/pgconv"
+	"marketplace/api-go/internal/db/pgerr"
+	"marketplace/api-go/internal/db/sqlc"
+	reviewsdomain "marketplace/api-go/internal/modules/reviews/domain"
+	"marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/pgconv"
 )
 
 // PostgresReviewRepository はReviewRepositoryのpostgres実装。

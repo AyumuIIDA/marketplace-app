@@ -8,16 +8,16 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/outarc/marketplace/api-go/internal/app/workflows"
-	mcpinterface "github.com/outarc/marketplace/api-go/internal/interface/mcp"
-	"github.com/outarc/marketplace/api-go/internal/interface/mcp/mcpgateway"
-	agentsinfra "github.com/outarc/marketplace/api-go/internal/modules/agents/infrastructure"
-	listingsapp "github.com/outarc/marketplace/api-go/internal/modules/listings/application"
-	listingsdomain "github.com/outarc/marketplace/api-go/internal/modules/listings/domain"
-	mcpauditapp "github.com/outarc/marketplace/api-go/internal/modules/mcpaudit/application"
-	mcpauditdomain "github.com/outarc/marketplace/api-go/internal/modules/mcpaudit/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/clock"
-	"github.com/outarc/marketplace/api-go/internal/shared/ids"
+	"marketplace/api-go/internal/app/workflows"
+	mcpinterface "marketplace/api-go/internal/interface/mcp"
+	"marketplace/api-go/internal/interface/mcp/mcpgateway"
+	agentsinfra "marketplace/api-go/internal/modules/agents/infrastructure"
+	listingsapp "marketplace/api-go/internal/modules/listings/application"
+	listingsdomain "marketplace/api-go/internal/modules/listings/domain"
+	mcpauditapp "marketplace/api-go/internal/modules/mcpaudit/application"
+	mcpauditdomain "marketplace/api-go/internal/modules/mcpaudit/domain"
+	"marketplace/api-go/internal/shared/clock"
+	"marketplace/api-go/internal/shared/ids"
 )
 
 // --- test doubles ---

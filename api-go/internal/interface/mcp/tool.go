@@ -5,7 +5,7 @@ package mcpinterface
 import (
 	"context"
 
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // ToolContext はtool実行の主体（BFFが確定したuserId, 任意のagentId）。

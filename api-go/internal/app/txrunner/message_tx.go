@@ -6,10 +6,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/outarc/marketplace/api-go/internal/app/workflows"
-	"github.com/outarc/marketplace/api-go/internal/db"
-	messagesinfra "github.com/outarc/marketplace/api-go/internal/modules/messages/infrastructure"
-	ordersinfra "github.com/outarc/marketplace/api-go/internal/modules/orders/infrastructure"
+	"marketplace/api-go/internal/app/workflows"
+	"marketplace/api-go/internal/db"
+	messagesinfra "marketplace/api-go/internal/modules/messages/infrastructure"
+	ordersinfra "marketplace/api-go/internal/modules/orders/infrastructure"
 )
 
 // MessageTxRunner は db.InTx で1 transactionを張り、orders/messages のtx-bound repoを束ねて渡す。

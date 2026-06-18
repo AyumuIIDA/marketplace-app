@@ -8,9 +8,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/outarc/marketplace/api-go/internal/db/pgerr"
-	"github.com/outarc/marketplace/api-go/internal/db/sqlc"
-	socialapp "github.com/outarc/marketplace/api-go/internal/modules/social/application"
+	"marketplace/api-go/internal/db/pgerr"
+	"marketplace/api-go/internal/db/sqlc"
+	socialapp "marketplace/api-go/internal/modules/social/application"
 )
 
 // PostgresSocialRepository は social.Repository のpostgres実装。

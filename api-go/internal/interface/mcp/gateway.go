@@ -6,7 +6,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/outarc/marketplace/api-go/internal/interface/mcp/mcpgateway"
+	"marketplace/api-go/internal/interface/mcp/mcpgateway"
 )
 
 // InProcessMcpToolGateway は同一プロセス内でMCP client↔server をin-memory transportで結び、

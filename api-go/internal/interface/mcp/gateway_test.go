@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/outarc/marketplace/api-go/internal/interface/mcp/mcpgateway"
+	"marketplace/api-go/internal/interface/mcp/mcpgateway"
 )
 
 func TestInProcessGateway_PresentDiscoverOutput_Succeeds(t *testing.T) {

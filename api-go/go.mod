@@ -1,4 +1,4 @@
-module github.com/outarc/marketplace/api-go
+module marketplace/api-go
 
 go 1.25.0
 

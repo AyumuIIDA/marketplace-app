@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	agentsapp "github.com/outarc/marketplace/api-go/internal/modules/agents/application"
+	agentsapp "marketplace/api-go/internal/modules/agents/application"
 )
 
 // discover planner/responder の LLMプロンプト。gemini/openai で共有する（TS版と同一方針）。

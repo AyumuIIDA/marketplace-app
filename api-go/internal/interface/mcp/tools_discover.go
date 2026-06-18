@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // present_discover_output は discover agent の最終出力(assistantMessage + listingIds)を

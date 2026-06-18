@@ -9,8 +9,8 @@ import (
 	"github.com/openai/openai-go/option"
 	"github.com/openai/openai-go/responses"
 
-	agentsapp "github.com/outarc/marketplace/api-go/internal/modules/agents/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	agentsapp "marketplace/api-go/internal/modules/agents/application"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // OpenAI(Responses API) 版 discover planner/responder。

@@ -9,11 +9,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/outarc/marketplace/api-go/internal/db/pgerr"
-	"github.com/outarc/marketplace/api-go/internal/db/sqlc"
-	ordersdomain "github.com/outarc/marketplace/api-go/internal/modules/orders/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
-	"github.com/outarc/marketplace/api-go/internal/shared/pgconv"
+	"marketplace/api-go/internal/db/pgerr"
+	"marketplace/api-go/internal/db/sqlc"
+	ordersdomain "marketplace/api-go/internal/modules/orders/domain"
+	"marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/pgconv"
 )
 
 // PostgresOrderRepository はOrderRepositoryのpostgres実装。

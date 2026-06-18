@@ -8,8 +8,8 @@ import (
 
 	"google.golang.org/genai"
 
-	agentsapp "github.com/outarc/marketplace/api-go/internal/modules/agents/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	agentsapp "marketplace/api-go/internal/modules/agents/application"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // Vertex AI(Gemini) 版 discover planner/responder。認証はADC（Cloud Run SA）。

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	agentsapp "github.com/outarc/marketplace/api-go/internal/modules/agents/application"
+	agentsapp "marketplace/api-go/internal/modules/agents/application"
 )
 
 // 決定論版 discover planner/responder。LLM未設定（provider=deterministic）でも動く規則ベース実装。

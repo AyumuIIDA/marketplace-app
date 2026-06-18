@@ -4,7 +4,7 @@ package listingsapp
 import (
 	"time"
 
-	listingsdomain "github.com/outarc/marketplace/api-go/internal/modules/listings/domain"
+	listingsdomain "marketplace/api-go/internal/modules/listings/domain"
 )
 
 // ImageView は応答中の画像表現。
