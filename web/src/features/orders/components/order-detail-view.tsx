@@ -1,14 +1,19 @@
 import { getTranslations } from "next-intl/server";
 
 import { ActionButton } from "../../../components/ui/action-button";
+import { Avatar } from "../../../components/ui/avatar";
+import { BackLink } from "../../../components/ui/back-link";
 import { DetailRow } from "../../../components/ui/detail-row";
 import { FormField, textareaClassName } from "../../../components/ui/form-field";
 import { GlassPanel } from "../../../components/ui/glass-panel";
 import { StatePanel } from "../../../components/ui/state-panel";
 import { StatusBadge } from "../../../components/ui/status-badge";
 import type { CurrentUser } from "../../../lib/api/current-user.api";
+import { getListing } from "../../../lib/api/listings.api";
 import type { Message } from "../../../lib/api/messages.api";
 import type { Order } from "../../../lib/api/orders.api";
+import { getSellerSummary } from "../../../lib/api/sellers.api";
+import { shortRef } from "../../../lib/format/id";
 import type { Review } from "../../../lib/api/reviews.api";
 import { SubmitReviewButton } from "../../reviews/components/submit-review-button";
 import {
@@ -29,7 +34,7 @@ export async function OrderDetailView({ currentUser, messages, order, reviews }:
 
   if (order === undefined) {
     return (
-      <StatePanel actionHref="/orders" actionLabel={t("backAction")} title={t("unavailableTitle")}>
+      <StatePanel actionHref="/me" actionLabel={t("backAction")} title={t("unavailableTitle")}>
         {t("unavailableBody")}
       </StatePanel>
     );
@@ -41,22 +46,67 @@ export async function OrderDetailView({ currentUser, messages, order, reviews }:
   const canReceive = isBuyer && order.status === "SHIPPED";
   const canReview = currentUser !== undefined && (order.status === "RECEIVED" || order.status === "COMPLETED");
 
+  // 生IDの代わりに、商品（タイトル/写真）と取引相手（表示名）を見せる。
+  const listing = await getListing(order.listingId);
+  const counterpartyId = isSeller ? order.buyerId : order.sellerId;
+  const counterparty = await getSellerSummary(counterpartyId);
+  const counterpartyLabel = isSeller ? t("buyer") : t("seller");
+
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+    <div className="space-y-5">
+      <BackLink href="/me" label={t("backAction")} />
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
       <div className="space-y-5">
         <GlassPanel className="p-6">
-          <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
             <StatusBadge tone={order.status === "COMPLETED" ? "good" : "neutral"}>{order.status}</StatusBadge>
-            <span className="font-mono text-xs text-ink-faint">{order.orderId}</span>
+            <span className="font-mono text-xs text-ink-faint">{shortRef(order.orderId)}</span>
           </div>
-          <h2 className="text-2xl font-bold text-ink">{t("heading")}</h2>
-          <dl className="mt-6 rounded-md border border-line bg-paper p-4">
-            <DetailRow label={t("price")} value={`¥${order.price.toLocaleString("ja-JP")}`} />
-            <DetailRow label={t("listing")} mono value={order.listingId} />
-            <DetailRow label={t("buyer")} mono value={order.buyerId} />
-            <DetailRow label={t("seller")} mono value={order.sellerId} />
+          <h2 className="sr-only">{t("heading")}</h2>
+          <a
+            className="flex items-center gap-3 rounded-md border border-line bg-paper p-3 transition-colors hover:border-ink/30"
+            href={`/listings/${order.listingId}`}
+          >
+            {listing?.images?.[0] !== undefined ? (
+              // 商品画像はブラウザが storage を直接読む公開アセット
+              <img alt="" className="size-16 shrink-0 rounded-md object-cover" src={listing.images[0].url} />
+            ) : (
+              <span className="grid size-16 shrink-0 place-items-center rounded-md bg-surface font-mono text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+                no photo
+              </span>
+            )}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold text-ink">{listing?.title ?? t("item")}</span>
+              <span className="mt-0.5 block font-mono text-sm text-ink-soft">
+                ¥{order.price.toLocaleString("ja-JP")}
+              </span>
+            </span>
+            <span className="shrink-0 text-xs font-semibold text-seal-strong">{t("viewListing")} →</span>
+          </a>
+          <dl className="mt-4 rounded-md border border-line bg-paper p-4">
+            <div className="flex items-center justify-between gap-4 border-b border-line py-3">
+              <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-faint">
+                {counterpartyLabel}
+              </dt>
+              <dd>
+                <a className="flex items-center gap-2 hover:underline" href={`/sellers/${counterpartyId}`}>
+                  <Avatar
+                    alt=""
+                    className="size-6"
+                    seed={counterparty.displayName || counterparty.handle}
+                    src={counterparty.avatarUrl}
+                  />
+                  <span className="text-sm font-medium text-ink">{counterparty.displayName}</span>
+                </a>
+              </dd>
+            </div>
             <DetailRow label={t("created")} value={formatDate(order.createdAt)} />
           </dl>
+          <div className="mt-4">
+            <ActionButton href={`/messages/${counterpartyId}`} variant="secondary">
+              {t("sendMessage")}
+            </ActionButton>
+          </div>
         </GlassPanel>
 
         <GlassPanel className="p-5">
@@ -66,8 +116,12 @@ export async function OrderDetailView({ currentUser, messages, order, reviews }:
             {messages.map((message) => (
               <div className="rounded-md border border-line bg-paper p-4" key={message.messageId}>
                 <div className="mb-2 flex items-center justify-between gap-3 text-xs text-ink-faint">
-                  <span className={message.senderId === currentUser?.userId ? "font-semibold text-ink" : "font-mono"}>
-                    {message.senderId === currentUser?.userId ? t("you") : message.senderId}
+                  <span className={message.senderId === currentUser?.userId ? "font-semibold text-ink" : "font-medium text-ink-soft"}>
+                    {message.senderId === currentUser?.userId
+                      ? t("you")
+                      : message.senderId === counterpartyId
+                        ? counterparty.displayName
+                        : shortRef(message.senderId)}
                   </span>
                   <span>{formatDate(message.createdAt)}</span>
                 </div>
@@ -145,6 +199,7 @@ export async function OrderDetailView({ currentUser, messages, order, reviews }:
             ))}
           </div>
         </GlassPanel>
+      </div>
       </div>
     </div>
   );
