@@ -3,9 +3,9 @@ package mcpinterface
 import (
 	"context"
 
-	"github.com/outarc/marketplace/api-go/internal/app/workflows"
-	ordersapp "github.com/outarc/marketplace/api-go/internal/modules/orders/application"
-	ordersdomain "github.com/outarc/marketplace/api-go/internal/modules/orders/domain"
+	"marketplace/api-go/internal/app/workflows"
+	ordersapp "marketplace/api-go/internal/modules/orders/application"
+	ordersdomain "marketplace/api-go/internal/modules/orders/domain"
 )
 
 // purchase_item

@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/outarc/marketplace/api-go/internal/app"
+	"marketplace/api-go/internal/app"
 )
 
 func main() {

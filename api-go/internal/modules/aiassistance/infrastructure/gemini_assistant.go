@@ -12,8 +12,8 @@ import (
 
 	"google.golang.org/genai"
 
-	aiapp "github.com/outarc/marketplace/api-go/internal/modules/aiassistance/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	aiapp "marketplace/api-go/internal/modules/aiassistance/application"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // GeminiAiAssistant はVertex AI(Gemini)で構造化JSONを生成するadapter。

@@ -10,12 +10,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/outarc/marketplace/api-go/internal/app/workflows"
-	"github.com/outarc/marketplace/api-go/internal/interface/http"
-	listingsapp "github.com/outarc/marketplace/api-go/internal/modules/listings/application"
-	listingsdomain "github.com/outarc/marketplace/api-go/internal/modules/listings/domain"
-	signaturesapp "github.com/outarc/marketplace/api-go/internal/modules/signatures/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/app/workflows"
+	"marketplace/api-go/internal/interface/http"
+	listingsapp "marketplace/api-go/internal/modules/listings/application"
+	listingsdomain "marketplace/api-go/internal/modules/listings/domain"
+	signaturesapp "marketplace/api-go/internal/modules/signatures/application"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // maxImageBytes はアップロード受け入れ上限（15MB）。縮小前の受信上限。
@@ -23,35 +23,41 @@ const maxImageBytes = 15 * 1024 * 1024
 
 // Deps は出品HTTPの依存（UseCase群）。publish/update(署名付き)・purchase は後続incrementで追加。
 type Deps struct {
-	Create      *listingsapp.CreateListingUseCase
-	UploadImage *listingsapp.UploadListingImageUseCase
-	Get         *listingsapp.GetListingUseCase
-	Search      *listingsapp.SearchListingsUseCase
-	UpdateDraft *listingsapp.UpdateDraftListingUseCase
-	Hide        *listingsapp.HideListingUseCase
-	Purchase    *workflows.PurchaseItemWorkflow
-	Publish     *workflows.PublishListingWithHumanSignatureWorkflow
-	Update      *workflows.UpdateListingWithHumanSignatureWorkflow
+	Create          *listingsapp.CreateListingUseCase
+	UploadImage     *listingsapp.UploadListingImageUseCase
+	Get             *listingsapp.GetListingUseCase
+	Search          *listingsapp.SearchListingsUseCase
+	UpdateDraft     *listingsapp.UpdateDraftListingUseCase
+	Hide            *listingsapp.HideListingUseCase
+	Purchase        *workflows.PurchaseItemWorkflow
+	Publish         *workflows.PublishListingWithHumanSignatureWorkflow
+	PublishUnsigned *listingsapp.PublishListingUseCase
+	Update          *workflows.UpdateListingWithHumanSignatureWorkflow
 }
 
-// RegisterRoutes は /listings 系を認証済みグループへ登録する。
+// RegisterRoutes は認証必須の /listings 系を登録する。公開GET（一覧/詳細）は RegisterPublicRoutes が担う。
+// 公開GETと同一prefixのため r.Route(Mount)は使わずinline登録し、chiのMount衝突を避ける。
 func RegisterRoutes(r chi.Router, deps Deps) {
-	r.Route("/listings", func(lr chi.Router) {
-		lr.Post("/", deps.handleCreate)
-		lr.Post("/images", deps.handleUploadImage)
-		lr.Get("/", deps.handleSearch)
-		lr.Get("/{listingId}", deps.handleGet)
-		lr.Patch("/{listingId}/draft", deps.handleUpdateDraft)
-		lr.Patch("/{listingId}", deps.handleUpdate)
-		lr.Post("/{listingId}/hide", deps.handleHide)
-		lr.Post("/{listingId}/publish", deps.handlePublish)
-		lr.Post("/{listingId}/purchase", deps.handlePurchase)
-	})
+	r.Post("/listings", deps.handleCreate)
+	r.Post("/listings/images", deps.handleUploadImage)
+	r.Patch("/listings/{listingId}/draft", deps.handleUpdateDraft)
+	r.Patch("/listings/{listingId}", deps.handleUpdate)
+	r.Post("/listings/{listingId}/hide", deps.handleHide)
+	r.Post("/listings/{listingId}/publish", deps.handlePublish)
+	r.Post("/listings/{listingId}/purchase", deps.handlePurchase)
+}
+
+// RegisterPublicRoutes は認証任意の公開閲覧GET（商品一覧・商品詳細）を登録する。
+// 呼び出し側は OptionalAuth グループ内で呼ぶこと（匿名は PUBLISHED のみ閲覧可）。
+func RegisterPublicRoutes(r chi.Router, deps Deps) {
+	r.Get("/listings", deps.handleSearch)
+	r.Get("/listings/{listingId}", deps.handleGet)
 }
 
 type publishRequest struct {
-	IdKitResult         signaturesapp.IdKitResult `json:"idKitResult"`
-	ExpectedEnvironment *string                   `json:"expectedEnvironment"`
+	// idKitResult は任意。あれば人間署名付きで公開（高評価の印）、なければlogin のみで公開。
+	IdKitResult         *signaturesapp.IdKitResult `json:"idKitResult"`
+	ExpectedEnvironment *string                    `json:"expectedEnvironment"`
 }
 
 func (deps Deps) handlePublish(w http.ResponseWriter, r *http.Request) {
@@ -70,10 +76,25 @@ func (deps Deps) handlePublish(w http.ResponseWriter, r *http.Request) {
 		httpinterface.WriteError(w, r, err)
 		return
 	}
+
+	// idKitResult が無ければ login のみで公開（署名なし経路）。
+	if body.IdKitResult == nil {
+		out, err := deps.PublishUnsigned.Execute(r.Context(), listingsapp.PublishListingInput{
+			ListingID: listingID,
+			SellerID:  sellerID,
+		})
+		if err != nil {
+			httpinterface.WriteError(w, r, err)
+			return
+		}
+		httpinterface.WriteJSON(w, http.StatusOK, out)
+		return
+	}
+
 	out, err := deps.Publish.Execute(r.Context(), workflows.PublishListingInput{
 		ListingID:           listingID,
 		SellerID:            sellerID,
-		IdKit:               body.IdKitResult,
+		IdKit:               *body.IdKitResult,
 		ExpectedEnvironment: body.ExpectedEnvironment,
 	})
 	if err != nil {
@@ -251,7 +272,8 @@ func (deps Deps) handleUploadImage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (deps Deps) handleSearch(w http.ResponseWriter, r *http.Request) {
-	sellerID, err := httpinterface.CurrentUserID(r)
+	// 認証任意。匿名はPUBLISHEDのみ閲覧、mineは無効。
+	currentUserID, err := httpinterface.OptionalCurrentUserID(r)
 	if err != nil {
 		httpinterface.WriteError(w, r, err)
 		return
@@ -277,11 +299,18 @@ func (deps Deps) handleSearch(w http.ResponseWriter, r *http.Request) {
 		httpinterface.WriteError(w, r, err)
 		return
 	}
+	offset, err := optionalNonNegativeInt(q.Get("offset"), "offset")
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
 	mine, err := optionalMine(q.Get("mine"))
 	if err != nil {
 		httpinterface.WriteError(w, r, err)
 		return
 	}
+	// 匿名は mine 無効（自分の下書きは見せない）。
+	mineForSeller := mine && currentUserID != nil
 
 	in := listingsapp.SearchListingsInput{
 		Keyword:                keyword,
@@ -290,11 +319,11 @@ func (deps Deps) handleSearch(w http.ResponseWriter, r *http.Request) {
 		MinPrice:               minPrice,
 		MaxPrice:               maxPrice,
 		Limit:                  limit,
-		IncludeDraftsForSeller: mine,
+		Offset:                 offset,
+		IncludeDraftsForSeller: mineForSeller,
 	}
-	if mine {
-		sid := sellerID
-		in.SellerID = &sid
+	if mineForSeller {
+		in.SellerID = currentUserID
 	}
 
 	out, err := deps.Search.Execute(r.Context(), in)
@@ -306,7 +335,8 @@ func (deps Deps) handleSearch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (deps Deps) handleGet(w http.ResponseWriter, r *http.Request) {
-	requesterID, err := httpinterface.CurrentUserID(r)
+	// 認証任意。匿名はPUBLISHEDのみ閲覧可（下書き/HIDDENは出品者のみ）。
+	requesterID, err := httpinterface.OptionalCurrentUserID(r)
 	if err != nil {
 		httpinterface.WriteError(w, r, err)
 		return
@@ -316,8 +346,7 @@ func (deps Deps) handleGet(w http.ResponseWriter, r *http.Request) {
 		httpinterface.WriteError(w, r, err)
 		return
 	}
-	rid := requesterID
-	out, err := deps.Get.Execute(r.Context(), listingID, &rid)
+	out, err := deps.Get.Execute(r.Context(), listingID, requesterID)
 	if err != nil {
 		httpinterface.WriteError(w, r, err)
 		return
@@ -423,6 +452,20 @@ func optionalPositiveInt(s, field string) (*int32, error) {
 	if err != nil || v <= 0 {
 		return nil, apperr.Validation(field+" must be a positive integer.",
 			apperr.FieldError{Field: field, Reason: "positive_int"})
+	}
+	n := int32(v)
+	return &n, nil
+}
+
+// optionalNonNegativeInt は0以上の整数クエリ（例: offset）を解釈する。未指定→nil。
+func optionalNonNegativeInt(s, field string) (*int32, error) {
+	if strings.TrimSpace(s) == "" {
+		return nil, nil
+	}
+	v, err := strconv.Atoi(s)
+	if err != nil || v < 0 {
+		return nil, apperr.Validation(field+" must be a non-negative integer.",
+			apperr.FieldError{Field: field, Reason: "non_negative_int"})
 	}
 	n := int32(v)
 	return &n, nil

@@ -8,12 +8,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/outarc/marketplace/api-go/internal/app/workflows"
-	httpinterface "github.com/outarc/marketplace/api-go/internal/interface/http"
-	reviewsapp "github.com/outarc/marketplace/api-go/internal/modules/reviews/application"
-	reviewsdomain "github.com/outarc/marketplace/api-go/internal/modules/reviews/domain"
-	signaturesapp "github.com/outarc/marketplace/api-go/internal/modules/signatures/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/app/workflows"
+	httpinterface "marketplace/api-go/internal/interface/http"
+	reviewsapp "marketplace/api-go/internal/modules/reviews/application"
+	reviewsdomain "marketplace/api-go/internal/modules/reviews/domain"
+	signaturesapp "marketplace/api-go/internal/modules/signatures/application"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // Deps はレビューHTTPの依存。

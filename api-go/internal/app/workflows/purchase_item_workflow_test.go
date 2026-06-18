@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	listingsapp "github.com/outarc/marketplace/api-go/internal/modules/listings/application"
+	listingsapp "marketplace/api-go/internal/modules/listings/application"
 )
 
 // confirmed=false の場合、transactionを開かず確認要求のみ返す。

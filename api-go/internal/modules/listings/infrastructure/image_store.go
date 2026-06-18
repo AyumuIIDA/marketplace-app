@@ -10,9 +10,9 @@ import (
 
 	"github.com/disintegration/imaging"
 
-	listingsapp "github.com/outarc/marketplace/api-go/internal/modules/listings/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
-	sharedstorage "github.com/outarc/marketplace/api-go/internal/shared/storage"
+	listingsapp "marketplace/api-go/internal/modules/listings/application"
+	"marketplace/api-go/internal/shared/apperr"
+	sharedstorage "marketplace/api-go/internal/shared/storage"
 )
 
 // maxDimension はアップロード画像の最大辺。seedと揃え解像度/容量を抑える。

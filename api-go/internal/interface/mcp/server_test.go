@@ -7,10 +7,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	mcpauditapp "github.com/outarc/marketplace/api-go/internal/modules/mcpaudit/application"
-	mcpauditdomain "github.com/outarc/marketplace/api-go/internal/modules/mcpaudit/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/clock"
-	"github.com/outarc/marketplace/api-go/internal/shared/ids"
+	mcpauditapp "marketplace/api-go/internal/modules/mcpaudit/application"
+	mcpauditdomain "marketplace/api-go/internal/modules/mcpaudit/domain"
+	"marketplace/api-go/internal/shared/clock"
+	"marketplace/api-go/internal/shared/ids"
 )
 
 type countingAuditRepo struct{ saved []*mcpauditdomain.McpToolCall }

@@ -5,9 +5,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/outarc/marketplace/api-go/internal/app/workflows"
-	listingsapp "github.com/outarc/marketplace/api-go/internal/modules/listings/application"
-	listingsdomain "github.com/outarc/marketplace/api-go/internal/modules/listings/domain"
+	"marketplace/api-go/internal/app/workflows"
+	listingsapp "marketplace/api-go/internal/modules/listings/application"
+	listingsdomain "marketplace/api-go/internal/modules/listings/domain"
 )
 
 // search_listings
@@ -113,7 +113,7 @@ func (t publishListingTool) Execute(ctx context.Context, in map[string]any, tc T
 	}
 	idKit, ok := toIdKit(in)
 	if !ok {
-		return RequiresHumanSignature(map[string]any{"actionType": "LISTING_PUBLISH", "resourceType": "LISTING", "resourceId": listingID.String()}), nil
+		return RequiresHumanSignature(map[string]any{"actionType": "listing-publish", "resourceType": "LISTING", "resourceId": listingID.String()}), nil
 	}
 	sellerID, err := requireUserID(tc)
 	if err != nil {
@@ -144,7 +144,7 @@ func (t updateListingTool) Execute(ctx context.Context, in map[string]any, tc To
 	}
 	idKit, ok := toIdKit(in)
 	if !ok {
-		return RequiresHumanSignature(map[string]any{"actionType": "LISTING_UPDATE", "resourceType": "LISTING", "resourceId": listingID.String()}), nil
+		return RequiresHumanSignature(map[string]any{"actionType": "listing-update", "resourceType": "LISTING", "resourceId": listingID.String()}), nil
 	}
 	sellerID, err := requireUserID(tc)
 	if err != nil {

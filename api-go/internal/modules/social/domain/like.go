@@ -5,7 +5,7 @@ package socialdomain
 import (
 	"github.com/google/uuid"
 
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // EnsureCanLikeSeller は出品者いいねの不変条件を検証する。

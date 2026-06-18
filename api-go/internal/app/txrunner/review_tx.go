@@ -6,11 +6,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/outarc/marketplace/api-go/internal/app/workflows"
-	"github.com/outarc/marketplace/api-go/internal/db"
-	ordersinfra "github.com/outarc/marketplace/api-go/internal/modules/orders/infrastructure"
-	reviewsinfra "github.com/outarc/marketplace/api-go/internal/modules/reviews/infrastructure"
-	signaturesinfra "github.com/outarc/marketplace/api-go/internal/modules/signatures/infrastructure"
+	"marketplace/api-go/internal/app/workflows"
+	"marketplace/api-go/internal/db"
+	ordersinfra "marketplace/api-go/internal/modules/orders/infrastructure"
+	reviewsinfra "marketplace/api-go/internal/modules/reviews/infrastructure"
+	signaturesinfra "marketplace/api-go/internal/modules/signatures/infrastructure"
 )
 
 // ReviewTxRunner は db.InTx で1 transactionを張り、orders/reviews/signatures のtx-bound repoを束ねる。

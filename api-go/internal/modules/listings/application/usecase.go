@@ -5,10 +5,10 @@ import (
 
 	"github.com/google/uuid"
 
-	listingsdomain "github.com/outarc/marketplace/api-go/internal/modules/listings/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
-	"github.com/outarc/marketplace/api-go/internal/shared/clock"
-	"github.com/outarc/marketplace/api-go/internal/shared/ids"
+	listingsdomain "marketplace/api-go/internal/modules/listings/domain"
+	"marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/clock"
+	"marketplace/api-go/internal/shared/ids"
 )
 
 // --- CreateListing ---
@@ -98,6 +98,7 @@ type SearchListingsInput struct {
 	SellerID               *uuid.UUID
 	IncludeDraftsForSeller bool
 	Limit                  *int32
+	Offset                 *int32
 }
 
 type SearchListingsResult struct {
@@ -133,6 +134,7 @@ func (uc *SearchListingsUseCase) Execute(ctx context.Context, in SearchListingsI
 		Status:    status,
 		SellerID:  in.SellerID,
 		Limit:     in.Limit,
+		Offset:    in.Offset,
 	})
 	if err != nil {
 		return SearchListingsResult{}, err
@@ -219,4 +221,47 @@ func (uc *HideListingUseCase) Execute(ctx context.Context, in HideListingInput) 
 		return HideListingResult{}, err
 	}
 	return HideListingResult{ListingID: listing.ID().String(), Status: string(listing.Status())}, nil
+}
+
+// --- PublishListing (署名なし) ---
+
+type PublishListingInput struct {
+	ListingID uuid.UUID
+	SellerID  uuid.UUID
+}
+
+type PublishListingResult struct {
+	ListingID string `json:"listingId"`
+	Status    string `json:"status"`
+}
+
+// PublishListingUseCase は World ID署名なしの公開。login のみで出品可能にする経路。
+// 署名付き公開は PublishListingWithHumanSignatureWorkflow が担う。
+type PublishListingUseCase struct {
+	listings listingsdomain.ListingRepository
+	clock    clock.Clock
+}
+
+func NewPublishListingUseCase(r listingsdomain.ListingRepository, c clock.Clock) *PublishListingUseCase {
+	return &PublishListingUseCase{listings: r, clock: c}
+}
+
+func (uc *PublishListingUseCase) Execute(ctx context.Context, in PublishListingInput) (PublishListingResult, error) {
+	listing, err := uc.listings.FindByID(ctx, in.ListingID)
+	if err != nil {
+		return PublishListingResult{}, err
+	}
+	if listing == nil {
+		return PublishListingResult{}, apperr.NotFound("Listing", in.ListingID.String())
+	}
+	if listing.SellerID() != in.SellerID {
+		return PublishListingResult{}, apperr.Forbidden("Only the seller can publish this listing.")
+	}
+	if err := listing.Publish(nil, uc.clock.Now()); err != nil {
+		return PublishListingResult{}, err
+	}
+	if err := uc.listings.Save(ctx, listing); err != nil {
+		return PublishListingResult{}, err
+	}
+	return PublishListingResult{ListingID: listing.ID().String(), Status: string(listing.Status())}, nil
 }

@@ -6,9 +6,9 @@ import (
 
 	"github.com/google/uuid"
 
-	listingsapp "github.com/outarc/marketplace/api-go/internal/modules/listings/application"
-	recommendationapp "github.com/outarc/marketplace/api-go/internal/modules/recommendation/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	listingsapp "marketplace/api-go/internal/modules/listings/application"
+	recommendationapp "marketplace/api-go/internal/modules/recommendation/application"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 type fakeIndex struct {

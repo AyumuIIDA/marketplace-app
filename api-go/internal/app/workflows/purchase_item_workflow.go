@@ -8,11 +8,11 @@ import (
 
 	"github.com/google/uuid"
 
-	listingsapp "github.com/outarc/marketplace/api-go/internal/modules/listings/application"
-	listingsdomain "github.com/outarc/marketplace/api-go/internal/modules/listings/domain"
-	ordersapp "github.com/outarc/marketplace/api-go/internal/modules/orders/application"
-	ordersdomain "github.com/outarc/marketplace/api-go/internal/modules/orders/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/clock"
+	listingsapp "marketplace/api-go/internal/modules/listings/application"
+	listingsdomain "marketplace/api-go/internal/modules/listings/domain"
+	ordersapp "marketplace/api-go/internal/modules/orders/application"
+	ordersdomain "marketplace/api-go/internal/modules/orders/domain"
+	"marketplace/api-go/internal/shared/clock"
 )
 
 // PurchaseRepos は購入transaction内で使うtx-bound repository群。

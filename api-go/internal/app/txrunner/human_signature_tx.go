@@ -6,10 +6,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/outarc/marketplace/api-go/internal/app/workflows"
-	"github.com/outarc/marketplace/api-go/internal/db"
-	listingsinfra "github.com/outarc/marketplace/api-go/internal/modules/listings/infrastructure"
-	signaturesinfra "github.com/outarc/marketplace/api-go/internal/modules/signatures/infrastructure"
+	"marketplace/api-go/internal/app/workflows"
+	"marketplace/api-go/internal/db"
+	listingsinfra "marketplace/api-go/internal/modules/listings/infrastructure"
+	signaturesinfra "marketplace/api-go/internal/modules/signatures/infrastructure"
 )
 
 // HumanSignatureTxRunner は db.InTx で1 transactionを張り、listings/signatures のtx-bound repoを束ねる。

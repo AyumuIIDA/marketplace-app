@@ -10,45 +10,46 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/outarc/marketplace/api-go/internal/app/txrunner"
-	"github.com/outarc/marketplace/api-go/internal/app/workflows"
-	"github.com/outarc/marketplace/api-go/internal/db"
-	"github.com/outarc/marketplace/api-go/internal/interface/http"
-	mcpinterface "github.com/outarc/marketplace/api-go/internal/interface/mcp"
-	agentsapp "github.com/outarc/marketplace/api-go/internal/modules/agents/application"
-	agentshttp "github.com/outarc/marketplace/api-go/internal/modules/agents/http"
-	agentsinfra "github.com/outarc/marketplace/api-go/internal/modules/agents/infrastructure"
-	aiapp "github.com/outarc/marketplace/api-go/internal/modules/aiassistance/application"
-	aihttp "github.com/outarc/marketplace/api-go/internal/modules/aiassistance/http"
-	aiinfra "github.com/outarc/marketplace/api-go/internal/modules/aiassistance/infrastructure"
-	identityapp "github.com/outarc/marketplace/api-go/internal/modules/identity/application"
-	identityhttp "github.com/outarc/marketplace/api-go/internal/modules/identity/http"
-	identityinfra "github.com/outarc/marketplace/api-go/internal/modules/identity/infrastructure"
-	listingsapp "github.com/outarc/marketplace/api-go/internal/modules/listings/application"
-	listingshttp "github.com/outarc/marketplace/api-go/internal/modules/listings/http"
-	listingsinfra "github.com/outarc/marketplace/api-go/internal/modules/listings/infrastructure"
-	mcpauditapp "github.com/outarc/marketplace/api-go/internal/modules/mcpaudit/application"
-	mcpauditinfra "github.com/outarc/marketplace/api-go/internal/modules/mcpaudit/infrastructure"
-	messagesapp "github.com/outarc/marketplace/api-go/internal/modules/messages/application"
-	messageshttp "github.com/outarc/marketplace/api-go/internal/modules/messages/http"
-	messagesinfra "github.com/outarc/marketplace/api-go/internal/modules/messages/infrastructure"
-	ordersapp "github.com/outarc/marketplace/api-go/internal/modules/orders/application"
-	ordershttp "github.com/outarc/marketplace/api-go/internal/modules/orders/http"
-	ordersinfra "github.com/outarc/marketplace/api-go/internal/modules/orders/infrastructure"
-	recommendationapp "github.com/outarc/marketplace/api-go/internal/modules/recommendation/application"
-	recommendationhttp "github.com/outarc/marketplace/api-go/internal/modules/recommendation/http"
-	recommendationinfra "github.com/outarc/marketplace/api-go/internal/modules/recommendation/infrastructure"
-	reviewsapp "github.com/outarc/marketplace/api-go/internal/modules/reviews/application"
-	reviewshttp "github.com/outarc/marketplace/api-go/internal/modules/reviews/http"
-	reviewsinfra "github.com/outarc/marketplace/api-go/internal/modules/reviews/infrastructure"
-	signaturesapp "github.com/outarc/marketplace/api-go/internal/modules/signatures/application"
-	signaturesinfra "github.com/outarc/marketplace/api-go/internal/modules/signatures/infrastructure"
-	socialapp "github.com/outarc/marketplace/api-go/internal/modules/social/application"
-	socialhttp "github.com/outarc/marketplace/api-go/internal/modules/social/http"
-	socialinfra "github.com/outarc/marketplace/api-go/internal/modules/social/infrastructure"
-	"github.com/outarc/marketplace/api-go/internal/shared/clock"
-	"github.com/outarc/marketplace/api-go/internal/shared/ids"
-	gcsstorage "github.com/outarc/marketplace/api-go/internal/shared/storage/gcs"
+	"marketplace/api-go/internal/app/txrunner"
+	"marketplace/api-go/internal/app/workflows"
+	"marketplace/api-go/internal/db"
+	"marketplace/api-go/internal/interface/http"
+	mcpinterface "marketplace/api-go/internal/interface/mcp"
+	"marketplace/api-go/internal/interface/mcp/mcpgateway"
+	agentsapp "marketplace/api-go/internal/modules/agents/application"
+	agentshttp "marketplace/api-go/internal/modules/agents/http"
+	agentsinfra "marketplace/api-go/internal/modules/agents/infrastructure"
+	aiapp "marketplace/api-go/internal/modules/aiassistance/application"
+	aihttp "marketplace/api-go/internal/modules/aiassistance/http"
+	aiinfra "marketplace/api-go/internal/modules/aiassistance/infrastructure"
+	identityapp "marketplace/api-go/internal/modules/identity/application"
+	identityhttp "marketplace/api-go/internal/modules/identity/http"
+	identityinfra "marketplace/api-go/internal/modules/identity/infrastructure"
+	listingsapp "marketplace/api-go/internal/modules/listings/application"
+	listingshttp "marketplace/api-go/internal/modules/listings/http"
+	listingsinfra "marketplace/api-go/internal/modules/listings/infrastructure"
+	mcpauditapp "marketplace/api-go/internal/modules/mcpaudit/application"
+	mcpauditinfra "marketplace/api-go/internal/modules/mcpaudit/infrastructure"
+	messagesapp "marketplace/api-go/internal/modules/messages/application"
+	messageshttp "marketplace/api-go/internal/modules/messages/http"
+	messagesinfra "marketplace/api-go/internal/modules/messages/infrastructure"
+	ordersapp "marketplace/api-go/internal/modules/orders/application"
+	ordershttp "marketplace/api-go/internal/modules/orders/http"
+	ordersinfra "marketplace/api-go/internal/modules/orders/infrastructure"
+	recommendationapp "marketplace/api-go/internal/modules/recommendation/application"
+	recommendationhttp "marketplace/api-go/internal/modules/recommendation/http"
+	recommendationinfra "marketplace/api-go/internal/modules/recommendation/infrastructure"
+	reviewsapp "marketplace/api-go/internal/modules/reviews/application"
+	reviewshttp "marketplace/api-go/internal/modules/reviews/http"
+	reviewsinfra "marketplace/api-go/internal/modules/reviews/infrastructure"
+	signaturesapp "marketplace/api-go/internal/modules/signatures/application"
+	signaturesinfra "marketplace/api-go/internal/modules/signatures/infrastructure"
+	socialapp "marketplace/api-go/internal/modules/social/application"
+	socialhttp "marketplace/api-go/internal/modules/social/http"
+	socialinfra "marketplace/api-go/internal/modules/social/infrastructure"
+	"marketplace/api-go/internal/shared/clock"
+	"marketplace/api-go/internal/shared/ids"
+	gcsstorage "marketplace/api-go/internal/shared/storage/gcs"
 )
 
 // Server はComposition Root。config→依存生成→router配線→HTTP起動/終了を担う。
@@ -164,15 +165,16 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 	humanSignatureTxRunner := txrunner.NewHumanSignatureTxRunner(pool)
 	listingPublication := listingsapp.NewListingPublicationService()
 	listingDeps := listingshttp.Deps{
-		Create:      listingsapp.NewCreateListingUseCase(listingRepo, idGen, sysClock),
-		UploadImage: listingsapp.NewUploadListingImageUseCase(imageStore),
-		Get:         listingsapp.NewGetListingUseCase(listingRepo),
-		Search:      listingsapp.NewSearchListingsUseCase(listingRepo),
-		UpdateDraft: listingsapp.NewUpdateDraftListingUseCase(listingRepo, sysClock),
-		Hide:        listingsapp.NewHideListingUseCase(listingRepo, sysClock),
-		Purchase:    purchaseWorkflow,
-		Publish:     workflows.NewPublishListingWithHumanSignatureWorkflow(humanSignatureTxRunner, listingPublication, humanSignatureService),
-		Update:      workflows.NewUpdateListingWithHumanSignatureWorkflow(humanSignatureTxRunner, listingPublication, humanSignatureService),
+		Create:          listingsapp.NewCreateListingUseCase(listingRepo, idGen, sysClock),
+		UploadImage:     listingsapp.NewUploadListingImageUseCase(imageStore),
+		Get:             listingsapp.NewGetListingUseCase(listingRepo),
+		Search:          listingsapp.NewSearchListingsUseCase(listingRepo),
+		UpdateDraft:     listingsapp.NewUpdateDraftListingUseCase(listingRepo, sysClock),
+		Hide:            listingsapp.NewHideListingUseCase(listingRepo, sysClock),
+		Purchase:        purchaseWorkflow,
+		Publish:         workflows.NewPublishListingWithHumanSignatureWorkflow(humanSignatureTxRunner, listingPublication, humanSignatureService),
+		PublishUnsigned: listingsapp.NewPublishListingUseCase(listingRepo, sysClock),
+		Update:          workflows.NewUpdateListingWithHumanSignatureWorkflow(humanSignatureTxRunner, listingPublication, humanSignatureService),
 	}
 
 	// social module の配線（いいね/出品者サマリ）。いいね商品一覧は social(ID) と listings(本体) の合成。
@@ -198,7 +200,7 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		Similar: workflows.NewSimilarListingsWorkflow(vectorIndex, listingDeps.Get.Execute),
 	}
 
-	// agents module の配線（pool-bound repo）。/agents/runs(エージェント実行)は Inc 10 で追加。
+	// agents module の配線（pool-bound repo）。/agents/runs(discover agent)は下のMCP配線後に充填する。
 	agentRepo := agentsinfra.NewPostgresAgentRepository(pool)
 	agentDeps := agentshttp.Deps{
 		Create:  agentsapp.NewCreateAgentUseCase(agentRepo, idGen, sysClock),
@@ -228,7 +230,8 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		Assistant:            aiAssistant,
 		CompareListings:      workflows.NewCompareListingsWorkflow(listingDeps.Get, aiAssistant),
 	})
-	mcpHandler := mcpinterface.NewHTTPHandler(mcpTools, mcpinterface.NewToolRunner(mcpRecord),
+	toolRunner := mcpinterface.NewToolRunner(mcpRecord)
+	mcpHandler := mcpinterface.NewHTTPHandler(mcpTools, toolRunner,
 		func(r *http.Request) (string, bool) {
 			cu, err := httpinterface.CurrentUserFrom(r.Context())
 			if err != nil {
@@ -237,6 +240,16 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 			return cu.UserID, true
 		})
 
+	// discover agent の配線。MCP gateway(監査付き) + provider別 planner/responder を合成する。
+	gatewayFactory := func(userID string, agentID *string) mcpgateway.McpToolGateway {
+		return mcpinterface.NewInProcessMcpToolGateway(mcpTools, toolRunner, mcpinterface.ToolContext{UserID: userID, AgentID: agentID})
+	}
+	agentDeps.RunDiscover = workflows.NewRunDiscoverAgentWorkflow(
+		gatewayFactory,
+		buildDiscoverPlanner(ctx, cfg),
+		buildDiscoverResponder(ctx, cfg),
+	)
+
 	// pgxpool.Pool は Ping(ctx) error を持ち HealthChecker を満たす。
 	router := httpinterface.NewRouter(httpinterface.RouterDeps{
 		Health:             pool,
@@ -244,6 +257,11 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		AllowDevUserHeader: cfg.AllowDevUserHeader,
 		RegisterPublic: func(r chi.Router) {
 			reviewshttp.RegisterPublicRoutes(r, reviewDeps)
+			// 商品一覧・詳細は認証任意（未ログインでも閲覧可、トークンがあれば自分の下書きも見える）。
+			r.Group(func(pr chi.Router) {
+				pr.Use(httpinterface.OptionalAuthMiddleware(verifier, cfg.AllowDevUserHeader))
+				listingshttp.RegisterPublicRoutes(pr, listingDeps)
+			})
 		},
 		RegisterAuthed: func(r chi.Router) {
 			identityhttp.RegisterRoutes(r, identityDeps)
@@ -303,6 +321,50 @@ func buildAiAssistant(ctx context.Context, cfg Config) aiapp.AiAssistant {
 		return g
 	default:
 		return aiinfra.NewDeterministicAiAssistant()
+	}
+}
+
+// buildDiscoverPlanner / buildDiscoverResponder は provider設定に応じて discover agent の
+// planner/responder を構築する。既定は決定論（規則ベース）。gemini/openai は初期化失敗時に決定論へ縮退する。
+func buildDiscoverPlanner(ctx context.Context, cfg Config) agentsapp.DiscoverAgentPlanner {
+	switch cfg.AIAssistantProvider {
+	case "gemini":
+		p, err := agentsinfra.NewGeminiDiscoverAgentPlanner(ctx, cfg.GoogleCloudProject, cfg.GoogleCloudLocation, cfg.GeminiModel)
+		if err != nil {
+			slog.Warn("gemini discover planner init failed; falling back to deterministic", slog.String("error", err.Error()))
+			return agentsinfra.NewDeterministicDiscoverAgentPlanner()
+		}
+		return p
+	case "openai":
+		p, err := agentsinfra.NewOpenAiDiscoverAgentPlanner(cfg.OpenAIAPIKey, cfg.OpenAIModel)
+		if err != nil {
+			slog.Warn("openai discover planner init failed; falling back to deterministic", slog.String("error", err.Error()))
+			return agentsinfra.NewDeterministicDiscoverAgentPlanner()
+		}
+		return p
+	default:
+		return agentsinfra.NewDeterministicDiscoverAgentPlanner()
+	}
+}
+
+func buildDiscoverResponder(ctx context.Context, cfg Config) agentsapp.DiscoverAgentResponder {
+	switch cfg.AIAssistantProvider {
+	case "gemini":
+		r, err := agentsinfra.NewGeminiDiscoverAgentResponder(ctx, cfg.GoogleCloudProject, cfg.GoogleCloudLocation, cfg.GeminiModel)
+		if err != nil {
+			slog.Warn("gemini discover responder init failed; falling back to deterministic", slog.String("error", err.Error()))
+			return agentsinfra.NewDeterministicDiscoverAgentResponder()
+		}
+		return r
+	case "openai":
+		r, err := agentsinfra.NewOpenAiDiscoverAgentResponder(cfg.OpenAIAPIKey, cfg.OpenAIModel)
+		if err != nil {
+			slog.Warn("openai discover responder init failed; falling back to deterministic", slog.String("error", err.Error()))
+			return agentsinfra.NewDeterministicDiscoverAgentResponder()
+		}
+		return r
+	default:
+		return agentsinfra.NewDeterministicDiscoverAgentResponder()
 	}
 }
 

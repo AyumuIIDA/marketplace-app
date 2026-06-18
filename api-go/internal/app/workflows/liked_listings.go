@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	listingsapp "github.com/outarc/marketplace/api-go/internal/modules/listings/application"
+	listingsapp "marketplace/api-go/internal/modules/listings/application"
 )
 
 // LikedListingIDs はユーザのいいねした商品IDを新着順で返す関数

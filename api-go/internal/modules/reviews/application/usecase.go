@@ -7,10 +7,10 @@ import (
 
 	"github.com/google/uuid"
 
-	reviewsdomain "github.com/outarc/marketplace/api-go/internal/modules/reviews/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
-	"github.com/outarc/marketplace/api-go/internal/shared/clock"
-	"github.com/outarc/marketplace/api-go/internal/shared/ids"
+	reviewsdomain "marketplace/api-go/internal/modules/reviews/domain"
+	"marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/clock"
+	"marketplace/api-go/internal/shared/ids"
 )
 
 // ReviewView はレビューの応答表現（既存フロント互換のcamelCase）。

@@ -7,12 +7,12 @@ import (
 
 	"github.com/google/uuid"
 
-	ordersapp "github.com/outarc/marketplace/api-go/internal/modules/orders/application"
-	ordersdomain "github.com/outarc/marketplace/api-go/internal/modules/orders/domain"
-	reviewsapp "github.com/outarc/marketplace/api-go/internal/modules/reviews/application"
-	reviewsdomain "github.com/outarc/marketplace/api-go/internal/modules/reviews/domain"
-	signaturesapp "github.com/outarc/marketplace/api-go/internal/modules/signatures/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/ids"
+	ordersapp "marketplace/api-go/internal/modules/orders/application"
+	ordersdomain "marketplace/api-go/internal/modules/orders/domain"
+	reviewsapp "marketplace/api-go/internal/modules/reviews/application"
+	reviewsdomain "marketplace/api-go/internal/modules/reviews/domain"
+	signaturesapp "marketplace/api-go/internal/modules/signatures/application"
+	"marketplace/api-go/internal/shared/ids"
 )
 
 type memOrderRepo struct{ o *ordersdomain.Order }
@@ -87,7 +87,7 @@ func TestSubmitReview_CompletesOrderWhenBothReviewed(t *testing.T) {
 	payloadHash, _ := reviewsapp.ComputeReviewPayloadHash(reviewsapp.ReviewToSignaturePayload(buyerReview))
 	clk := fixedClock{t: now}
 	svc := signaturesapp.NewHumanSignatureService(
-		fakeVerifier{out: signaturesapp.VerifiedWorldID{Action: "REVIEW_SUBMIT", NullifierHash: "n", VerificationLevel: "orb", SignalHash: &payloadHash, Environment: "staging", VerifiedAt: now}},
+		fakeVerifier{out: signaturesapp.VerifiedWorldID{Action: "review-submit", NullifierHash: "n", VerificationLevel: "orb", SignalHash: &payloadHash, Environment: "staging", VerifiedAt: now}},
 		signaturesapp.NewHumanSignatureCreator(fakeSigner{}, ids.NewUUIDGenerator(), clk),
 	)
 	of := ordersapp.NewOrderFulfillmentService(ids.NewUUIDGenerator(), clk)

@@ -7,10 +7,10 @@ import (
 
 	"github.com/google/uuid"
 
-	messagesdomain "github.com/outarc/marketplace/api-go/internal/modules/messages/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
-	"github.com/outarc/marketplace/api-go/internal/shared/clock"
-	"github.com/outarc/marketplace/api-go/internal/shared/ids"
+	messagesdomain "marketplace/api-go/internal/modules/messages/domain"
+	"marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/clock"
+	"marketplace/api-go/internal/shared/ids"
 )
 
 // MessageView はメッセージの応答表現（既存フロント互換のcamelCase）。

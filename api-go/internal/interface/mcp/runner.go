@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	mcpauditapp "github.com/outarc/marketplace/api-go/internal/modules/mcpaudit/application"
-	mcpauditdomain "github.com/outarc/marketplace/api-go/internal/modules/mcpaudit/domain"
+	mcpauditapp "marketplace/api-go/internal/modules/mcpaudit/application"
+	mcpauditdomain "marketplace/api-go/internal/modules/mcpaudit/domain"
 )
 
 // ToolRunner は全tool呼び出しを実行し、mcp_tool_callsへ監査記録する。

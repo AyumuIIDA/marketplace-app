@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/uuid"
 
-	listingsdomain "github.com/outarc/marketplace/api-go/internal/modules/listings/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	listingsdomain "marketplace/api-go/internal/modules/listings/domain"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // ListingPublicationService は出品のpublish/update（human signature付き）の業務手続き。
@@ -38,7 +38,7 @@ func (ListingPublicationService) GetListingForSellerMutation(ctx context.Context
 
 // PublishWithSignature は下書きを公開(PUBLISHED)し、署名IDを紐づける。
 func (ListingPublicationService) PublishWithSignature(ctx context.Context, repo listingsdomain.ListingRepository, listing *listingsdomain.Listing, signatureID uuid.UUID, signedAt time.Time) error {
-	if err := listing.Publish(signatureID, signedAt); err != nil {
+	if err := listing.Publish(&signatureID, signedAt); err != nil {
 		return err
 	}
 	return repo.Save(ctx, listing)

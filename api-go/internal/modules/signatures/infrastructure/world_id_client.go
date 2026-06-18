@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	signaturesapp "github.com/outarc/marketplace/api-go/internal/modules/signatures/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	signaturesapp "marketplace/api-go/internal/modules/signatures/application"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 const defaultWorldIDEndpoint = "https://developer.world.org"

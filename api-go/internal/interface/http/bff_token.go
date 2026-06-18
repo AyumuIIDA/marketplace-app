@@ -8,7 +8,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 const (

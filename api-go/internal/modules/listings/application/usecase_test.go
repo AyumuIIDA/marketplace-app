@@ -7,8 +7,9 @@ import (
 
 	"github.com/google/uuid"
 
-	listingsdomain "github.com/outarc/marketplace/api-go/internal/modules/listings/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	listingsdomain "marketplace/api-go/internal/modules/listings/domain"
+	"marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/clock"
 )
 
 // fakeListingRepo は in-memory のListingRepository（テスト用）。
@@ -56,7 +57,7 @@ func mkListing(t *testing.T, seller uuid.UUID, publish bool) *listingsdomain.Lis
 		t.Fatal(err)
 	}
 	if publish {
-		_ = l.Publish(uuid.New(), time.Now())
+		sigID := uuid.New(); _ = l.Publish(&sigID, time.Now())
 	}
 	return l
 }
@@ -102,6 +103,39 @@ func TestGetListing_NotFound(t *testing.T) {
 		t.Fatal("expected not found")
 	} else if ae, ok := apperr.As(err); !ok || ae.Kind != apperr.KindNotFound {
 		t.Fatalf("expected NotFound, got %v", err)
+	}
+}
+
+func TestPublishListing_Unsigned(t *testing.T) {
+	repo := newFakeRepo()
+	seller := uuid.New()
+	draft := mkListing(t, seller, false)
+	_ = repo.Save(context.Background(), draft)
+
+	uc := NewPublishListingUseCase(repo, clock.NewSystemClock())
+
+	// 非所有者 → Forbidden(403)
+	if _, err := uc.Execute(context.Background(), PublishListingInput{ListingID: draft.ID(), SellerID: uuid.New()}); err == nil {
+		t.Fatal("expected forbidden for non-owner publish")
+	} else if ae, ok := apperr.As(err); !ok || ae.Kind != apperr.KindForbidden {
+		t.Fatalf("expected Forbidden, got %v", err)
+	}
+
+	// 所有者 → 署名なしで公開（signatureIdは付かない）
+	out, err := uc.Execute(context.Background(), PublishListingInput{ListingID: draft.ID(), SellerID: seller})
+	if err != nil {
+		t.Fatalf("seller should publish own draft: %v", err)
+	}
+	if out.Status != "PUBLISHED" {
+		t.Fatalf("expected PUBLISHED, got %s", out.Status)
+	}
+	if repo.byID[draft.ID()].SignatureID() != nil {
+		t.Fatal("unsigned publish must not set a signatureId")
+	}
+
+	// 再公開（DRAFTでない）→ LISTING_NOT_PUBLISHABLE
+	if _, err := uc.Execute(context.Background(), PublishListingInput{ListingID: draft.ID(), SellerID: seller}); err == nil {
+		t.Fatal("expected error re-publishing a non-draft")
 	}
 }
 

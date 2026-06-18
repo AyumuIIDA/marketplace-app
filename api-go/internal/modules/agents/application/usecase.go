@@ -7,10 +7,10 @@ import (
 
 	"github.com/google/uuid"
 
-	agentsdomain "github.com/outarc/marketplace/api-go/internal/modules/agents/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
-	"github.com/outarc/marketplace/api-go/internal/shared/clock"
-	"github.com/outarc/marketplace/api-go/internal/shared/ids"
+	agentsdomain "marketplace/api-go/internal/modules/agents/domain"
+	"marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/clock"
+	"marketplace/api-go/internal/shared/ids"
 )
 
 // AgentView はエージェントの応答表現（既存フロント互換のcamelCase）。

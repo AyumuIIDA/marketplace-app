@@ -6,8 +6,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	httpinterface "github.com/outarc/marketplace/api-go/internal/interface/http"
-	aiapp "github.com/outarc/marketplace/api-go/internal/modules/aiassistance/application"
+	httpinterface "marketplace/api-go/internal/interface/http"
+	aiapp "marketplace/api-go/internal/modules/aiassistance/application"
 )
 
 // Deps はAI支援HTTPの依存。

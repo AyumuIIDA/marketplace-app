@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // OptionalStr はトリム後に空ならnilを返すクエリ値ヘルパ。

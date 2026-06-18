@@ -9,7 +9,7 @@ import (
 
 	gcs "cloud.google.com/go/storage"
 
-	sharedstorage "github.com/outarc/marketplace/api-go/internal/shared/storage"
+	sharedstorage "marketplace/api-go/internal/shared/storage"
 )
 
 type GcsObjectStorage struct {

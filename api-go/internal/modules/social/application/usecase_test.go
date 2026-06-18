@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	socialapp "github.com/outarc/marketplace/api-go/internal/modules/social/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	socialapp "marketplace/api-go/internal/modules/social/application"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // fakeRepo は socialapp.Repository の in-memory 実装（テスト用）。

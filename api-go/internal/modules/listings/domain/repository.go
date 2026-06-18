@@ -29,6 +29,7 @@ type SearchInput struct {
 	Status    *ListingStatus
 	SellerID  *uuid.UUID
 	Limit     *int32
+	Offset    *int32
 }
 
 // ImageToSave は listing_images への保存入力（hashはcontent-addressed keyに必要）。

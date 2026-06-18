@@ -5,8 +5,8 @@ import (
 
 	"github.com/google/uuid"
 
-	listingsapp "github.com/outarc/marketplace/api-go/internal/modules/listings/application"
-	recommendationapp "github.com/outarc/marketplace/api-go/internal/modules/recommendation/application"
+	listingsapp "marketplace/api-go/internal/modules/listings/application"
+	recommendationapp "marketplace/api-go/internal/modules/recommendation/application"
 )
 
 // ListingLookup は出品IDから応答ビューを得る関数（listings module の GetListingUseCase.Execute を渡す）。

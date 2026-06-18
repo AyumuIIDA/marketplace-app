@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	aiapp "github.com/outarc/marketplace/api-go/internal/modules/aiassistance/application"
+	aiapp "marketplace/api-go/internal/modules/aiassistance/application"
 )
 
 func strptr(s string) *string { return &s }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	listingsdomain "github.com/outarc/marketplace/api-go/internal/modules/listings/domain"
+	listingsdomain "marketplace/api-go/internal/modules/listings/domain"
 )
 
 // ListListingsByIDsUseCase は指定idの出品を入力順で返す（いいねした商品一覧のhydrate用）。

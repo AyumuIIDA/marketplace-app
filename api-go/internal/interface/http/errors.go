@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // errorBody は既存TS実装と同形のエラーJSON: { "error": { code, message, details? } }。

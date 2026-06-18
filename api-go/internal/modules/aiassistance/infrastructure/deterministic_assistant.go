@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	aiapp "github.com/outarc/marketplace/api-go/internal/modules/aiassistance/application"
+	aiapp "marketplace/api-go/internal/modules/aiassistance/application"
 )
 
 // DeterministicAiAssistant はLLM未接続時の決定論fake（既定）。

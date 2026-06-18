@@ -3,7 +3,7 @@ package aiapp
 import (
 	"context"
 
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // SuggestListingFieldsUseCase は商品画像とヒントから出品項目を提案する。

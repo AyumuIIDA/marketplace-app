@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	signaturesdomain "github.com/outarc/marketplace/api-go/internal/modules/signatures/domain"
+	signaturesdomain "marketplace/api-go/internal/modules/signatures/domain"
 )
 
 // VerifiedWorldID はWorld ID Verify APIを通過した検証結果。

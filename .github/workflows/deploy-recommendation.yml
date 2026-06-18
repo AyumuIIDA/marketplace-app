@@ -1,0 +1,102 @@
+name: Deploy Recommendation (Cloud Run, gRPC)
+
+# main への recommendation-py 変更 push でビルド→Cloud Run へデプロイ。
+# 認証は Workload Identity Federation（鍵レス）。サービスは SA invoke 限定（allUsers不可）。
+# gRPC のため --use-http2。CLIP重みをビルド時に焼き込むためビルドは長め。
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/recommendation-py/**'
+      - '.github/workflows/deploy-recommendation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write  # WIF の OIDC トークン発行に必須
+
+concurrency:
+  group: deploy-recommendation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy recommendation to Cloud Run
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PROJECT: ${{ vars.GCP_PROJECT }}
+      REGION: ${{ vars.GCP_REGION }}
+      AR_REPO: ${{ vars.AR_REPO }}
+      # recommendation サービス名（未設定時は marketplace-recommendation）。
+      SERVICE: ${{ vars.RECOMMENDATION_SERVICE || 'marketplace-recommendation' }}
+      # recommendation 実行SA（未設定時は API と同じ runtime SA を使う）。
+      RUNTIME_SA: ${{ vars.REC_RUNTIME_SA || vars.RUNTIME_SA }}
+      # このサービスを invoke する本体API の runtime SA（run.invoker を付与する相手）。
+      API_INVOKER_SA: ${{ vars.RUNTIME_SA }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python (syntax gate)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile sources (deploy gate)
+        working-directory: services/recommendation-py
+        run: python -m compileall -q app
+
+      - name: Authenticate to Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and push image (recommendation-py)
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${AR_REPO}/recommendation"
+          docker build -t "${IMAGE}:${GITHUB_SHA}" -t "${IMAGE}:latest" services/recommendation-py
+          docker push "${IMAGE}:${GITHUB_SHA}"
+          docker push "${IMAGE}:latest"
+          echo "IMAGE=${IMAGE}:${GITHUB_SHA}" >> "$GITHUB_ENV"
+
+      - name: Deploy to Cloud Run (gRPC, internal-only)
+        run: |
+          # GRPC_PORT は Cloud Run の待受ポート(8080)に合わせる。サーバは GRPC_PORT で bind する。
+          # Qdrant 接続は vars.QDRANT_URL / secret QDRANT_API_KEY（未設定なら起動はするが検索は失敗）。
+          QDRANT_SECRET_ARG=""
+          if [ -n "${{ vars.QDRANT_API_KEY_SECRET || 'QDRANT_API_KEY' }}" ] && gcloud secrets describe "${{ vars.QDRANT_API_KEY_SECRET || 'QDRANT_API_KEY' }}" --project "${PROJECT}" >/dev/null 2>&1; then
+            QDRANT_SECRET_ARG="--set-secrets QDRANT_API_KEY=${{ vars.QDRANT_API_KEY_SECRET || 'QDRANT_API_KEY' }}:latest"
+          fi
+          gcloud run deploy "${SERVICE}" \
+            --image "${IMAGE}" \
+            --project "${PROJECT}" \
+            --region "${REGION}" \
+            --service-account "${RUNTIME_SA}" \
+            --use-http2 \
+            --no-allow-unauthenticated \
+            --port 8080 \
+            ${QDRANT_SECRET_ARG} \
+            --set-env-vars "GRPC_PORT=8080,GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=${{ vars.REC_GOOGLE_CLOUD_LOCATION || 'us-central1' }},GEMINI_EMBED_MODEL=${{ vars.GEMINI_EMBED_MODEL || 'text-embedding-004' }},QDRANT_URL=${{ vars.QDRANT_URL }},QDRANT_COLLECTION=${{ vars.QDRANT_COLLECTION || 'listings' }}" \
+            --cpu 2 --memory 4Gi --min-instances 1 --max-instances 2 --timeout 120
+
+      - name: Grant invoker to the API runtime SA (SA-only invoke)
+        if: env.API_INVOKER_SA != ''
+        run: |
+          gcloud run services add-iam-policy-binding "${SERVICE}" \
+            --project "${PROJECT}" --region "${REGION}" \
+            --member "serviceAccount:${API_INVOKER_SA}" \
+            --role roles/run.invoker
+
+      - name: Show service URL
+        run: |
+          gcloud run services describe "${SERVICE}" \
+            --project "${PROJECT}" --region "${REGION}" \
+            --format='value(status.url)'

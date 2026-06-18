@@ -1,6 +1,6 @@
 package signaturesapp
 
-import "github.com/outarc/marketplace/api-go/internal/shared/apperr"
+import "marketplace/api-go/internal/shared/apperr"
 
 // AssertWorldIDMatchesAction は Phase 1（tx外）: action/environment の整合を確認する。
 func AssertWorldIDMatchesAction(v VerifiedWorldID, expectedAction string, expectedEnv *string) error {

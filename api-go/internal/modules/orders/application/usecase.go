@@ -5,8 +5,8 @@ import (
 
 	"github.com/google/uuid"
 
-	ordersdomain "github.com/outarc/marketplace/api-go/internal/modules/orders/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/clock"
+	ordersdomain "marketplace/api-go/internal/modules/orders/domain"
+	"marketplace/api-go/internal/shared/clock"
 )
 
 // --- GetOrder ---

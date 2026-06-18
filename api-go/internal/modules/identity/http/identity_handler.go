@@ -7,10 +7,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/outarc/marketplace/api-go/internal/interface/http"
-	identityapp "github.com/outarc/marketplace/api-go/internal/modules/identity/application"
-	signaturesapp "github.com/outarc/marketplace/api-go/internal/modules/signatures/application"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/interface/http"
+	identityapp "marketplace/api-go/internal/modules/identity/application"
+	signaturesapp "marketplace/api-go/internal/modules/signatures/application"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // Deps はidentity HTTPの依存（UseCase群）。

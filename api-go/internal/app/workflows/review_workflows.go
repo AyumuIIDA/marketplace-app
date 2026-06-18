@@ -5,14 +5,14 @@ import (
 
 	"github.com/google/uuid"
 
-	ordersapp "github.com/outarc/marketplace/api-go/internal/modules/orders/application"
-	ordersdomain "github.com/outarc/marketplace/api-go/internal/modules/orders/domain"
-	reviewsapp "github.com/outarc/marketplace/api-go/internal/modules/reviews/application"
-	reviewsdomain "github.com/outarc/marketplace/api-go/internal/modules/reviews/domain"
-	signaturesapp "github.com/outarc/marketplace/api-go/internal/modules/signatures/application"
-	signaturesdomain "github.com/outarc/marketplace/api-go/internal/modules/signatures/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
-	"github.com/outarc/marketplace/api-go/internal/shared/clock"
+	ordersapp "marketplace/api-go/internal/modules/orders/application"
+	ordersdomain "marketplace/api-go/internal/modules/orders/domain"
+	reviewsapp "marketplace/api-go/internal/modules/reviews/application"
+	reviewsdomain "marketplace/api-go/internal/modules/reviews/domain"
+	signaturesapp "marketplace/api-go/internal/modules/signatures/application"
+	signaturesdomain "marketplace/api-go/internal/modules/signatures/domain"
+	"marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/clock"
 )
 
 // ReviewRepos はレビューtransaction内で使うtx-bound repository群。

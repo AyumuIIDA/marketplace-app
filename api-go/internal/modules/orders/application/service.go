@@ -5,10 +5,10 @@ import (
 
 	"github.com/google/uuid"
 
-	ordersdomain "github.com/outarc/marketplace/api-go/internal/modules/orders/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
-	"github.com/outarc/marketplace/api-go/internal/shared/clock"
-	"github.com/outarc/marketplace/api-go/internal/shared/ids"
+	ordersdomain "marketplace/api-go/internal/modules/orders/domain"
+	"marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/clock"
+	"marketplace/api-go/internal/shared/ids"
 )
 
 // OrderFulfillmentService は注文の生成/取得の業務手続き。

@@ -3,9 +3,9 @@ package mcpinterface
 import (
 	"context"
 
-	"github.com/outarc/marketplace/api-go/internal/app/workflows"
-	aiapp "github.com/outarc/marketplace/api-go/internal/modules/aiassistance/application"
-	identityapp "github.com/outarc/marketplace/api-go/internal/modules/identity/application"
+	"marketplace/api-go/internal/app/workflows"
+	aiapp "marketplace/api-go/internal/modules/aiassistance/application"
+	identityapp "marketplace/api-go/internal/modules/identity/application"
 )
 
 // get_current_user

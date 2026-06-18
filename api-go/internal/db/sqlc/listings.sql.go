@@ -174,18 +174,19 @@ WHERE ($1::listing_status IS NULL OR status = $1::listing_status)
     OR description ILIKE '%' || $7::text || '%'
   )
 ORDER BY created_at ASC
-LIMIT $8::integer
+LIMIT $9::integer OFFSET $8::integer
 `
 
 type SearchListingsParams struct {
-	Status      *ListingStatus
-	SellerID    *uuid.UUID
-	Category    *string
-	Condition   *string
-	MinPrice    *int32
-	MaxPrice    *int32
-	Keyword     *string
-	ResultLimit int32
+	Status       *ListingStatus
+	SellerID     *uuid.UUID
+	Category     *string
+	Condition    *string
+	MinPrice     *int32
+	MaxPrice     *int32
+	Keyword      *string
+	ResultOffset int32
+	ResultLimit  int32
 }
 
 // 有界(7フィルタ)の検索。各条件は narg がNULLなら無効化される（Query Builder不要）。
@@ -198,6 +199,7 @@ func (q *Queries) SearchListings(ctx context.Context, arg SearchListingsParams) 
 		arg.MinPrice,
 		arg.MaxPrice,
 		arg.Keyword,
+		arg.ResultOffset,
 		arg.ResultLimit,
 	)
 	if err != nil {

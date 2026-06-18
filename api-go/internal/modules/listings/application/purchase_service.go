@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	listingsdomain "github.com/outarc/marketplace/api-go/internal/modules/listings/domain"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	listingsdomain "marketplace/api-go/internal/modules/listings/domain"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // ListingPurchaseService は購入のための出品claim/可否判定の業務手続き。

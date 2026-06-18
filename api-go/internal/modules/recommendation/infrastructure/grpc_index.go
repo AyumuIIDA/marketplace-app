@@ -11,9 +11,9 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 
-	recommendationapp "github.com/outarc/marketplace/api-go/internal/modules/recommendation/application"
-	recv1 "github.com/outarc/marketplace/api-go/internal/modules/recommendation/gen/recommendation/v1"
-	"github.com/outarc/marketplace/api-go/internal/shared/apperr"
+	recommendationapp "marketplace/api-go/internal/modules/recommendation/application"
+	recv1 "marketplace/api-go/internal/modules/recommendation/gen/recommendation/v1"
+	"marketplace/api-go/internal/shared/apperr"
 )
 
 // GrpcVectorIndex は recommendation-py(Cloud Run, gRPC over h2/TLS) への client。

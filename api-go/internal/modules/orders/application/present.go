@@ -4,7 +4,7 @@ package ordersapp
 import (
 	"time"
 
-	ordersdomain "github.com/outarc/marketplace/api-go/internal/modules/orders/domain"
+	ordersdomain "marketplace/api-go/internal/modules/orders/domain"
 )
 
 // OrderView は注文の応答表現（既存フロント互換のcamelCase）。
