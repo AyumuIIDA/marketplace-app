@@ -41,9 +41,10 @@ services:
         condition: service_healthy
 
   api:
+    # Go版API（正本）。distroless非rootバイナリで $PORT にbind、/healthz でヘルスチェック。
     build:
-      context: .
-      dockerfile: api/Dockerfile
+      context: api-go
+      dockerfile: Dockerfile
     # api専用env。BFF内部JWTは【公開鍵のみ】。秘密鍵は注入されない。
     env_file:
       - .env.api
@@ -52,20 +53,19 @@ services:
       # ローカルDockerからGemini/Vertex AIを呼ぶため、ホストのADCを明示的に使う。
       GOOGLE_APPLICATION_CREDENTIALS: /gcp/application_default_credentials.json
       PORT: "8080"
-      # Docker既定のHOSTNAME(コンテナ名)を上書きし、全interfaceにbindする。
-      HOSTNAME: 0.0.0.0
       # 画像ストレージ。ローカルはfake-gcs、prodはGCSへ endpoint/creds 差し替えのみ。
-      # SDK(@google-cloud/storage)は STORAGE_EMULATOR_HOST を自動認識する。
+      # GCS Go SDK は STORAGE_EMULATOR_HOST を自動認識する。
       STORAGE_BUCKET: marketplace-images
       STORAGE_EMULATOR_HOST: http://storage:4443
       # 公開読取URLの基底（ブラウザ到達ホスト）。seed時に listing_images.url を組み立てる。
       PUBLIC_IMAGE_BASE_URL: http://localhost:4443/marketplace-images
+      # AI/LLM adapter が画像を取得するためのコンテナ内到達URL。
+      IMAGE_FETCH_BASE_URL: http://storage:4443/storage/v1/b/marketplace-images/o
     ports:
       - "8080:8080"
     volumes:
-      - ./:/app
+      # ADC(Gemini用)のみマウント。Goはコンパイル済みバイナリなのでソースmountはしない。
       - ${HOME}/.config/gcloud/application_default_credentials.json:/gcp/application_default_credentials.json:ro
-      - /app/node_modules
     depends_on:
       migrate:
         condition: service_completed_successfully
