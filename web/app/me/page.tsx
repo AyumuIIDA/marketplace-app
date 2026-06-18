@@ -53,7 +53,7 @@ export default async function MePage() {
             </dl>
             {!currentUser.humanVerified && (
               <div className="mt-5">
-                <WorldIdButton action="ACCOUNT_LINK" label={t("linkWorldId")} />
+                <WorldIdButton action="account-link" label={t("linkWorldId")} />
               </div>
             )}
           </GlassPanel>

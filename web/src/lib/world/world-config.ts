@@ -1,4 +1,4 @@
-export type WorldIdAction = "ACCOUNT_LINK" | "LISTING_PUBLISH" | "REVIEW_SUBMIT";
+export type WorldIdAction = "account-link" | "listing-publish" | "review-submit";
 
 export function getWorldAppId(): `app_${string}` {
   const appId = process.env.NEXT_PUBLIC_WORLD_ID_APP_ID;

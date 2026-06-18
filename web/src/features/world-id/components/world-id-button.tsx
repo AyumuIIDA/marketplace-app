@@ -1,6 +1,6 @@
 "use client";
 
-import { IDKitRequestWidget, type IDKitResult, proofOfHuman } from "@worldcoin/idkit";
+import { IDKitRequestWidget, type IDKitResult, orbLegacy } from "@worldcoin/idkit";
 import { useState, useTransition } from "react";
 
 import { createWorldIdRpContext, type WorldIdRpContext } from "../../../lib/api/world-id-context.client";
@@ -80,14 +80,14 @@ export function WorldIdButton({ action, label, onBeforeOpen, onVerified, signal 
       {rpContext !== undefined && (
         <IDKitRequestWidget
           action={action}
-          allow_legacy_proofs={false}
+          allow_legacy_proofs={true}
           app_id={getWorldAppId()}
           autoClose
           environment={getWorldIdEnvironment()}
           onOpenChange={setOpen}
           onSuccess={handleSuccess}
           open={open}
-          preset={proofOfHuman({ signal: preparedSignal ?? signal })}
+          preset={orbLegacy({ signal: preparedSignal ?? signal })}
           rp_context={rpContext}
         />
       )}

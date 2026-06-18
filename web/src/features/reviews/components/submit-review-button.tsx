@@ -28,7 +28,7 @@ export function SubmitReviewButton({ review }: SubmitReviewButtonProps) {
 
   return (
     <WorldIdButton
-      action="REVIEW_SUBMIT"
+      action="review-submit"
       label="Submit with World ID"
       onBeforeOpen={prepareSignal}
       onVerified={handleVerified}

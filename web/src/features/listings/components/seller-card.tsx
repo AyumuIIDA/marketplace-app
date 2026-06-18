@@ -18,14 +18,15 @@ export async function SellerCard({ seller }: SellerCardProps) {
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-ink-faint">{t("sellerLabel")}</p>
 
       <div className="flex items-center gap-3">
-        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-paper font-mono text-sm font-semibold text-ink-soft ring-1 ring-line">
-          {seller.handle.replace("@", "").slice(0, 2).toUpperCase()}
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-paper text-sm font-semibold text-ink-soft ring-1 ring-line">
+          {(seller.displayName || seller.handle.replace("@", "")).slice(0, 2).toUpperCase()}
         </span>
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="truncate font-mono text-sm font-semibold text-ink">{seller.handle}</span>
+            <span className="truncate text-sm font-semibold text-ink">{seller.displayName}</span>
             {seller.humanVerified && <Seal label={t("verifiedSeller")} size="sm" />}
           </div>
+          <p className="truncate font-mono text-xs text-ink-faint">{seller.handle}</p>
           <div className="mt-1 flex items-center gap-2">
             {seller.rating === undefined ? (
               <span className="text-xs text-ink-faint">{t("noRating")}</span>

@@ -30,7 +30,7 @@ export async function ListingDetailView({ currentUser, listing }: ListingDetailV
   const isSeller = currentUser?.userId === listing.sellerId;
   const canPurchase = currentUser !== undefined && !isSeller && listing.status === "PUBLISHED";
   const signed = listing.signatureId !== undefined;
-  const seller = await getSellerSummary(listing.sellerId, { humanVerified: signed });
+  const seller = await getSellerSummary(listing.sellerId);
 
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">

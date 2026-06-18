@@ -13,10 +13,10 @@ type SealProps = {
 };
 
 const SIZE = {
-  sm: "size-7 text-[13px] border-[1.5px]",
-  md: "size-10 text-lg border-2",
-  lg: "size-16 text-3xl border-[3px]",
-  xl: "size-40 text-8xl border-4",
+  sm: "size-7 border-[1.5px]",
+  md: "size-10 border-2",
+  lg: "size-16 border-[3px]",
+  xl: "size-40 border-4",
 } as const;
 
 export function Seal({ animate = false, className, label, size = "md", tone = "light" }: SealProps) {
@@ -26,7 +26,7 @@ export function Seal({ animate = false, className, label, size = "md", tone = "l
       aria-label={label}
       role={label === undefined ? undefined : "img"}
       className={combineClassNames(
-        "inline-grid shrink-0 -rotate-6 place-items-center rounded-full font-bold leading-none select-none",
+        "inline-grid shrink-0 place-items-center rounded-full leading-none select-none",
         SIZE[size],
         tone === "dark"
           ? "border-seal/90 text-seal shadow-[0_0_28px_rgba(216,64,47,0.55)]"
@@ -35,7 +35,22 @@ export function Seal({ animate = false, className, label, size = "md", tone = "l
         className,
       )}
     >
-      人
+      {/* 漢字「人」を上下反転させた脚＝胴体＋頭の円で人型を構成。currentColor で朱色を継承。 */}
+      <svg className="size-[72%]" fill="currentColor" viewBox="0 0 24 24">
+        <circle cx="12" cy="4.6" r="3.7" />
+        <g transform="translate(0 24) scale(1 -1)">
+          <text
+            fontFamily="ui-sans-serif, system-ui, sans-serif"
+            fontSize="18"
+            fontWeight="700"
+            textAnchor="middle"
+            x="12"
+            y="14"
+          >
+            人
+          </text>
+        </g>
+      </svg>
     </span>
   );
 }
