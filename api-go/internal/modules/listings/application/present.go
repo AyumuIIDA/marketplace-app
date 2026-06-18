@@ -31,8 +31,11 @@ type ListingView struct {
 	Condition   string      `json:"condition"`
 	Status      string      `json:"status"`
 	SignatureID *string     `json:"signatureId,omitempty"`
-	Images      []ImageView `json:"images"`
-	CreatedAt   time.Time   `json:"createdAt"`
+	// ソーシャル集計（social module 由来。未取得時は0）。Instagram風カードのいいね/コメント数表示に使う。
+	LikeCount    int64       `json:"likeCount"`
+	CommentCount int64       `json:"commentCount"`
+	Images       []ImageView `json:"images"`
+	CreatedAt    time.Time   `json:"createdAt"`
 	UpdatedAt   time.Time   `json:"updatedAt"`
 	PublishedAt *time.Time  `json:"publishedAt,omitempty"`
 	SoldAt      *time.Time  `json:"soldAt,omitempty"`

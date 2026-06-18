@@ -60,14 +60,33 @@ func (uc *CreateListingUseCase) Execute(ctx context.Context, in CreateListingInp
 	return CreateListingResult{ListingID: listing.ID().String(), Status: string(listing.Status())}, nil
 }
 
+// ListingSocialCounts は出品のソーシャル集計（social module 由来）。
+type ListingSocialCounts struct {
+	LikeCount    int64
+	CommentCount int64
+}
+
+// ListingCountsReader は出品ごとのいいね/コメント数を返す read port。
+// listings は social と peer 分離のため、実装(adapter)は composition root が注入する。
+type ListingCountsReader interface {
+	CountsByListingIDs(ctx context.Context, listingIDs []uuid.UUID) (map[uuid.UUID]ListingSocialCounts, error)
+}
+
 // --- GetListing ---
 
 type GetListingUseCase struct {
 	listings listingsdomain.ListingRepository
+	counts   ListingCountsReader
 }
 
 func NewGetListingUseCase(r listingsdomain.ListingRepository) *GetListingUseCase {
 	return &GetListingUseCase{listings: r}
+}
+
+// WithCounts はソーシャル集計の reader を注入する（任意。未注入なら likeCount/commentCount は0）。
+func (uc *GetListingUseCase) WithCounts(reader ListingCountsReader) *GetListingUseCase {
+	uc.counts = reader
+	return uc
 }
 
 // Execute は出品詳細を返す。非公開(下書き等)は出品者本人のみ閲覧可。
@@ -84,7 +103,37 @@ func (uc *GetListingUseCase) Execute(ctx context.Context, listingID uuid.UUID, r
 			return ListingView{}, apperr.Forbidden("Only the seller can view this listing.")
 		}
 	}
-	return presentListing(listing), nil
+	items := []ListingView{presentListing(listing)}
+	enrichWithCounts(ctx, uc.counts, items)
+	return items[0], nil
+}
+
+// enrichWithCounts は items の likeCount/commentCount を reader でその場更新する。
+// reader が nil／取得失敗時は 0 のまま（ソーシャル集計は付加情報のため致命にしない）。
+func enrichWithCounts(ctx context.Context, reader ListingCountsReader, items []ListingView) {
+	if reader == nil || len(items) == 0 {
+		return
+	}
+	ids := make([]uuid.UUID, 0, len(items))
+	for _, it := range items {
+		if id, err := uuid.Parse(it.ListingID); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	counts, err := reader.CountsByListingIDs(ctx, ids)
+	if err != nil {
+		return
+	}
+	for i := range items {
+		id, err := uuid.Parse(items[i].ListingID)
+		if err != nil {
+			continue
+		}
+		if c, ok := counts[id]; ok {
+			items[i].LikeCount = c.LikeCount
+			items[i].CommentCount = c.CommentCount
+		}
+	}
 }
 
 // --- SearchListings ---
@@ -107,10 +156,17 @@ type SearchListingsResult struct {
 
 type SearchListingsUseCase struct {
 	listings listingsdomain.ListingRepository
+	counts   ListingCountsReader
 }
 
 func NewSearchListingsUseCase(r listingsdomain.ListingRepository) *SearchListingsUseCase {
 	return &SearchListingsUseCase{listings: r}
+}
+
+// WithCounts はソーシャル集計の reader を注入する（任意）。
+func (uc *SearchListingsUseCase) WithCounts(reader ListingCountsReader) *SearchListingsUseCase {
+	uc.counts = reader
+	return uc
 }
 
 func (uc *SearchListingsUseCase) Execute(ctx context.Context, in SearchListingsInput) (SearchListingsResult, error) {
@@ -149,6 +205,7 @@ func (uc *SearchListingsUseCase) Execute(ctx context.Context, in SearchListingsI
 	for _, l := range listings {
 		items = append(items, presentListing(l))
 	}
+	enrichWithCounts(ctx, uc.counts, items)
 	return SearchListingsResult{Items: items}, nil
 }
 

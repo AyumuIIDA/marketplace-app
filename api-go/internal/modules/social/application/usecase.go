@@ -7,6 +7,8 @@ import (
 
 	socialdomain "marketplace/api-go/internal/modules/social/domain"
 	"marketplace/api-go/internal/shared/apperr"
+	"marketplace/api-go/internal/shared/clock"
+	"marketplace/api-go/internal/shared/ids"
 )
 
 // --- ListingLike（商品いいね） ---
@@ -175,4 +177,71 @@ func (uc *ListLikedSellersUseCase) Execute(ctx context.Context, userID uuid.UUID
 		items = append(items, view)
 	}
 	return LikedSellersResult{Items: items}, nil
+}
+
+// --- ListingComment（出品コメント） ---
+
+// CreateListingCommentUseCase は出品コメント投稿を担う。投稿者は人間性検証済みのみ許可する。
+type CreateListingCommentUseCase struct {
+	repo  Repository
+	ids   ids.Generator
+	clock clock.Clock
+}
+
+func NewCreateListingCommentUseCase(r Repository, g ids.Generator, c clock.Clock) *CreateListingCommentUseCase {
+	return &CreateListingCommentUseCase{repo: r, ids: g, clock: c}
+}
+
+func (uc *CreateListingCommentUseCase) Execute(ctx context.Context, listingID, authorID uuid.UUID, body string) (CommentView, error) {
+	// 著者の表示情報を取得しつつ人間性検証をゲートする（未認証はコメント不可）。
+	author, err := uc.repo.FindSellerProfile(ctx, authorID)
+	if err != nil {
+		return CommentView{}, err
+	}
+	if author == nil {
+		return CommentView{}, apperr.NotFound("User", authorID.String())
+	}
+	if !author.HumanVerified {
+		return CommentView{}, apperr.Forbidden("Only human-verified users can comment.")
+	}
+
+	now := uc.clock.Now()
+	comment, err := socialdomain.NewComment(uc.ids.NewID(), listingID, authorID, body, now)
+	if err != nil {
+		return CommentView{}, err
+	}
+	if err := uc.repo.SaveComment(ctx, comment); err != nil {
+		return CommentView{}, err
+	}
+
+	return CommentView{
+		CommentID:           comment.ID().String(),
+		ListingID:           comment.ListingID().String(),
+		AuthorID:            comment.AuthorID().String(),
+		AuthorDisplayName:   author.DisplayName,
+		AuthorHumanVerified: author.HumanVerified,
+		Body:                comment.Body(),
+		CreatedAt:           comment.CreatedAt(),
+	}, nil
+}
+
+// ListListingCommentsUseCase は出品コメントを新着順に返す。
+type ListListingCommentsUseCase struct {
+	repo Repository
+}
+
+func NewListListingCommentsUseCase(r Repository) *ListListingCommentsUseCase {
+	return &ListListingCommentsUseCase{repo: r}
+}
+
+func (uc *ListListingCommentsUseCase) Execute(ctx context.Context, listingID uuid.UUID, limit, offset int32) (CommentsView, error) {
+	rows, err := uc.repo.ListComments(ctx, listingID, limit, offset)
+	if err != nil {
+		return CommentsView{}, err
+	}
+	items := make([]CommentView, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, presentComment(row))
+	}
+	return CommentsView{Items: items}, nil
 }

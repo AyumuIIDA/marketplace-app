@@ -513,6 +513,15 @@ type Listing struct {
 	SoldAt      pgtype.Timestamptz
 }
 
+type ListingComment struct {
+	ID        uuid.UUID
+	ListingID uuid.UUID
+	AuthorID  uuid.UUID
+	Body      string
+	CreatedAt pgtype.Timestamptz
+	HiddenAt  pgtype.Timestamptz
+}
+
 type ListingImage struct {
 	ID        uuid.UUID
 	ListingID uuid.UUID

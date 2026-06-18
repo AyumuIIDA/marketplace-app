@@ -179,6 +179,10 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 
 	// social module の配線（いいね/出品者サマリ）。いいね商品一覧は social(ID) と listings(本体) の合成。
 	socialRepo := socialinfra.NewPostgresSocialRepository(pool)
+	// 出品の like/comment 数を listings の読取に注入（Instagram風カード用）。peer分離のため adapter 経由。
+	listingCounts := newListingCountsAdapter(socialRepo)
+	listingDeps.Get.WithCounts(listingCounts)
+	listingDeps.Search.WithCounts(listingCounts)
 	sellerSummary := socialapp.NewGetSellerSummaryUseCase(socialRepo)
 	listListingsByIDs := listingsapp.NewListListingsByIDsUseCase(listingRepo)
 	socialDeps := socialhttp.Deps{
@@ -189,7 +193,9 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 			socialapp.NewListLikedListingIDsUseCase(socialRepo).Execute,
 			listListingsByIDs.Execute,
 		),
-		LikedSellers: socialapp.NewListLikedSellersUseCase(socialRepo, sellerSummary),
+		LikedSellers:  socialapp.NewListLikedSellersUseCase(socialRepo, sellerSummary),
+		CreateComment: socialapp.NewCreateListingCommentUseCase(socialRepo, idGen, sysClock),
+		ListComments:  socialapp.NewListListingCommentsUseCase(socialRepo),
 	}
 
 	// recommendation module の配線。意味検索/類似は listings(本体) と vector(recommendation-py) の合成。

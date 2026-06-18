@@ -25,6 +25,8 @@ type Deps struct {
 	SellerSummary *socialapp.GetSellerSummaryUseCase
 	LikedListings *workflows.LikedListingsWorkflow
 	LikedSellers  *socialapp.ListLikedSellersUseCase
+	CreateComment *socialapp.CreateListingCommentUseCase
+	ListComments  *socialapp.ListListingCommentsUseCase
 }
 
 // RegisterRoutes は social 系を認証済みグループへ登録する。
@@ -33,6 +35,8 @@ type Deps struct {
 func RegisterRoutes(r chi.Router, deps Deps) {
 	r.Post("/listings/{listingId}/like", deps.handleLikeListing)
 	r.Delete("/listings/{listingId}/like", deps.handleUnlikeListing)
+	r.Get("/listings/{listingId}/comments", deps.handleListComments)
+	r.Post("/listings/{listingId}/comments", deps.handleCreateComment)
 	r.Get("/me/liked-listings", deps.handleLikedListings)
 	r.Get("/me/liked-sellers", deps.handleLikedSellers)
 	r.Route("/sellers", func(sr chi.Router) {
@@ -149,6 +153,48 @@ func (deps Deps) handleLikedSellers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out, err := deps.LikedSellers.Execute(r.Context(), userID, limit, offset)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	httpinterface.WriteJSON(w, http.StatusOK, out)
+}
+
+type createCommentRequest struct {
+	Body string `json:"body" validate:"required,min=1,max=1000"`
+}
+
+func (deps Deps) handleCreateComment(w http.ResponseWriter, r *http.Request) {
+	userID, listingID, err := userAndPath(r, "listingId", "Listing")
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	var body createCommentRequest
+	if err := httpinterface.DecodeJSON(r, &body); err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	out, err := deps.CreateComment.Execute(r.Context(), listingID, userID, strings.TrimSpace(body.Body))
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	httpinterface.WriteJSON(w, http.StatusCreated, out)
+}
+
+func (deps Deps) handleListComments(w http.ResponseWriter, r *http.Request) {
+	listingID, err := httpinterface.PathUUID(r, "listingId", "Listing")
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	limit, offset, err := pageParams(r)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	out, err := deps.ListComments.Execute(r.Context(), listingID, limit, offset)
 	if err != nil {
 		httpinterface.WriteError(w, r, err)
 		return

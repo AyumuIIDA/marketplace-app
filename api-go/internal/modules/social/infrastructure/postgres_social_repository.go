@@ -11,6 +11,7 @@ import (
 	"marketplace/api-go/internal/db/pgerr"
 	"marketplace/api-go/internal/db/sqlc"
 	socialapp "marketplace/api-go/internal/modules/social/application"
+	socialdomain "marketplace/api-go/internal/modules/social/domain"
 )
 
 // PostgresSocialRepository は social.Repository のpostgres実装。
@@ -126,4 +127,72 @@ func (r *PostgresSocialRepository) GetSellerRating(ctx context.Context, sellerID
 		avg = &v
 	}
 	return socialapp.SellerRating{Average: avg, Count: row.ReviewCount}, nil
+}
+
+func (r *PostgresSocialRepository) SaveComment(ctx context.Context, comment *socialdomain.Comment) error {
+	if err := r.q.InsertListingComment(ctx, sqlc.InsertListingCommentParams{
+		ID:        comment.ID(),
+		ListingID: comment.ListingID(),
+		AuthorID:  comment.AuthorID(),
+		Body:      comment.Body(),
+	}); err != nil {
+		return pgerr.FromPg(err)
+	}
+	return nil
+}
+
+func (r *PostgresSocialRepository) ListComments(ctx context.Context, listingID uuid.UUID, limit, offset int32) ([]socialapp.CommentRow, error) {
+	rows, err := r.q.ListCommentsByListing(ctx, sqlc.ListCommentsByListingParams{
+		ListingID:    listingID,
+		ResultLimit:  limit,
+		ResultOffset: offset,
+	})
+	if err != nil {
+		return nil, pgerr.FromPg(err)
+	}
+	out := make([]socialapp.CommentRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, socialapp.CommentRow{
+			CommentID:           row.ID,
+			ListingID:           row.ListingID,
+			AuthorID:            row.AuthorID,
+			Body:                row.Body,
+			CreatedAt:           row.CreatedAt.Time,
+			AuthorDisplayName:   row.AuthorDisplayName,
+			AuthorHumanVerified: row.AuthorHumanVerified,
+		})
+	}
+	return out, nil
+}
+
+func (r *PostgresSocialRepository) CountComments(ctx context.Context, listingID uuid.UUID) (int64, error) {
+	count, err := r.q.CountCommentsByListing(ctx, listingID)
+	if err != nil {
+		return 0, pgerr.FromPg(err)
+	}
+	return count, nil
+}
+
+func (r *PostgresSocialRepository) CountLikesByListingIDs(ctx context.Context, listingIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	rows, err := r.q.CountLikesByListingIDs(ctx, listingIDs)
+	if err != nil {
+		return nil, pgerr.FromPg(err)
+	}
+	out := make(map[uuid.UUID]int64, len(rows))
+	for _, row := range rows {
+		out[row.ListingID] = row.LikeCount
+	}
+	return out, nil
+}
+
+func (r *PostgresSocialRepository) CountCommentsByListingIDs(ctx context.Context, listingIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	rows, err := r.q.CountCommentsByListingIDs(ctx, listingIDs)
+	if err != nil {
+		return nil, pgerr.FromPg(err)
+	}
+	out := make(map[uuid.UUID]int64, len(rows))
+	for _, row := range rows {
+		out[row.ListingID] = row.CommentCount
+	}
+	return out, nil
 }
