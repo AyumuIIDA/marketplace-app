@@ -1,7 +1,7 @@
 import type { Listing } from "../../lib/api/listings.api";
 import type { ListingViewModel } from "./listing-view-model";
 
-export function mapListingToViewModel(listing: Listing): ListingViewModel {
+export function mapListingToViewModel(listing: Listing, liked = false): ListingViewModel {
   return {
     id: listing.listingId,
     title: listing.title,
@@ -14,9 +14,13 @@ export function mapListingToViewModel(listing: Listing): ListingViewModel {
     status: listing.status,
     createdAt: listing.createdAt,
     imageUrl: listing.images?.[0]?.url,
+    liked,
+    likeCount: listing.likeCount,
+    commentCount: listing.commentCount,
   };
 }
 
-export function mapListingsToViewModels(listings: Listing[]): ListingViewModel[] {
-  return listings.map(mapListingToViewModel);
+// likedIds を渡すと各出品の初期いいね状態を hydrate する（未指定は全て未いいね）。
+export function mapListingsToViewModels(listings: Listing[], likedIds?: Set<string>): ListingViewModel[] {
+  return listings.map((listing) => mapListingToViewModel(listing, likedIds?.has(listing.listingId) ?? false));
 }

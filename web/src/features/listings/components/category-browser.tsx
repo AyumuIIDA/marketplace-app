@@ -14,10 +14,18 @@ type CategoryBrowserProps = {
   keyword?: string;
   pageSize: number;
   sort: ListingSort;
+  verifiedOnly?: boolean;
 };
 
 // 単一カテゴリの全件ブラウズ。Load more で offset ページを追記し、尽きるまで辿れる。
-export function CategoryBrowser({ category, initialItems, keyword, pageSize, sort }: CategoryBrowserProps) {
+export function CategoryBrowser({
+  category,
+  initialItems,
+  keyword,
+  pageSize,
+  sort,
+  verifiedOnly = false,
+}: CategoryBrowserProps) {
   const t = useTranslations("catalog");
   const seal = useTranslations("seal");
   const social = useTranslations("social");
@@ -38,13 +46,15 @@ export function CategoryBrowser({ category, initialItems, keyword, pageSize, sor
     });
   }
 
-  const sorted = sortListings(items, sort);
+  // 署名フィルタは読み込み済み集合に対して適用（backend signed 未対応の暫定）。
+  const visible = verifiedOnly ? items.filter((item) => item.signed) : items;
+  const sorted = sortListings(visible, sort);
 
   return (
     <section>
       <div className="mb-4 flex items-baseline justify-between border-b border-line pb-3">
         <h2 className="text-base font-semibold text-ink">{category}</h2>
-        <span className="font-mono text-xs text-ink-faint">{t("count", { count: items.length })}</span>
+        <span className="font-mono text-xs text-ink-faint">{t("count", { count: sorted.length })}</span>
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">

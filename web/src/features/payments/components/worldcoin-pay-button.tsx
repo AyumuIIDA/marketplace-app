@@ -3,6 +3,7 @@
 import { MiniKit } from "@worldcoin/minikit-js";
 import { tokenToDecimals, Tokens } from "@worldcoin/minikit-js/commands";
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 
 import { ActionButton } from "../../../components/ui/action-button";
 import { confirmWorldcoinPayment } from "../../../lib/api/worldcoin-payment.client";
@@ -26,6 +27,7 @@ export function WorldcoinPayButton({
   listingId,
   miniKitClient = MiniKit,
 }: WorldcoinPayButtonProps) {
+  const t = useTranslations("payment");
   const [message, setMessage] = useState<string | undefined>();
   const [isPending, startTransition] = useTransition();
 
@@ -35,17 +37,17 @@ export function WorldcoinPayButton({
       const wldJpyRate = getWldJpyRate();
 
       if (receiverAddress === undefined || receiverAddress.length === 0) {
-        setMessage("Worldcoin receiver address is not configured.");
+        setMessage(t("noReceiver"));
         return;
       }
 
       if (wldJpyRate === undefined) {
-        setMessage("WLD/JPY rate is not configured.");
+        setMessage(t("noRate"));
         return;
       }
 
       if (!miniKitClient.isInWorldApp()) {
-        setMessage("Open this marketplace inside World App to pay with Worldcoin.");
+        setMessage(t("needWorldApp"));
         return;
       }
 
@@ -59,7 +61,7 @@ export function WorldcoinPayButton({
         });
 
         if (result.executedWith !== "minikit") {
-          setMessage("World App is required.");
+          setMessage(t("needMinikit"));
           return;
         }
 
@@ -70,9 +72,9 @@ export function WorldcoinPayButton({
           return;
         }
 
-        setMessage("Worldcoin payment was verified by the backend.");
+        setMessage(t("verified"));
       } catch {
-        setMessage("Worldcoin payment failed or was cancelled.");
+        setMessage(t("failed"));
       }
     });
   }
@@ -80,9 +82,9 @@ export function WorldcoinPayButton({
   return (
     <div className="space-y-2">
       <ActionButton disabled={disabled || isPending} onClick={payWithWorldcoin} variant="primary">
-        {isPending ? "Opening World App..." : "Pay with WLD"}
+        {isPending ? t("opening") : t("pay")}
       </ActionButton>
-      {message !== undefined && <p className="text-xs leading-5 text-neutral-500">{message}</p>}
+      {message !== undefined && <p className="text-xs leading-5 text-ink-soft">{message}</p>}
     </div>
   );
 }

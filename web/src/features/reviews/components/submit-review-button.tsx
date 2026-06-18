@@ -2,6 +2,7 @@
 
 import type { IDKitResult } from "@worldcoin/idkit";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 import type { Review } from "../../../lib/api/reviews.api";
 import { WorldIdButton } from "../../world-id/components/world-id-button";
@@ -13,6 +14,7 @@ type SubmitReviewButtonProps = {
 };
 
 export function SubmitReviewButton({ review }: SubmitReviewButtonProps) {
+  const t = useTranslations("worldId");
   const [signal, setSignal] = useState<string | undefined>();
 
   async function handleVerified(result: IDKitResult): Promise<void> {
@@ -28,8 +30,8 @@ export function SubmitReviewButton({ review }: SubmitReviewButtonProps) {
 
   return (
     <WorldIdButton
-      action="REVIEW_SUBMIT"
-      label="Submit with World ID"
+      action="review-submit"
+      label={t("submitReview")}
       onBeforeOpen={prepareSignal}
       onVerified={handleVerified}
       signal={signal}

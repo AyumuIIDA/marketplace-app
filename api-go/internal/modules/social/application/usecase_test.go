@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	socialapp "marketplace/api-go/internal/modules/social/application"
+	socialdomain "marketplace/api-go/internal/modules/social/domain"
 	"marketplace/api-go/internal/shared/apperr"
 )
 
@@ -16,6 +17,7 @@ type fakeRepo struct {
 	sellerLikes  map[[2]uuid.UUID]bool
 	profiles     map[uuid.UUID]*socialapp.SellerProfile
 	ratings      map[uuid.UUID]socialapp.SellerRating
+	comments     map[uuid.UUID][]*socialdomain.Comment
 }
 
 func newFakeRepo() *fakeRepo {
@@ -24,6 +26,7 @@ func newFakeRepo() *fakeRepo {
 		sellerLikes:  map[[2]uuid.UUID]bool{},
 		profiles:     map[uuid.UUID]*socialapp.SellerProfile{},
 		ratings:      map[uuid.UUID]socialapp.SellerRating{},
+		comments:     map[uuid.UUID][]*socialdomain.Comment{},
 	}
 }
 
@@ -85,6 +88,29 @@ func (f *fakeRepo) FindSellerProfile(_ context.Context, s uuid.UUID) (*socialapp
 }
 func (f *fakeRepo) GetSellerRating(_ context.Context, s uuid.UUID) (socialapp.SellerRating, error) {
 	return f.ratings[s], nil
+}
+func (f *fakeRepo) SaveComment(_ context.Context, c *socialdomain.Comment) error {
+	f.comments[c.ListingID()] = append(f.comments[c.ListingID()], c)
+	return nil
+}
+func (f *fakeRepo) ListComments(_ context.Context, listingID uuid.UUID, _, _ int32) ([]socialapp.CommentRow, error) {
+	rows := make([]socialapp.CommentRow, 0, len(f.comments[listingID]))
+	for _, c := range f.comments[listingID] {
+		rows = append(rows, socialapp.CommentRow{
+			CommentID: c.ID(), ListingID: c.ListingID(), AuthorID: c.AuthorID(),
+			Body: c.Body(), CreatedAt: c.CreatedAt(), AuthorDisplayName: "tester", AuthorHumanVerified: true,
+		})
+	}
+	return rows, nil
+}
+func (f *fakeRepo) CountComments(_ context.Context, listingID uuid.UUID) (int64, error) {
+	return int64(len(f.comments[listingID])), nil
+}
+func (f *fakeRepo) CountLikesByListingIDs(_ context.Context, _ []uuid.UUID) (map[uuid.UUID]int64, error) {
+	return map[uuid.UUID]int64{}, nil
+}
+func (f *fakeRepo) CountCommentsByListingIDs(_ context.Context, _ []uuid.UUID) (map[uuid.UUID]int64, error) {
+	return map[uuid.UUID]int64{}, nil
 }
 
 func TestListingLikeToggle(t *testing.T) {

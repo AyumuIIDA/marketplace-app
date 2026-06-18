@@ -9,7 +9,84 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const countCommentsByListing = `-- name: CountCommentsByListing :one
+SELECT count(*) FROM listing_comments WHERE listing_id = $1 AND hidden_at IS NULL
+`
+
+func (q *Queries) CountCommentsByListing(ctx context.Context, listingID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countCommentsByListing, listingID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countCommentsByListingIDs = `-- name: CountCommentsByListingIDs :many
+SELECT listing_id, count(*) AS comment_count
+FROM listing_comments
+WHERE hidden_at IS NULL AND listing_id = ANY($1::uuid[])
+GROUP BY listing_id
+`
+
+type CountCommentsByListingIDsRow struct {
+	ListingID    uuid.UUID
+	CommentCount int64
+}
+
+func (q *Queries) CountCommentsByListingIDs(ctx context.Context, listingIds []uuid.UUID) ([]CountCommentsByListingIDsRow, error) {
+	rows, err := q.db.Query(ctx, countCommentsByListingIDs, listingIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountCommentsByListingIDsRow{}
+	for rows.Next() {
+		var i CountCommentsByListingIDsRow
+		if err := rows.Scan(&i.ListingID, &i.CommentCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countLikesByListingIDs = `-- name: CountLikesByListingIDs :many
+SELECT listing_id, count(*) AS like_count
+FROM listing_likes
+WHERE listing_id = ANY($1::uuid[])
+GROUP BY listing_id
+`
+
+type CountLikesByListingIDsRow struct {
+	ListingID uuid.UUID
+	LikeCount int64
+}
+
+// フィード用バッチ集計。指定id群のいいね数をまとめて返す（0件のidは行が出ない＝呼び出し側で0補完）。
+func (q *Queries) CountLikesByListingIDs(ctx context.Context, listingIds []uuid.UUID) ([]CountLikesByListingIDsRow, error) {
+	rows, err := q.db.Query(ctx, countLikesByListingIDs, listingIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountLikesByListingIDsRow{}
+	for rows.Next() {
+		var i CountLikesByListingIDsRow
+		if err := rows.Scan(&i.ListingID, &i.LikeCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
 
 const countListingLikes = `-- name: CountListingLikes :one
 SELECT count(*) FROM listing_likes WHERE listing_id = $1
@@ -68,6 +145,27 @@ func (q *Queries) GetSellerRating(ctx context.Context, revieweeID uuid.UUID) (Ge
 	var i GetSellerRatingRow
 	err := row.Scan(&i.Rating, &i.ReviewCount)
 	return i, err
+}
+
+const insertListingComment = `-- name: InsertListingComment :exec
+INSERT INTO listing_comments (id, listing_id, author_id, body) VALUES ($1, $2, $3, $4)
+`
+
+type InsertListingCommentParams struct {
+	ID        uuid.UUID
+	ListingID uuid.UUID
+	AuthorID  uuid.UUID
+	Body      string
+}
+
+func (q *Queries) InsertListingComment(ctx context.Context, arg InsertListingCommentParams) error {
+	_, err := q.db.Exec(ctx, insertListingComment,
+		arg.ID,
+		arg.ListingID,
+		arg.AuthorID,
+		arg.Body,
+	)
+	return err
 }
 
 const isListingLiked = `-- name: IsListingLiked :one
@@ -130,6 +228,62 @@ type LikeSellerParams struct {
 func (q *Queries) LikeSeller(ctx context.Context, arg LikeSellerParams) error {
 	_, err := q.db.Exec(ctx, likeSeller, arg.UserID, arg.SellerID)
 	return err
+}
+
+const listCommentsByListing = `-- name: ListCommentsByListing :many
+SELECT c.id, c.listing_id, c.author_id, c.body, c.created_at,
+       u.display_name AS author_display_name,
+       (u.human_verified_at IS NOT NULL)::boolean AS author_human_verified
+FROM listing_comments c
+JOIN users u ON u.id = c.author_id
+WHERE c.listing_id = $1 AND c.hidden_at IS NULL
+ORDER BY c.created_at DESC
+LIMIT $3::integer OFFSET $2::integer
+`
+
+type ListCommentsByListingParams struct {
+	ListingID    uuid.UUID
+	ResultOffset int32
+	ResultLimit  int32
+}
+
+type ListCommentsByListingRow struct {
+	ID                  uuid.UUID
+	ListingID           uuid.UUID
+	AuthorID            uuid.UUID
+	Body                string
+	CreatedAt           pgtype.Timestamptz
+	AuthorDisplayName   string
+	AuthorHumanVerified bool
+}
+
+// 公開コメントを新しい順に。著者の表示名/本人認証バッジを users から join。
+func (q *Queries) ListCommentsByListing(ctx context.Context, arg ListCommentsByListingParams) ([]ListCommentsByListingRow, error) {
+	rows, err := q.db.Query(ctx, listCommentsByListing, arg.ListingID, arg.ResultOffset, arg.ResultLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCommentsByListingRow{}
+	for rows.Next() {
+		var i ListCommentsByListingRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ListingID,
+			&i.AuthorID,
+			&i.Body,
+			&i.CreatedAt,
+			&i.AuthorDisplayName,
+			&i.AuthorHumanVerified,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listLikedListingIDs = `-- name: ListLikedListingIDs :many

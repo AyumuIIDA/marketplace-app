@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { requiredEnv } from "../../../../src/lib/auth/env";
 import type { WorldIdAction } from "../../../../src/lib/world/world-config";
 
-const allowedActions = new Set<WorldIdAction>(["ACCOUNT_LINK", "LISTING_PUBLISH", "REVIEW_SUBMIT"]);
+const allowedActions = new Set<WorldIdAction>(["account-link", "listing-publish", "review-submit"]);
 
 export async function POST(request: Request): Promise<Response> {
   const body = (await request.json()) as { action?: unknown };

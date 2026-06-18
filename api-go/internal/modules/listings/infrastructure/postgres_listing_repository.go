@@ -131,6 +131,7 @@ func (r *PostgresListingRepository) Search(ctx context.Context, in listingsdomai
 		MinPrice:     in.MinPrice,
 		MaxPrice:     in.MaxPrice,
 		Keyword:      in.Keyword,
+		Randomize:    in.Randomize,
 		ResultOffset: offset,
 		ResultLimit:  limit,
 	})

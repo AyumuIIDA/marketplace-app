@@ -1,102 +1,115 @@
 import { getTranslations } from "next-intl/server";
 
 import { MarketplaceShell } from "../../src/components/layout/marketplace-shell";
-import { PageHeader } from "../../src/components/layout/page-header";
-import { ActionButton } from "../../src/components/ui/action-button";
-import { DetailRow } from "../../src/components/ui/detail-row";
-import { GlassPanel } from "../../src/components/ui/glass-panel";
 import { StatePanel } from "../../src/components/ui/state-panel";
-import { StatusBadge } from "../../src/components/ui/status-badge";
+import { ProfileSidebar } from "../../src/features/account/components/profile-sidebar";
 import { toShellUserLabels } from "../../src/features/current-user/shell-user";
 import { ListingGrid } from "../../src/features/listings/components/listing-grid";
 import { mapListingsToViewModels } from "../../src/features/listings/listing.mapper";
-import { WorldIdButton } from "../../src/features/world-id/components/world-id-button";
+import { TransactionList } from "../../src/features/orders/components/transaction-list";
 import { getCurrentUser } from "../../src/lib/api/current-user.api";
 import { searchMyListings } from "../../src/lib/api/listings.api";
+import { listOrders } from "../../src/lib/api/orders.api";
+import { ensureOnboarded } from "../../src/lib/auth/onboarding";
 
 export const dynamic = "force-dynamic";
 
-export default async function MePage() {
-  const [currentUser, listings, t, social] = await Promise.all([
+type MePageProps = {
+  searchParams: Promise<{ tab?: string }>;
+};
+
+const TABS = ["purchases", "listings", "likes"] as const;
+type TabKey = (typeof TABS)[number];
+
+export default async function MePage({ searchParams }: MePageProps) {
+  await ensureOnboarded("/me");
+  const [{ tab }, currentUser, listings, orders, t, social, tx] = await Promise.all([
+    searchParams,
     getCurrentUser(),
-    searchMyListings({ limit: 12 }),
+    searchMyListings({ limit: 50 }),
+    listOrders({ limit: 50 }),
     getTranslations("pages.me"),
     getTranslations("social"),
+    getTranslations("transaction"),
   ]);
   const { humanLabel, userLabel } = toShellUserLabels(currentUser);
 
-  return (
-    <MarketplaceShell
-      activeSection="me"
-      authenticated={currentUser !== undefined}
-      humanLabel={humanLabel}
-      userLabel={userLabel}
-    >
-      <PageHeader title={t("title")} />
-      {currentUser === undefined ? (
+  if (currentUser === undefined) {
+    return (
+      <MarketplaceShell activeSection="me" authenticated={false} humanLabel={humanLabel} userLabel={userLabel}>
         <StatePanel actionHref="/signin" actionLabel={t("signInAction")} title={t("signInTitle")}>
           {t("signInBody")}
         </StatePanel>
-      ) : (
-        <div className="space-y-6">
-          <GlassPanel className="p-5">
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              <StatusBadge tone={currentUser.status === "ACTIVE" ? "good" : "warn"}>{currentUser.status}</StatusBadge>
-              <StatusBadge tone={currentUser.humanVerified ? "seal" : "warn"}>
-                {currentUser.humanVerified ? t("worldIdLinked") : t("worldIdUnlinked")}
-              </StatusBadge>
-            </div>
-            <dl className="rounded-md border border-line bg-paper p-4">
-              <DetailRow label={t("name")} value={currentUser.displayName} />
-              <DetailRow label={t("userId")} mono value={currentUser.userId} />
-              <DetailRow label={t("email")} value={currentUser.email ?? t("notProvided")} />
-            </dl>
-            {!currentUser.humanVerified && (
-              <div className="mt-5">
-                <WorldIdButton action="ACCOUNT_LINK" label={t("linkWorldId")} />
+      </MarketplaceShell>
+    );
+  }
+
+  const purchases = orders.filter((order) => order.buyerId === currentUser.userId);
+  const active: TabKey = TABS.includes(tab as TabKey) ? (tab as TabKey) : "purchases";
+  const tabs: { key: TabKey; label: string; count: number }[] = [
+    { key: "purchases", label: t("tabPurchases"), count: purchases.length },
+    { key: "listings", label: t("tabListings"), count: listings.length },
+    { key: "likes", label: t("tabLikes"), count: 0 },
+  ];
+
+  return (
+    <MarketplaceShell activeSection="me" authenticated humanLabel={humanLabel} userLabel={userLabel}>
+      <div className="grid gap-8 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
+        <ProfileSidebar currentUser={currentUser} listingsCount={listings.length} purchasesCount={purchases.length} />
+
+        <div className="min-w-0">
+          {/* GitHub型のタブバー。実リンク=SSR切替・キーボード可・共有可。 */}
+          <nav className="flex gap-1 overflow-x-auto border-b border-line">
+            {tabs.map((item) => {
+              const selected = item.key === active;
+
+              return (
+                <a
+                  aria-current={selected ? "page" : undefined}
+                  className={`-mb-px flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
+                    selected ? "border-seal text-ink" : "border-transparent text-ink-soft hover:text-ink"
+                  }`}
+                  href={item.key === "purchases" ? "/me" : `/me?tab=${item.key}`}
+                  key={item.key}
+                >
+                  {item.label}
+                  <span className="rounded-full bg-paper px-1.5 font-mono text-[11px] text-ink-soft ring-1 ring-line">
+                    {item.count}
+                  </span>
+                </a>
+              );
+            })}
+          </nav>
+
+          <div className="mt-6">
+            {active === "purchases" && (
+              <TransactionList currentUserId={currentUser.userId} emptyLabel={tx("emptyPurchases")} orders={purchases} />
+            )}
+
+            {active === "listings" &&
+              (listings.length === 0 ? (
+                <StatePanel actionHref="/listings/new" actionLabel={t("emptyAction")} title={t("emptyTitle")}>
+                  {t("emptyBody")}
+                </StatePanel>
+              ) : (
+                <ListingGrid listings={mapListingsToViewModels(listings)} />
+              ))}
+
+            {active === "likes" && (
+              <div className="space-y-8">
+                <section>
+                  <h2 className="mb-3 text-sm font-semibold text-ink">{social("likedItems")}</h2>
+                  <p className="text-sm text-ink-soft">{social("likedItemsEmpty")}</p>
+                </section>
+                <section>
+                  <h2 className="mb-3 text-sm font-semibold text-ink">{social("likedSellers")}</h2>
+                  <p className="text-sm text-ink-soft">{social("likedSellersEmpty")}</p>
+                </section>
               </div>
             )}
-          </GlassPanel>
-
-          <GlassPanel className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <h2 className="text-base font-semibold text-ink">{t("orders")}</h2>
-              <p className="mt-1 text-sm text-ink-soft">{t("ordersBody")}</p>
-            </div>
-            <ActionButton href="/orders" variant="secondary">
-              {t("ordersAction")}
-            </ActionButton>
-          </GlassPanel>
-
-          <section>
-            <div className="mb-4 flex items-baseline justify-between border-b border-line pb-3">
-              <h2 className="text-sm font-semibold text-ink">{t("myListings")}</h2>
-            </div>
-            {listings.length === 0 ? (
-              <StatePanel actionHref="/listings/new" actionLabel={t("emptyAction")} title={t("emptyTitle")}>
-                {t("emptyBody")}
-              </StatePanel>
-            ) : (
-              <ListingGrid listings={mapListingsToViewModels(listings)} />
-            )}
-          </section>
-
-          {/* いいね一覧。データ供給はbackend実装後（social-features-backend-iayu6.md）。 */}
-          <section>
-            <div className="mb-4 flex items-baseline justify-between border-b border-line pb-3">
-              <h2 className="text-sm font-semibold text-ink">{social("likedItems")}</h2>
-            </div>
-            <p className="text-sm text-ink-soft">{social("likedItemsEmpty")}</p>
-          </section>
-
-          <section>
-            <div className="mb-4 flex items-baseline justify-between border-b border-line pb-3">
-              <h2 className="text-sm font-semibold text-ink">{social("likedSellers")}</h2>
-            </div>
-            <p className="text-sm text-ink-soft">{social("likedSellersEmpty")}</p>
-          </section>
+          </div>
         </div>
-      )}
+      </div>
     </MarketplaceShell>
   );
 }

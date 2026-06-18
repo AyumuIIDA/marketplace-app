@@ -3,9 +3,23 @@ package socialapp
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
+
+	socialdomain "marketplace/api-go/internal/modules/social/domain"
 )
+
+// CommentRow は出品コメントの読み取りモデル（著者表示名/本人認証を users から join 済み）。
+type CommentRow struct {
+	CommentID           uuid.UUID
+	ListingID           uuid.UUID
+	AuthorID            uuid.UUID
+	Body                string
+	CreatedAt           time.Time
+	AuthorDisplayName   string
+	AuthorHumanVerified bool
+}
 
 // SellerProfile は出品者の表示情報（users 由来の読み取りモデル）。
 type SellerProfile struct {
@@ -40,4 +54,13 @@ type Repository interface {
 	FindSellerProfile(ctx context.Context, sellerID uuid.UUID) (*SellerProfile, error)
 	// GetSellerRating は SUBMITTED reviews の平均評価と件数を返す。
 	GetSellerRating(ctx context.Context, sellerID uuid.UUID) (SellerRating, error)
+
+	// --- 出品コメント ---
+	SaveComment(ctx context.Context, comment *socialdomain.Comment) error
+	ListComments(ctx context.Context, listingID uuid.UUID, limit, offset int32) ([]CommentRow, error)
+	CountComments(ctx context.Context, listingID uuid.UUID) (int64, error)
+
+	// --- フィード用バッチ集計（listings の ListingView enrich で使う） ---
+	CountLikesByListingIDs(ctx context.Context, listingIDs []uuid.UUID) (map[uuid.UUID]int64, error)
+	CountCommentsByListingIDs(ctx context.Context, listingIDs []uuid.UUID) (map[uuid.UUID]int64, error)
 }

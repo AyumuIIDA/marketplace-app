@@ -60,5 +60,9 @@ WHERE (sqlc.narg('status')::listing_status IS NULL OR status = sqlc.narg('status
     OR title ILIKE '%' || sqlc.narg('keyword')::text || '%'
     OR description ILIKE '%' || sqlc.narg('keyword')::text || '%'
   )
-ORDER BY created_at ASC
+-- randomize=true（無フィルタのホームフィード）は全カテゴリを混ぜて返す（UIのカテゴリ別セクション/フィルタ生成のため）。
+-- それ以外（keyword/category/seller フィルタ時）は created_at DESC で新着順かつ offset ページネーションを安定させる。
+ORDER BY
+  CASE WHEN sqlc.arg('randomize')::boolean THEN random() END,
+  created_at DESC
 LIMIT sqlc.arg('result_limit')::integer OFFSET sqlc.arg('result_offset')::integer;

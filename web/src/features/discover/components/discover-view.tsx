@@ -8,281 +8,358 @@ import type { ListingViewModel } from "../../listings/listing-view-model";
 import {
   discoverAgentAction,
   discoverSearchAction,
+  type DiscoverAgentActionOutput,
   type DiscoverAgentMessageInput,
+  type DiscoverProvider,
 } from "../actions/discover.actions";
 
 type DiscoverViewProps = {
   initial: ListingViewModel[];
 };
 
-type ChatMessage = {
-  id: string;
-  role: "user" | "assistant" | "tool";
-  content: string;
-};
+type Mode = "quick" | "agent";
+type Step = DiscoverAgentActionOutput["steps"][number];
+
+type AgentTurn =
+  | { kind: "user"; id: string; text: string }
+  | { kind: "assistant"; id: string; text: string; steps: Step[]; listings: ListingViewModel[] };
 
 export function DiscoverView({ initial }: DiscoverViewProps) {
   const t = useTranslations("discover");
+  const [mode, setMode] = useState<Mode>("quick");
+  // AIベンダー選択（agentモードのみ有効）。gemini=Gemini, openai=ChatGPT。
+  const [provider, setProvider] = useState<DiscoverProvider>("gemini");
   const [input, setInput] = useState("");
-  const [query, setQuery] = useState<string | undefined>();
-  const [results, setResults] = useState<ListingViewModel[]>(initial);
-  const [chatInput, setChatInput] = useState("");
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      id: "assistant-initial",
-      role: "assistant",
-      content: t("agentInitialMessage"),
-    },
-  ]);
-  const [isPending, startTransition] = useTransition();
-  const [isAgentPending, startAgentTransition] = useTransition();
 
+  // クイック検索（意味検索）。会話なしのグリッド。
+  const [results, setResults] = useState<ListingViewModel[]>(initial);
+  const [quickQuery, setQuickQuery] = useState<string | undefined>();
+  const [isQuickPending, startQuick] = useTransition();
+
+  // エージェント（会話＋トレース）。
+  const [turns, setTurns] = useState<AgentTurn[]>([]);
+  const [isAgentPending, startAgent] = useTransition();
+
+  const started = mode === "quick" ? quickQuery !== undefined : turns.length > 0;
   const chips = [t("chip0"), t("chip1"), t("chip2")];
 
-  function run(raw: string) {
-    const trimmed = raw.trim();
-    if (trimmed.length === 0) {
+  function submit(raw?: string) {
+    const text = (raw ?? input).trim();
+    if (text.length === 0) {
       return;
     }
-    setInput(trimmed);
-    startTransition(async () => {
-      const next = await discoverSearchAction(trimmed);
-      setQuery(trimmed);
-      setResults(next);
-    });
-  }
 
-  function runAgent(raw: string) {
-    const trimmed = raw.trim();
-    if (trimmed.length === 0) {
+    if (mode === "quick") {
+      setInput("");
+      startQuick(async () => {
+        const next = await discoverSearchAction(text);
+        setQuickQuery(text);
+        setResults(next);
+      });
       return;
     }
-    const history = toAgentHistory(chatMessages);
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: trimmed,
-    };
-    setChatInput("");
-    setChatMessages((current) => [...current, userMessage]);
-    startAgentTransition(async () => {
-      const next = await discoverAgentAction(trimmed, history);
-      const stepMessages = next.steps.map((step) => ({
-        id: `step-${step.index}-${Date.now()}`,
-        role: "tool" as const,
-        content: t("agentStepMessage", {
-          index: step.index,
-          actor: step.actor === "llm" ? t("agentActorLlm") : t("agentActorMcp"),
-          phase: t(`agentPhase.${step.phase}`),
-          status: step.status,
-          label: step.label,
-        }),
-      }));
-      const assistantReply: ChatMessage = {
-        id: `assistant-${Date.now()}`,
-        role: "assistant",
-        content: next.assistantMessage,
-      };
-      setQuery(trimmed);
-      setResults(next.listings);
-      setChatMessages((current) => [
+
+    const history = toHistory(turns);
+    setInput("");
+    setTurns((current) => [...current, { kind: "user", id: `u-${Date.now()}`, text }]);
+    startAgent(async () => {
+      const out = await discoverAgentAction(text, history, provider);
+      setTurns((current) => [
         ...current,
-        ...stepMessages,
-        assistantReply,
+        {
+          kind: "assistant",
+          id: `a-${Date.now()}`,
+          listings: out.listings,
+          steps: out.steps,
+          text: out.assistantMessage,
+        },
       ]);
     });
   }
 
   return (
-    <div className="min-h-screen bg-canvas text-canvas-ink">
+    <div className="flex min-h-screen flex-col bg-canvas text-canvas-ink">
       <header className="flex items-center justify-between px-5 py-4">
         <a className="flex items-center gap-2.5" href="/">
           <Seal size="sm" tone="dark" />
-          <span className="font-mono text-xs uppercase tracking-[0.18em] text-canvas-ink-soft">
-            {t("brand")}
-          </span>
+          <span className="font-mono text-xs uppercase tracking-[0.18em] text-canvas-ink-soft">{t("brand")}</span>
         </a>
-        <a className="text-sm font-medium text-canvas-ink-soft transition-colors hover:text-canvas-ink" href="/">
+        <a
+          className="text-sm font-medium text-canvas-ink-soft transition-colors hover:text-canvas-ink"
+          href="/"
+        >
           {t("backToMarket")}
         </a>
       </header>
 
-      <main className="mx-auto max-w-5xl px-5 pb-24">
-        <section className="relative grid place-items-center pt-12 pb-10 text-center md:pt-20">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute top-0 size-72 rounded-full bg-[radial-gradient(circle,rgba(216,64,47,0.22),transparent_70%)] blur-2xl"
-          />
-          <Seal animate className="relative" size="xl" tone="dark" />
-          <p className="relative mt-8 font-mono text-[11px] uppercase tracking-[0.32em] text-seal">
-            {t("eyebrow")}
-          </p>
-          <h1 className="relative mt-3 max-w-2xl text-3xl font-bold leading-tight tracking-tight md:text-5xl">
-            {t("headline")}
-          </h1>
-          <p className="relative mt-4 max-w-xl text-sm leading-6 text-canvas-ink-soft md:text-base">
-            {t("subhead")}
-          </p>
-
-          <form
-            className="relative mt-8 flex w-full max-w-2xl items-end gap-2 rounded-lg border border-canvas-line bg-canvas-2 p-2 focus-within:border-seal"
-            onSubmit={(event) => {
-              event.preventDefault();
-              run(input);
-            }}
-          >
-            <label className="sr-only" htmlFor="discover-input">
-              {t("inputLabel")}
-            </label>
-            <textarea
-              className="min-h-12 flex-1 resize-none bg-transparent px-3 py-2.5 text-left text-base leading-6 text-canvas-ink outline-none placeholder:text-canvas-ink-soft/70"
-              id="discover-input"
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  run(input);
-                }
-              }}
-              placeholder={t("placeholder")}
-              rows={1}
-              value={input}
-            />
-            <button
-              className="grid size-11 shrink-0 place-items-center rounded-md bg-seal font-semibold text-white transition-colors hover:bg-seal-strong disabled:opacity-50"
-              disabled={isPending || input.trim().length === 0}
-              type="submit"
-            >
-              <span className="text-lg leading-none">→</span>
-              <span className="sr-only">{t("submit")}</span>
-            </button>
-          </form>
-
-          <div className="relative mt-4 flex flex-wrap justify-center gap-2">
-            {chips.map((chip) => (
-              <button
-                className="rounded-full border border-canvas-line px-3 py-1.5 text-xs text-canvas-ink-soft transition-colors hover:border-seal hover:text-canvas-ink"
-                key={chip}
-                onClick={() => run(chip)}
-                type="button"
-              >
-                {chip}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="mb-8 rounded-lg border border-canvas-line bg-canvas-2 p-4">
-          <div className="mb-3 flex items-center justify-between gap-3 border-b border-canvas-line pb-3">
-            <h2 className="text-sm font-semibold text-canvas-ink">{t("agentTitle")}</h2>
-            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-canvas-ink-soft">
-              {t("agentMode")}
-            </span>
-          </div>
-          <div className="mb-3 flex max-h-80 flex-col gap-2 overflow-y-auto pr-1">
-            {chatMessages.map((message) => (
-              <div
-                className={
-                  message.role === "user"
-                    ? "ml-auto max-w-[85%] rounded-md bg-seal px-3 py-2 text-sm leading-6 text-white"
-                    : message.role === "tool"
-                      ? "max-w-[85%] rounded-md border border-canvas-line bg-canvas px-3 py-2 font-mono text-[11px] uppercase tracking-[0.08em] text-canvas-ink-soft"
-                      : "max-w-[85%] rounded-md border border-canvas-line bg-canvas px-3 py-2 text-sm leading-6 text-canvas-ink-soft"
-                }
-                key={message.id}
-              >
-                {message.content}
-              </div>
-            ))}
-            {isAgentPending && <AgentPendingTrace />}
-          </div>
-          <form
-            className="flex items-end gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              runAgent(chatInput);
-            }}
-          >
-            <label className="sr-only" htmlFor="discover-agent-input">
-              {t("agentInputLabel")}
-            </label>
-            <textarea
-              className="min-h-11 flex-1 resize-none rounded-md border border-canvas-line bg-canvas px-3 py-2 text-sm leading-6 text-canvas-ink outline-none placeholder:text-canvas-ink-soft/70 focus:border-seal"
-              id="discover-agent-input"
-              onChange={(event) => setChatInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  runAgent(chatInput);
-                }
-              }}
-              placeholder={t("agentPlaceholder")}
-              rows={1}
-              value={chatInput}
-            />
-            <button
-              className="grid size-11 shrink-0 place-items-center rounded-md border border-seal bg-transparent font-semibold text-seal transition-colors hover:bg-seal hover:text-white disabled:opacity-50"
-              disabled={isAgentPending || chatInput.trim().length === 0}
-              type="submit"
-            >
-              <span className="text-lg leading-none">↵</span>
-              <span className="sr-only">{t("agentSubmit")}</span>
-            </button>
-          </form>
-        </section>
-
-        <section>
-          <div className="mb-4 flex items-baseline justify-between border-b border-canvas-line pb-3">
-            <h2 className="text-sm font-semibold text-canvas-ink">
-              {query === undefined ? t("featured") : t("resultsFor", { query })}
-            </h2>
-            <span className="font-mono text-xs text-canvas-ink-soft">
-              {isPending || isAgentPending ? t("searching") : t("count", { count: results.length })}
-            </span>
-          </div>
-
-          {isPending || isAgentPending ? (
-            <SkeletonGrid />
-          ) : results.length === 0 ? (
-            <p className="py-16 text-center text-sm text-canvas-ink-soft">{t("noResults")}</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              {results.map((item, index) => (
-                <DiscoverCard
-                  index={index}
-                  item={item}
-                  key={item.id}
-                  matchLabel={query === undefined ? undefined : t("matched")}
-                  signedLabel={t("signed")}
-                />
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pb-28">
+        {!started ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-7 py-10">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <Seal size="md" tone="dark" />
+              <h1 className="text-xl font-semibold text-canvas-ink">{t("greeting")}</h1>
+            </div>
+            <div className="w-full max-w-2xl">
+              <Composer mode={mode} onModeChange={setMode} onProviderChange={setProvider} onSubmit={submit} provider={provider} setValue={setInput} value={input} />
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              {chips.map((chip) => (
+                <button
+                  className="rounded-full border border-canvas-line px-3 py-1.5 text-xs text-canvas-ink-soft transition-colors hover:border-seal hover:text-canvas-ink"
+                  key={chip}
+                  onClick={() => submit(chip)}
+                  type="button"
+                >
+                  {chip}
+                </button>
               ))}
             </div>
-          )}
-        </section>
+          </div>
+        ) : (
+          <div className="flex-1 py-6">
+            {mode === "quick" ? (
+              <QuickResults isPending={isQuickPending} query={quickQuery} results={results} />
+            ) : (
+              <AgentThread isPending={isAgentPending} turns={turns} />
+            )}
+          </div>
+        )}
       </main>
+
+      {started && (
+        <div className="sticky bottom-0 border-t border-canvas-line bg-canvas/95 backdrop-blur-sm">
+          <div className="mx-auto w-full max-w-3xl px-4 py-3">
+            <Composer mode={mode} onModeChange={setMode} onProviderChange={setProvider} onSubmit={submit} provider={provider} setValue={setInput} value={input} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function AgentPendingTrace() {
+function Composer({
+  mode,
+  onModeChange,
+  onProviderChange,
+  onSubmit,
+  provider,
+  setValue,
+  value,
+}: {
+  mode: Mode;
+  onModeChange: (mode: Mode) => void;
+  onProviderChange: (provider: DiscoverProvider) => void;
+  onSubmit: () => void;
+  provider: DiscoverProvider;
+  setValue: (value: string) => void;
+  value: string;
+}) {
   const t = useTranslations("discover");
-  const pendingSteps = [
-    t("agentPendingPlan"),
-    t("agentPendingTool"),
-    t("agentPendingReply"),
+  const modes: { key: Mode; label: string }[] = [
+    { key: "quick", label: t("modeQuick") },
+    { key: "agent", label: t("modeAgent") },
+  ];
+  const providers: { key: DiscoverProvider; label: string }[] = [
+    { key: "gemini", label: t("providerGemini") },
+    { key: "openai", label: t("providerOpenai") },
   ];
 
   return (
-    <div className="max-w-[85%] rounded-md border border-canvas-line bg-canvas px-3 py-2">
+    <div>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <div className="inline-flex rounded-full border border-canvas-line p-0.5 text-xs">
+          {modes.map((item) => (
+            <button
+              aria-pressed={mode === item.key}
+              className={
+                mode === item.key
+                  ? "rounded-full bg-seal px-3 py-1 font-medium text-white"
+                  : "rounded-full px-3 py-1 font-medium text-canvas-ink-soft transition-colors hover:text-canvas-ink"
+              }
+              key={item.key}
+              onClick={() => onModeChange(item.key)}
+              type="button"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        {mode === "agent" && (
+          <div
+            aria-label={t("providerLabel")}
+            className="inline-flex rounded-full border border-canvas-line p-0.5 text-xs"
+          >
+            {providers.map((item) => (
+              <button
+                aria-pressed={provider === item.key}
+                className={
+                  provider === item.key
+                    ? "rounded-full bg-seal px-3 py-1 font-medium text-white"
+                    : "rounded-full px-3 py-1 font-medium text-canvas-ink-soft transition-colors hover:text-canvas-ink"
+                }
+                key={item.key}
+                onClick={() => onProviderChange(item.key)}
+                type="button"
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <form
+        className="flex items-end gap-2 rounded-2xl border border-canvas-line bg-canvas-2 p-2 focus-within:border-seal"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit();
+        }}
+      >
+        <label className="sr-only" htmlFor="discover-input">
+          {t("inputLabel")}
+        </label>
+        <textarea
+          className="min-h-11 flex-1 resize-none bg-transparent px-3 py-2 text-base leading-6 text-canvas-ink outline-none placeholder:text-canvas-ink-soft/70"
+          id="discover-input"
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              onSubmit();
+            }
+          }}
+          placeholder={t("placeholder")}
+          rows={1}
+          value={value}
+        />
+        <button
+          className="grid size-10 shrink-0 place-items-center rounded-xl bg-seal font-semibold text-white transition-colors hover:bg-seal-strong disabled:opacity-50"
+          disabled={value.trim().length === 0}
+          type="submit"
+        >
+          <span className="text-lg leading-none">→</span>
+          <span className="sr-only">{t("submit")}</span>
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function QuickResults({
+  isPending,
+  query,
+  results,
+}: {
+  isPending: boolean;
+  query?: string;
+  results: ListingViewModel[];
+}) {
+  const t = useTranslations("discover");
+
+  return (
+    <section>
+      <div className="mb-4 flex items-baseline justify-between border-b border-canvas-line pb-3">
+        <h2 className="text-sm font-semibold text-canvas-ink">
+          {query === undefined ? t("featured") : t("resultsFor", { query })}
+        </h2>
+        <span className="font-mono text-xs text-canvas-ink-soft">
+          {isPending ? t("searching") : t("count", { count: results.length })}
+        </span>
+      </div>
+      {isPending ? (
+        <SkeletonGrid />
+      ) : results.length === 0 ? (
+        <p className="py-16 text-center text-sm text-canvas-ink-soft">{t("noResults")}</p>
+      ) : (
+        <ResultTiles items={results} />
+      )}
+    </section>
+  );
+}
+
+function AgentThread({ isPending, turns }: { isPending: boolean; turns: AgentTurn[] }) {
+  return (
+    <div className="space-y-6">
+      {turns.map((turn) =>
+        turn.kind === "user" ? (
+          <div className="flex justify-end" key={turn.id}>
+            <p className="max-w-[85%] rounded-2xl bg-seal px-4 py-2.5 text-sm leading-6 text-white">{turn.text}</p>
+          </div>
+        ) : (
+          <AssistantTurn key={turn.id} turn={turn} />
+        ),
+      )}
+      {isPending && <PendingTrace />}
+    </div>
+  );
+}
+
+function AssistantTurn({ turn }: { turn: Extract<AgentTurn, { kind: "assistant" }> }) {
+  return (
+    <div className="space-y-3">
+      {turn.steps.length > 0 && <AgentTrace steps={turn.steps} />}
+      <p className="text-sm leading-7 text-canvas-ink">{turn.text}</p>
+      {turn.listings.length > 0 && <ResultTiles items={turn.listings} />}
+    </div>
+  );
+}
+
+function AgentTrace({ steps }: { steps: Step[] }) {
+  const t = useTranslations("discover");
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="rounded-md border border-canvas-line bg-canvas-2 p-3">
+      <ol className="space-y-1.5">
+        {steps.map((step) => (
+          <li className="flex items-center gap-2 text-xs leading-5 text-canvas-ink-soft" key={step.index}>
+            <span className="size-1.5 shrink-0 rounded-full bg-seal" />
+            <span>{t(`trace.${step.phase}`)}</span>
+          </li>
+        ))}
+      </ol>
+      <button
+        aria-expanded={open}
+        className="mt-2 font-mono text-[11px] uppercase tracking-[0.08em] text-canvas-ink-soft transition-colors hover:text-canvas-ink"
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        {open ? t("traceHide") : t("traceDetails")}
+      </button>
+      {open && (
+        <ol className="mt-2 space-y-1 border-t border-canvas-line pt-2">
+          {steps.map((step) => (
+            <li
+              className="font-mono text-[11px] uppercase tracking-[0.06em] text-canvas-ink-soft/80"
+              key={`raw-${step.index}`}
+            >
+              {t("agentStepMessage", {
+                actor: step.actor === "llm" ? t("agentActorLlm") : t("agentActorMcp"),
+                index: step.index,
+                label: step.label,
+                phase: t(`agentPhase.${step.phase}`),
+                status: step.status,
+              })}
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+function PendingTrace() {
+  const t = useTranslations("discover");
+  const pendingSteps = [t("agentPendingPlan"), t("agentPendingTool"), t("agentPendingReply")];
+
+  return (
+    <div className="rounded-md border border-canvas-line bg-canvas-2 p-3">
       <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-canvas-ink-soft">
         {t("agentThinking")}
       </div>
-      <ol className="space-y-1">
-        {pendingSteps.map((step, index) => (
+      <ol className="space-y-1.5">
+        {pendingSteps.map((step) => (
           <li className="flex items-center gap-2 text-xs leading-5 text-canvas-ink-soft" key={step}>
-            <span className="grid size-4 shrink-0 place-items-center rounded-full border border-seal/50 font-mono text-[10px] text-seal">
-              {index + 1}
-            </span>
+            <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-seal motion-reduce:animate-none" />
             <span>{step}</span>
           </li>
         ))}
@@ -291,20 +368,22 @@ function AgentPendingTrace() {
   );
 }
 
-function toAgentHistory(messages: ChatMessage[]): DiscoverAgentMessageInput[] {
-  return messages
-    .filter(isAgentHistoryMessage)
-    .map((message) => ({
-      role: message.role,
-      content: message.content,
-    }))
-    .slice(-8);
+function ResultTiles({ items }: { items: ListingViewModel[] }) {
+  const t = useTranslations("discover");
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {items.map((item, index) => (
+        <DiscoverCard index={index} item={item} key={item.id} matchLabel={t("matched")} signedLabel={t("signed")} />
+      ))}
+    </div>
+  );
 }
 
-function isAgentHistoryMessage(
-  message: ChatMessage,
-): message is ChatMessage & { role: "user" | "assistant" } {
-  return message.role === "user" || message.role === "assistant";
+function toHistory(turns: AgentTurn[]): DiscoverAgentMessageInput[] {
+  return turns
+    .map((turn) => ({ content: turn.text, role: turn.kind === "user" ? ("user" as const) : ("assistant" as const) }))
+    .slice(-8);
 }
 
 function DiscoverCard({
@@ -355,13 +434,13 @@ function DiscoverCard({
 
 function SkeletonGrid() {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-      {Array.from({ length: 8 }).map((_, index) => (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, index) => (
         <div className="overflow-hidden rounded-lg border border-canvas-line bg-canvas-2" key={index}>
-          <div className="aspect-square animate-pulse bg-canvas-line/40" />
+          <div className="aspect-square animate-pulse bg-canvas-line/40 motion-reduce:animate-none" />
           <div className="space-y-2 p-3">
-            <div className="h-3 w-1/3 animate-pulse rounded bg-canvas-line/40" />
-            <div className="h-3 w-2/3 animate-pulse rounded bg-canvas-line/40" />
+            <div className="h-3 w-1/3 animate-pulse rounded bg-canvas-line/40 motion-reduce:animate-none" />
+            <div className="h-3 w-2/3 animate-pulse rounded bg-canvas-line/40 motion-reduce:animate-none" />
           </div>
         </div>
       ))}

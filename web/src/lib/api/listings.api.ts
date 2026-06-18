@@ -12,6 +12,8 @@ export type Listing = {
   condition: string;
   status: "DRAFT" | "PUBLISHED" | "SOLD" | "HIDDEN";
   signatureId?: string;
+  likeCount: number;
+  commentCount: number;
   images: { url: string; sortOrder: number }[];
   createdAt: string;
   updatedAt: string;
@@ -20,11 +22,12 @@ export type Listing = {
 };
 
 export async function searchListings(
-  input: { keyword?: string; category?: string; limit?: number; offset?: number } = {},
+  input: { keyword?: string; category?: string; sellerId?: string; limit?: number; offset?: number } = {},
 ): Promise<Listing[]> {
   const params = new URLSearchParams();
   const keyword = input.keyword?.trim();
   const category = input.category?.trim();
+  const sellerId = input.sellerId?.trim();
 
   if (keyword !== undefined && keyword.length > 0) {
     params.set("keyword", keyword);
@@ -32,6 +35,10 @@ export async function searchListings(
 
   if (category !== undefined && category.length > 0) {
     params.set("category", category);
+  }
+
+  if (sellerId !== undefined && sellerId.length > 0) {
+    params.set("sellerId", sellerId);
   }
 
   if (input.limit !== undefined) {
@@ -81,7 +88,9 @@ export async function getListing(listingId: string): Promise<Listing | undefined
   try {
     return await bffJson<Listing>(`/listings/${listingId}`);
   } catch (error) {
-    if (isBffError(error) && (error.status === 401 || error.status === 404)) {
+    // 401/404 に加え 403 も「閲覧不可」として undefined を返す。
+    // 取引相手の SOLD 出品など、非公開/非所有の出品は読めず 403 になる（呼び出し側はフォールバック表示）。
+    if (isBffError(error) && (error.status === 401 || error.status === 403 || error.status === 404)) {
       return undefined;
     }
 

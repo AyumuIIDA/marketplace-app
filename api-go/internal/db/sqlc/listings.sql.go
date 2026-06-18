@@ -173,8 +173,10 @@ WHERE ($1::listing_status IS NULL OR status = $1::listing_status)
     OR title ILIKE '%' || $7::text || '%'
     OR description ILIKE '%' || $7::text || '%'
   )
-ORDER BY created_at ASC
-LIMIT $9::integer OFFSET $8::integer
+ORDER BY
+  CASE WHEN $8::boolean THEN random() END,
+  created_at DESC
+LIMIT $10::integer OFFSET $9::integer
 `
 
 type SearchListingsParams struct {
@@ -185,11 +187,14 @@ type SearchListingsParams struct {
 	MinPrice     *int32
 	MaxPrice     *int32
 	Keyword      *string
+	Randomize    bool
 	ResultOffset int32
 	ResultLimit  int32
 }
 
 // 有界(7フィルタ)の検索。各条件は narg がNULLなら無効化される（Query Builder不要）。
+// randomize=true（無フィルタのホームフィード）は全カテゴリを混ぜて返す（UIのカテゴリ別セクション/フィルタ生成のため）。
+// それ以外（keyword/category/seller フィルタ時）は created_at DESC で新着順かつ offset ページネーションを安定させる。
 func (q *Queries) SearchListings(ctx context.Context, arg SearchListingsParams) ([]Listing, error) {
 	rows, err := q.db.Query(ctx, searchListings,
 		arg.Status,
@@ -199,6 +204,7 @@ func (q *Queries) SearchListings(ctx context.Context, arg SearchListingsParams) 
 		arg.MinPrice,
 		arg.MaxPrice,
 		arg.Keyword,
+		arg.Randomize,
 		arg.ResultOffset,
 		arg.ResultLimit,
 	)

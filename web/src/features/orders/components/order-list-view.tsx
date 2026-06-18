@@ -5,6 +5,7 @@ import { GlassPanel } from "../../../components/ui/glass-panel";
 import { StatePanel } from "../../../components/ui/state-panel";
 import { StatusBadge } from "../../../components/ui/status-badge";
 import type { Order } from "../../../lib/api/orders.api";
+import { shortRef } from "../../../lib/format/id";
 
 type OrderListViewProps = {
   orders: Order[];
@@ -29,12 +30,14 @@ export async function OrderListView({ orders }: OrderListViewProps) {
             <div className="min-w-0">
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <StatusBadge tone={order.status === "COMPLETED" ? "good" : "neutral"}>{order.status}</StatusBadge>
-                <span className="font-mono text-xs text-ink-faint">{order.orderId}</span>
+                <span className="font-mono text-xs text-ink-faint">{shortRef(order.orderId)}</span>
               </div>
               <p className="font-mono text-base font-semibold text-ink">
                 ¥{order.price.toLocaleString("ja-JP")}
               </p>
-              <p className="mt-0.5 truncate font-mono text-xs text-ink-soft">{order.listingId}</p>
+              <p className="mt-0.5 text-xs text-ink-soft">
+                {new Intl.DateTimeFormat("ja-JP", { dateStyle: "medium" }).format(new Date(order.createdAt))}
+              </p>
             </div>
             <ActionButton href={`/orders/${order.orderId}`} variant="secondary">
               {t("open")}

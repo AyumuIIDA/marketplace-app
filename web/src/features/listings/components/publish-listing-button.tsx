@@ -29,7 +29,7 @@ export function PublishListingButton({ label, listing }: PublishListingButtonPro
 
   return (
     <WorldIdButton
-      action="LISTING_PUBLISH"
+      action="listing-publish"
       label={label}
       onBeforeOpen={prepareSignal}
       onVerified={handleVerified}

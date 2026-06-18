@@ -66,3 +66,34 @@ type BuildDiscoverReplyOutput struct {
 type DiscoverAgentResponder interface {
 	BuildReply(ctx context.Context, in BuildDiscoverReplyInput) (BuildDiscoverReplyOutput, error)
 }
+
+// DiscoverAgentSet は1プロバイダ分の planner/responder の組。
+type DiscoverAgentSet struct {
+	Planner   DiscoverAgentPlanner
+	Responder DiscoverAgentResponder
+}
+
+// DiscoverAgentRegistry は provider名→セットの解決器。
+// リクエスト単位のベンダー選択(gemini/openai)に使う。"deterministic" は常に登録される前提。
+type DiscoverAgentRegistry struct {
+	sets            map[string]DiscoverAgentSet
+	defaultProvider string
+}
+
+// NewDiscoverAgentRegistry はレジストリを構築する。defaultProvider は未指定/未知時の既定。
+func NewDiscoverAgentRegistry(defaultProvider string, sets map[string]DiscoverAgentSet) *DiscoverAgentRegistry {
+	return &DiscoverAgentRegistry{sets: sets, defaultProvider: defaultProvider}
+}
+
+// Resolve は provider名でセットを返す。空/未登録は 既定プロバイダ→deterministic の順へ縮退する。
+func (r *DiscoverAgentRegistry) Resolve(provider string) DiscoverAgentSet {
+	if provider != "" {
+		if s, ok := r.sets[provider]; ok {
+			return s
+		}
+	}
+	if s, ok := r.sets[r.defaultProvider]; ok {
+		return s
+	}
+	return r.sets["deterministic"]
+}

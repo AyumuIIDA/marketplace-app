@@ -11,6 +11,7 @@ import (
 	"marketplace/api-go/internal/app/workflows"
 	mcpinterface "marketplace/api-go/internal/interface/mcp"
 	"marketplace/api-go/internal/interface/mcp/mcpgateway"
+	agentsapp "marketplace/api-go/internal/modules/agents/application"
 	agentsinfra "marketplace/api-go/internal/modules/agents/infrastructure"
 	listingsapp "marketplace/api-go/internal/modules/listings/application"
 	listingsdomain "marketplace/api-go/internal/modules/listings/domain"
@@ -89,9 +90,13 @@ func newDiscoverWorkflow(repo *discoverFakeRepo) *workflows.RunDiscoverAgentWork
 	factory := func(userID string, agentID *string) mcpgateway.McpToolGateway {
 		return mcpinterface.NewInProcessMcpToolGateway(tools, runner, mcpinterface.ToolContext{UserID: userID, AgentID: agentID})
 	}
-	return workflows.NewRunDiscoverAgentWorkflow(factory,
-		agentsinfra.NewDeterministicDiscoverAgentPlanner(),
-		agentsinfra.NewDeterministicDiscoverAgentResponder())
+	registry := agentsapp.NewDiscoverAgentRegistry("deterministic", map[string]agentsapp.DiscoverAgentSet{
+		"deterministic": {
+			Planner:   agentsinfra.NewDeterministicDiscoverAgentPlanner(),
+			Responder: agentsinfra.NewDeterministicDiscoverAgentResponder(),
+		},
+	})
+	return workflows.NewRunDiscoverAgentWorkflow(factory, registry)
 }
 
 func toolNames(calls []workflows.DiscoverToolCall) []string {

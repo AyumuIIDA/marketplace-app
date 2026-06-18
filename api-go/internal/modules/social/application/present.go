@@ -1,11 +1,43 @@
 package socialapp
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // LikeStatusView は いいねトグル応答（件数と自分の状態）。
 type LikeStatusView struct {
 	LikeCount int64 `json:"likeCount"`
 	LikedByMe bool  `json:"likedByMe"`
+}
+
+// CommentView は出品コメントの応答（著者表示名/本人認証バッジ付き）。
+type CommentView struct {
+	CommentID           string    `json:"commentId"`
+	ListingID           string    `json:"listingId"`
+	AuthorID            string    `json:"authorId"`
+	AuthorDisplayName   string    `json:"authorDisplayName"`
+	AuthorHumanVerified bool      `json:"authorHumanVerified"`
+	Body                string    `json:"body"`
+	CreatedAt           time.Time `json:"createdAt"`
+}
+
+// CommentsView はコメント一覧応答。
+type CommentsView struct {
+	Items []CommentView `json:"items"`
+}
+
+func presentComment(r CommentRow) CommentView {
+	return CommentView{
+		CommentID:           r.CommentID.String(),
+		ListingID:           r.ListingID.String(),
+		AuthorID:            r.AuthorID.String(),
+		AuthorDisplayName:   r.AuthorDisplayName,
+		AuthorHumanVerified: r.AuthorHumanVerified,
+		Body:                r.Body,
+		CreatedAt:           r.CreatedAt,
+	}
 }
 
 // SellerSummaryView は出品者表示UIの応答（既存フロント互換のcamelCase）。

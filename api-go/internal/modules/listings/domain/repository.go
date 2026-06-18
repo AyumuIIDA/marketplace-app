@@ -30,6 +30,8 @@ type SearchInput struct {
 	SellerID  *uuid.UUID
 	Limit     *int32
 	Offset    *int32
+	// Randomize=true は結果をランダム順で返す（無フィルタのホームフィードで全カテゴリを混ぜる用途）。
+	Randomize bool
 }
 
 // ImageToSave は listing_images への保存入力（hashはcontent-addressed keyに必要）。

@@ -11,6 +11,9 @@ const allowedPrefixes = [
   "messages",
   "orders",
   "reviews",
+  "sellers",
+  "conversations",
+  "board",
   "recommendations",
   "me",
   "mcp",
@@ -27,8 +30,15 @@ export async function proxyToHono(request: NextRequest, path: string[]): Promise
     return NextResponse.json({ error: { code: "BFF_ROUTE_NOT_ALLOWED" } }, { status: 404 });
   }
 
-  // 未ログインでも見られる公開GET（商品一覧・詳細）。それ以外はセッション必須。
-  const isPublicRead = request.method === "GET" && prefix === "listings" && path.length <= 2;
+  // 未ログインでも見られる公開GET。それ以外はセッション必須。
+  // - 商品一覧/詳細(listings/{id})、出品者サマリ(sellers/{id})、レビュー一覧(reviews)。
+  //   いずれも API 側が任意認証 or 公開で PUBLISHED/SUBMITTED のみ返す。
+  const isPublicRead =
+    request.method === "GET" &&
+    ((prefix === "listings" && path.length <= 2) ||
+      (prefix === "sellers" && path.length <= 2) ||
+      prefix === "reviews" ||
+      prefix === "board");
 
   if (session?.user?.id === undefined && !isPublicRead) {
     return NextResponse.json({ error: { code: "NOT_AUTHENTICATED" } }, { status: 401 });
