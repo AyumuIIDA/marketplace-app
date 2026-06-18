@@ -12,6 +12,8 @@ const allowedPrefixes = [
   "orders",
   "reviews",
   "sellers",
+  "conversations",
+  "board",
   "recommendations",
   "me",
   "mcp",
@@ -35,7 +37,8 @@ export async function proxyToHono(request: NextRequest, path: string[]): Promise
     request.method === "GET" &&
     ((prefix === "listings" && path.length <= 2) ||
       (prefix === "sellers" && path.length <= 2) ||
-      prefix === "reviews");
+      prefix === "reviews" ||
+      prefix === "board");
 
   if (session?.user?.id === undefined && !isPublicRead) {
     return NextResponse.json({ error: { code: "NOT_AUTHENTICATED" } }, { status: 401 });
