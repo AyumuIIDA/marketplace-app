@@ -77,6 +77,9 @@ jobs:
         with:
           version: v1.64.8
           working-directory: api-go
+          # 配布バイナリは go1.24 ビルドで go.mod(go 1.25) を拒否するため、
+          # 直前の setup-go (1.25) からソースビルドして go バージョンを一致させる。
+          install-mode: goinstall
 
   web:
     name: Web build
