@@ -110,7 +110,7 @@ func TestPublishWorkflow_HappyPath(t *testing.T) {
 	clk := fixedClock{t: time.Now()}
 	svc := signaturesapp.NewHumanSignatureService(
 		fakeVerifier{out: signaturesapp.VerifiedWorldID{
-			Action: "LISTING_PUBLISH", NullifierHash: "nullhash", VerificationLevel: "orb",
+			Action: "listing-publish", NullifierHash: "nullhash", VerificationLevel: "orb",
 			SignalHash: &payloadHash, Environment: "staging", VerifiedAt: clk.t,
 		}},
 		signaturesapp.NewHumanSignatureCreator(fakeSigner{}, ids.NewUUIDGenerator(), clk),
@@ -150,9 +150,9 @@ func TestPublishWorkflow_ActionMismatchRejected(t *testing.T) {
 	})
 	tx := memTxRunner{repos: HumanSignatureRepos{Listings: &memListingRepo{l: draft}, HumanSignatures: &memSigRepo{}, WorldIDVerifications: &memWorldRepo{}}}
 	clk := fixedClock{t: time.Now()}
-	// action が REVIEW_SUBMIT で来る → LISTING_PUBLISH 期待と不一致で Phase1 で弾く。
+	// action が review-submit で来る → listing-publish 期待と不一致で Phase1 で弾く。
 	svc := signaturesapp.NewHumanSignatureService(
-		fakeVerifier{out: signaturesapp.VerifiedWorldID{Action: "REVIEW_SUBMIT", NullifierHash: "n", VerificationLevel: "orb", Environment: "staging", VerifiedAt: clk.t}},
+		fakeVerifier{out: signaturesapp.VerifiedWorldID{Action: "review-submit", NullifierHash: "n", VerificationLevel: "orb", Environment: "staging", VerifiedAt: clk.t}},
 		signaturesapp.NewHumanSignatureCreator(fakeSigner{}, ids.NewUUIDGenerator(), clk),
 	)
 	wf := NewPublishListingWithHumanSignatureWorkflow(tx, listingsapp.NewListingPublicationService(), svc)

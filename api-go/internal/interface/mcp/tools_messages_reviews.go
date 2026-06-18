@@ -112,7 +112,7 @@ func (t submitReviewTool) Execute(ctx context.Context, in map[string]any, tc Too
 	}
 	idKit, ok := toIdKit(in)
 	if !ok {
-		return RequiresHumanSignature(map[string]any{"actionType": "REVIEW_SUBMIT", "resourceType": "REVIEW", "resourceId": reviewID.String()}), nil
+		return RequiresHumanSignature(map[string]any{"actionType": "review-submit", "resourceType": "REVIEW", "resourceId": reviewID.String()}), nil
 	}
 	reviewerID, err := requireUserID(tc)
 	if err != nil {

@@ -87,7 +87,7 @@ func TestSubmitReview_CompletesOrderWhenBothReviewed(t *testing.T) {
 	payloadHash, _ := reviewsapp.ComputeReviewPayloadHash(reviewsapp.ReviewToSignaturePayload(buyerReview))
 	clk := fixedClock{t: now}
 	svc := signaturesapp.NewHumanSignatureService(
-		fakeVerifier{out: signaturesapp.VerifiedWorldID{Action: "REVIEW_SUBMIT", NullifierHash: "n", VerificationLevel: "orb", SignalHash: &payloadHash, Environment: "staging", VerifiedAt: now}},
+		fakeVerifier{out: signaturesapp.VerifiedWorldID{Action: "review-submit", NullifierHash: "n", VerificationLevel: "orb", SignalHash: &payloadHash, Environment: "staging", VerifiedAt: now}},
 		signaturesapp.NewHumanSignatureCreator(fakeSigner{}, ids.NewUUIDGenerator(), clk),
 	)
 	of := ordersapp.NewOrderFulfillmentService(ids.NewUUIDGenerator(), clk)

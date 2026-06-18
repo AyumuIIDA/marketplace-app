@@ -15,9 +15,9 @@ import (
 type SignatureAction string
 
 const (
-	ActionListingPublish SignatureAction = "LISTING_PUBLISH"
-	ActionListingUpdate  SignatureAction = "LISTING_UPDATE"
-	ActionReviewSubmit   SignatureAction = "REVIEW_SUBMIT"
+	ActionListingPublish SignatureAction = "listing-publish"
+	ActionListingUpdate  SignatureAction = "listing-update"
+	ActionReviewSubmit   SignatureAction = "review-submit"
 )
 
 // SignatureResource は署名対象リソース種別。

@@ -59,6 +59,9 @@ services:
     build:
       context: api-go
       dockerfile: Dockerfile
+    # ホストのADC(600/owner=1000)をそのまま読むため、プロセスuidを所有者に一致させる。
+    # 鍵を 644 に緩めたりenvへ直書きしない安全策。本番Cloud Runは別経路(SA/WIF)で無影響。
+    user: "1000:1000"
     # api専用env。BFF内部JWTは【公開鍵のみ】。秘密鍵は注入されない。
     env_file:
       - .env.api

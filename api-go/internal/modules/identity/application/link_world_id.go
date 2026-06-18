@@ -13,7 +13,7 @@ import (
 	"github.com/outarc/marketplace/api-go/internal/shared/ids"
 )
 
-const worldIDAccountLinkAction = "ACCOUNT_LINK"
+const worldIDAccountLinkAction = "account-link"
 
 // LinkWorldIDInput は World ID 連携入力。
 type LinkWorldIDInput struct {
