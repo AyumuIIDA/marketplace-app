@@ -84,7 +84,7 @@ jobs:
             --no-allow-unauthenticated \
             --port 8080 \
             ${QDRANT_SECRET_ARG} \
-            --set-env-vars "GRPC_PORT=8080,GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=${{ vars.REC_GOOGLE_CLOUD_LOCATION || 'us-central1' }},GEMINI_EMBED_MODEL=${{ vars.GEMINI_EMBED_MODEL || 'text-embedding-004' }},QDRANT_URL=${{ vars.QDRANT_URL }},QDRANT_COLLECTION=${{ vars.QDRANT_COLLECTION || 'listings' }},RRF_TEXT_WEIGHT=${{ vars.RRF_TEXT_WEIGHT || '0.3' }},RRF_CLIP_WEIGHT=${{ vars.RRF_CLIP_WEIGHT || '1.0' }}" \
+            --set-env-vars "GRPC_PORT=8080,GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=${{ vars.REC_GOOGLE_CLOUD_LOCATION || 'us-central1' }},GEMINI_EMBED_MODEL=${{ vars.GEMINI_EMBED_MODEL || 'text-embedding-004' }},GEMINI_DIM=${{ vars.GEMINI_DIM || '768' }},QDRANT_URL=${{ vars.QDRANT_URL }},QDRANT_COLLECTION=${{ vars.QDRANT_COLLECTION || 'listings' }},RRF_TEXT_WEIGHT=${{ vars.RRF_TEXT_WEIGHT || '0.3' }},RRF_CLIP_WEIGHT=${{ vars.RRF_CLIP_WEIGHT || '1.0' }}" \
             --cpu 2 --memory 8Gi --min-instances 1 --max-instances 2 --timeout 120
 
       - name: Grant invoker to the API runtime SA (SA-only invoke)

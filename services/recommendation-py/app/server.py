@@ -28,7 +28,7 @@ class RecommendationServicer(pb_grpc.RecommendationServiceServicer):
     def SearchByText(self, request, context):
         top_k = request.top_k or CONFIG.default_top_k
         clip_vec = get_clip().encode_text(request.query)
-        text_vec = get_gemini().encode(request.query)
+        text_vec = get_gemini().encode_query(request.query)
         hits = self.store.search_by_text(
             clip_vec, text_vec, top_k, request.filter if request.HasField("filter") else None
         )
@@ -54,7 +54,7 @@ class RecommendationServicer(pb_grpc.RecommendationServiceServicer):
         try:
             clip_vec = get_clip().encode_image_url(request.image_url)
             text = f"{request.title}\n{request.description}".strip()
-            text_vec = get_gemini().encode(text)
+            text_vec = get_gemini().encode_document(text)
             self.store.upsert(
                 request.listing_id,
                 clip_vec,
