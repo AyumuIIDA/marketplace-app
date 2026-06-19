@@ -1,5 +1,6 @@
 import { bffJson, isBffError } from "./bff-client";
 import type { Listing } from "./listings.api";
+import type { SellerSummary } from "./sellers.api";
 
 // いいねトグルの応答。backend social module: POST/DELETE /listings/:id/like, /sellers/:id/like。
 export type LikeStatus = {
@@ -44,6 +45,23 @@ export async function setListingLike(listingId: string, liked: boolean): Promise
 // 出品者いいね。
 export async function setSellerLike(sellerId: string, liked: boolean): Promise<LikeStatus> {
   return bffJson<LikeStatus>(`/sellers/${sellerId}/like`, { method: liked ? "POST" : "DELETE" });
+}
+
+// 現在のユーザーがいいね済みの出品者サマリを新着順で取得する（/me のいいねタブ用）。
+// /me/liked-sellers は {items: SellerSummary[]}（rating は未評価時 null）。getSellerSummary と同様に正規化する。
+// 未ログインなどで取得できなければ空配列。
+export async function searchLikedSellers(limit = 50): Promise<SellerSummary[]> {
+  try {
+    const out = await bffJson<{ items: (Omit<SellerSummary, "rating"> & { rating: number | null })[] }>(
+      `/me/liked-sellers?limit=${limit}`,
+    );
+    return out.items.map((seller) => ({ ...seller, rating: seller.rating ?? undefined }));
+  } catch (error) {
+    if (isBffError(error) && (error.status === 401 || error.status === 404)) {
+      return [];
+    }
+    throw error;
+  }
 }
 
 // 出品コメント。著者は本人認証済みのみ（backendで強制）。authorHumanVerified で認証バッジを出す。

@@ -3,14 +3,16 @@ import { getTranslations } from "next-intl/server";
 import { MarketplaceShell } from "../../src/components/layout/marketplace-shell";
 import { StatePanel } from "../../src/components/ui/state-panel";
 import { ProfileSidebar } from "../../src/features/account/components/profile-sidebar";
+import { AgentAccessPanel } from "../../src/features/agent-access/components/agent-access-panel";
 import { toShellUserLabels } from "../../src/features/current-user/shell-user";
 import { ListingGrid } from "../../src/features/listings/components/listing-grid";
+import { SellerCard } from "../../src/features/listings/components/seller-card";
 import { mapListingsToViewModels } from "../../src/features/listings/listing.mapper";
 import { TransactionList } from "../../src/features/orders/components/transaction-list";
 import { getCurrentUser } from "../../src/lib/api/current-user.api";
 import { searchMyListings } from "../../src/lib/api/listings.api";
 import { listOrders } from "../../src/lib/api/orders.api";
-import { searchLikedListings } from "../../src/lib/api/social.api";
+import { searchLikedListings, searchLikedSellers } from "../../src/lib/api/social.api";
 import { ensureOnboarded } from "../../src/lib/auth/onboarding";
 
 export const dynamic = "force-dynamic";
@@ -19,16 +21,17 @@ type MePageProps = {
   searchParams: Promise<{ tab?: string }>;
 };
 
-const TABS = ["purchases", "listings", "likes"] as const;
+const TABS = ["purchases", "listings", "likes", "connect"] as const;
 type TabKey = (typeof TABS)[number];
 
 export default async function MePage({ searchParams }: MePageProps) {
   await ensureOnboarded("/me");
-  const [{ tab }, currentUser, listings, likedListings, orders, t, social, tx] = await Promise.all([
+  const [{ tab }, currentUser, listings, likedListings, likedSellers, orders, t, social, tx] = await Promise.all([
     searchParams,
     getCurrentUser(),
     searchMyListings({ limit: 50 }),
     searchLikedListings(50),
+    searchLikedSellers(50),
     listOrders({ limit: 50 }),
     getTranslations("pages.me"),
     getTranslations("social"),
@@ -48,10 +51,11 @@ export default async function MePage({ searchParams }: MePageProps) {
 
   const purchases = orders.filter((order) => order.buyerId === currentUser.userId);
   const active: TabKey = TABS.includes(tab as TabKey) ? (tab as TabKey) : "purchases";
-  const tabs: { key: TabKey; label: string; count: number }[] = [
+  const tabs: { key: TabKey; label: string; count?: number }[] = [
     { key: "purchases", label: t("tabPurchases"), count: purchases.length },
     { key: "listings", label: t("tabListings"), count: listings.length },
     { key: "likes", label: t("tabLikes"), count: likedListings.length },
+    { key: "connect", label: t("tabConnect") },
   ];
 
   return (
@@ -61,7 +65,8 @@ export default async function MePage({ searchParams }: MePageProps) {
 
         <div className="min-w-0">
           {/* GitHub型のタブバー。実リンク=SSR切替・キーボード可・共有可。 */}
-          <nav className="flex gap-1 overflow-x-auto border-b border-line">
+          {/* overflow-x-auto は overflow-y を auto に昇格させる。タブの -mb-px の1px溢れで縦スクロールバーが出るため y を明示的に隠す。 */}
+          <nav className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line">
             {tabs.map((item) => {
               const selected = item.key === active;
 
@@ -75,9 +80,11 @@ export default async function MePage({ searchParams }: MePageProps) {
                   key={item.key}
                 >
                   {item.label}
-                  <span className="rounded-full bg-paper px-1.5 font-mono text-[11px] text-ink-soft ring-1 ring-line">
-                    {item.count}
-                  </span>
+                  {item.count !== undefined && (
+                    <span className="rounded-full bg-paper px-1.5 font-mono text-[11px] text-ink-soft ring-1 ring-line">
+                      {item.count}
+                    </span>
+                  )}
                 </a>
               );
             })}
@@ -114,10 +121,20 @@ export default async function MePage({ searchParams }: MePageProps) {
                 </section>
                 <section>
                   <h2 className="mb-3 text-sm font-semibold text-ink">{social("likedSellers")}</h2>
-                  <p className="text-sm text-ink-soft">{social("likedSellersEmpty")}</p>
+                  {likedSellers.length === 0 ? (
+                    <p className="text-sm text-ink-soft">{social("likedSellersEmpty")}</p>
+                  ) : (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {likedSellers.map((seller) => (
+                        <SellerCard key={seller.sellerId} seller={seller} />
+                      ))}
+                    </div>
+                  )}
                 </section>
               </div>
             )}
+
+            {active === "connect" && <AgentAccessPanel />}
           </div>
         </div>
       </div>

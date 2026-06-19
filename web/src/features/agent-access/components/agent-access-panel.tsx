@@ -120,8 +120,8 @@ function CopyBlock({
         </button>
       </div>
       <pre
-        className={`max-h-60 overflow-auto rounded-md border border-line bg-paper px-3 py-2 font-mono text-[11px] leading-5 text-ink ${
-          wrap ? "whitespace-pre-wrap break-all" : "whitespace-pre"
+        className={`rounded-md border border-line bg-paper px-3 py-2 font-mono text-[11px] leading-5 text-ink ${
+          wrap ? "whitespace-pre-wrap break-all" : "overflow-x-auto whitespace-pre"
         }`}
       >
         {value}
