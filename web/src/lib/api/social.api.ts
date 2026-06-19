@@ -1,4 +1,5 @@
 import { bffJson, isBffError } from "./bff-client";
+import type { Listing } from "./listings.api";
 
 // いいねトグルの応答。backend social module: POST/DELETE /listings/:id/like, /sellers/:id/like。
 export type LikeStatus = {
@@ -15,6 +16,21 @@ export async function getLikedListingIds(limit = 100): Promise<Set<string>> {
   } catch (error) {
     if (isBffError(error) && (error.status === 401 || error.status === 404)) {
       return new Set();
+    }
+    throw error;
+  }
+}
+
+// 現在のユーザーがいいね済みの出品「本体」を新着順で取得する（/me のいいねタブ用）。
+// getLikedListingIds が ID だけ返すのに対し、こちらは検索と同じ ListingView をフルで返す。
+// 未ログインなどで取得できなければ空配列。
+export async function searchLikedListings(limit = 50): Promise<Listing[]> {
+  try {
+    const out = await bffJson<{ items: Listing[] }>(`/me/liked-listings?limit=${limit}`);
+    return out.items;
+  } catch (error) {
+    if (isBffError(error) && (error.status === 401 || error.status === 404)) {
+      return [];
     }
     throw error;
   }

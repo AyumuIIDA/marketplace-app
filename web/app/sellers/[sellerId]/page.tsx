@@ -32,7 +32,7 @@ export default async function SellerProfilePage({ params }: SellerProfilePagePro
     getTranslations("sellerProfile"),
     getTranslations("social"),
   ]);
-  const { humanLabel, userLabel } = toShellUserLabels(currentUser);
+  const { humanLabel, humanVerified, userLabel } = toShellUserLabels(currentUser);
   const items = mapListingsToViewModels(listings);
   const isSelf = currentUser?.userId === seller.sellerId;
 
@@ -40,7 +40,7 @@ export default async function SellerProfilePage({ params }: SellerProfilePagePro
     <MarketplaceShell
       activeSection="catalog"
       authenticated={currentUser !== undefined}
-      humanLabel={humanLabel}
+      humanLabel={humanLabel} humanVerified={humanVerified}
       userLabel={userLabel}
     >
       <PageHeader eyebrow={t("eyebrow")} title={t("title")} />

@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { Seal } from "../ui/seal";
 import { AccountMenu } from "./account-menu";
 import { BottomNav } from "./bottom-nav";
+import { LocaleToggle } from "./locale-toggle";
 import { PrimaryNav } from "./primary-nav";
 
 type MarketplaceShellProps = {
@@ -11,6 +12,7 @@ type MarketplaceShellProps = {
   authenticated?: boolean;
   children: ReactNode;
   humanLabel: string;
+  humanVerified?: boolean;
   searchQuery?: string;
   userLabel: string;
 };
@@ -20,6 +22,7 @@ export async function MarketplaceShell({
   authenticated = false,
   children,
   humanLabel,
+  humanVerified = false,
   searchQuery,
   userLabel,
 }: MarketplaceShellProps) {
@@ -63,8 +66,9 @@ export async function MarketplaceShell({
             </button>
           </form>
 
-          <div className="flex items-center gap-2">
-            <AccountMenu authenticated={authenticated} humanLabel={humanLabel} userLabel={userLabel} />
+          <div className="flex items-center gap-1">
+            <LocaleToggle />
+            <AccountMenu authenticated={authenticated} humanLabel={humanLabel} humanVerified={humanVerified} userLabel={userLabel} />
           </div>
         </div>
         <div className="hidden border-t border-line md:block">

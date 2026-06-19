@@ -15,7 +15,6 @@ import { LikeButton } from "../../social/components/like-button";
 import { StarRating } from "../../social/components/star-rating";
 import { publishListingAction } from "../actions/listing.actions";
 import { ProductGallery } from "./product-gallery";
-import { PublishListingButton } from "./publish-listing-button";
 
 type ListingDetailViewProps = {
   currentUser: CurrentUser | undefined;
@@ -33,7 +32,8 @@ export async function ListingDetailView({ currentUser, initialLiked = false, lis
   const isSeller = currentUser?.userId === listing.sellerId;
   const isSold = listing.status === "SOLD";
   const canPurchase = currentUser !== undefined && !isSeller && listing.status === "PUBLISHED";
-  const signed = listing.signatureId !== undefined;
+  // Seal の正本＝出品者アカウントの人間認証。行為署名(signatureId)ではなくアカウント認証で判断する（Route A）。
+  const signed = listing.sellerVerified === true;
   const [seller, comments] = await Promise.all([
     getSellerSummary(listing.sellerId),
     listListingComments(listing.listingId),
@@ -130,20 +130,14 @@ export async function ListingDetailView({ currentUser, initialLiked = false, lis
           {/* 取引。出品者本人は公開操作、それ以外は購入導線（PCインライン）。 */}
           {isSeller ? (
             listing.status === "DRAFT" ? (
-              <div className="space-y-4">
-                {/* ブランドの核＝本人署名公開を主導線に。ログインのみ公開は副次に置く。 */}
-                <div className="space-y-1.5">
-                  <PublishListingButton label={t("publishSigned")} listing={listing} />
-                  <p className="text-xs leading-5 text-ink-soft">{t("publishSignedHint")}</p>
-                </div>
-                <form action={publishListingAction} className="space-y-1.5 border-t border-line pt-4">
-                  <input name="listingId" type="hidden" value={listing.listingId} />
-                  <ActionButton className="w-full" type="submit" variant="secondary">
-                    {t("publish")}
-                  </ActionButton>
-                  <p className="text-xs leading-5 text-ink-soft">{t("publishUnsignedHint")}</p>
-                </form>
-              </div>
+              // 公開はログインのみ。認証済みアカウントの出品は自動で認証マーク(Seal)が付く（Route A: アカウント認証を継承）。
+              <form action={publishListingAction} className="space-y-1.5">
+                <input name="listingId" type="hidden" value={listing.listingId} />
+                <ActionButton className="w-full" type="submit" variant="primary">
+                  {t("publish")}
+                </ActionButton>
+                <p className="text-xs leading-5 text-ink-soft">{t("publishHint")}</p>
+              </form>
             ) : null
           ) : (
             <div className="hidden space-y-1.5 md:block">

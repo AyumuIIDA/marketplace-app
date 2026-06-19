@@ -20,13 +20,13 @@ export default async function ListingPage({ params }: ListingPageProps) {
     getListing(listingId),
     getLikedListingIds(),
   ]);
-  const { humanLabel, userLabel } = toShellUserLabels(currentUser);
+  const { humanLabel, humanVerified, userLabel } = toShellUserLabels(currentUser);
 
   return (
     <MarketplaceShell
       activeSection="catalog"
       authenticated={currentUser !== undefined}
-      humanLabel={humanLabel}
+      humanLabel={humanLabel} humanVerified={humanVerified}
       userLabel={userLabel}
     >
       <ListingDetailView currentUser={currentUser} initialLiked={likedIds.has(listingId)} listing={listing} />

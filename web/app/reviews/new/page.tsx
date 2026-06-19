@@ -21,13 +21,13 @@ export default async function NewReviewPage({ searchParams }: NewReviewPageProps
     getCurrentUser(),
     getTranslations("pages.review"),
   ]);
-  const { humanLabel, userLabel } = toShellUserLabels(currentUser);
+  const { humanLabel, humanVerified, userLabel } = toShellUserLabels(currentUser);
 
   return (
     <MarketplaceShell
       activeSection="orders"
       authenticated={currentUser !== undefined}
-      humanLabel={humanLabel}
+      humanLabel={humanLabel} humanVerified={humanVerified}
       userLabel={userLabel}
     >
       <PageHeader title={t("title")} />

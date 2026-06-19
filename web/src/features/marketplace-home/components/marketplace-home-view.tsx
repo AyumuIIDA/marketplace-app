@@ -22,6 +22,7 @@ type MarketplaceHomeViewProps = {
   categoryItems: ListingViewModel[];
   categoryTotal: number;
   humanLabel: string;
+  humanVerified: boolean;
   likedIds: Set<string>;
   pageSize: number;
   searchQuery?: string;
@@ -39,6 +40,7 @@ export async function MarketplaceHomeView({
   categoryItems,
   categoryTotal,
   humanLabel,
+  humanVerified,
   likedIds,
   pageSize,
   searchQuery,
@@ -64,6 +66,7 @@ export async function MarketplaceHomeView({
       activeSection="catalog"
       authenticated={authenticated}
       humanLabel={humanLabel}
+      humanVerified={humanVerified}
       searchQuery={searchQuery}
       userLabel={userLabel}
     >

@@ -1,7 +1,6 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import type { IDKitResult } from "@worldcoin/idkit";
 
 import {
   suggestListingFields,
@@ -9,11 +8,9 @@ import {
 } from "../../../lib/api/ai-assistance.api";
 import {
   createListing,
-  publishListing,
   publishUnsignedListing,
   purchaseListing,
 } from "../../../lib/api/listings.api";
-import { getWorldIdEnvironment } from "../../../lib/world/world-config";
 
 export async function createListingAction(formData: FormData): Promise<void> {
   const listing = await createListing({
@@ -97,18 +94,6 @@ export async function purchaseListingAction(formData: FormData): Promise<void> {
     redirect(`/?purchased=1`);
   }
 
-  redirect(`/listings/${listingId}`);
-}
-
-export async function publishListingWithWorldIdAction(
-  listingId: string,
-  idKitResult: IDKitResult,
-): Promise<void> {
-  await publishListing({
-    listingId,
-    idKitResult,
-    expectedEnvironment: getWorldIdEnvironment(),
-  });
   redirect(`/listings/${listingId}`);
 }
 

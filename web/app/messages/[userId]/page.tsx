@@ -32,11 +32,11 @@ export default async function ThreadPage({ params }: ThreadPageProps) {
     getSellerSummary(userId),
     getTranslations("dm"),
   ]);
-  const { humanLabel, userLabel } = toShellUserLabels(currentUser);
+  const { humanLabel, humanVerified, userLabel } = toShellUserLabels(currentUser);
 
   if (currentUser === undefined) {
     return (
-      <MarketplaceShell activeSection="me" authenticated={false} humanLabel={humanLabel} userLabel={userLabel}>
+      <MarketplaceShell activeSection="me" authenticated={false} humanLabel={humanLabel} humanVerified={humanVerified} userLabel={userLabel}>
         <PageHeader title={t("title")} />
         <StatePanel actionHref="/signin" actionLabel={t("signInAction")} title={t("signInTitle")}>
           {t("signInBody")}
@@ -49,7 +49,7 @@ export default async function ThreadPage({ params }: ThreadPageProps) {
   await markThreadRead(userId);
 
   return (
-    <MarketplaceShell activeSection="me" authenticated humanLabel={humanLabel} userLabel={userLabel}>
+    <MarketplaceShell activeSection="me" authenticated humanLabel={humanLabel} humanVerified={humanVerified} userLabel={userLabel}>
       <div className="mx-auto max-w-2xl space-y-4">
         <BackLink href="/messages" label={t("back")} />
         <a className="flex items-center gap-3" href={`/sellers/${userId}`}>

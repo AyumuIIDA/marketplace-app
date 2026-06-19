@@ -28,7 +28,7 @@ export default async function PurchasePage({ params }: PurchasePageProps) {
     getListing(listingId),
     getTranslations("purchase"),
   ]);
-  const { humanLabel, userLabel } = toShellUserLabels(currentUser);
+  const { humanLabel, humanVerified, userLabel } = toShellUserLabels(currentUser);
 
   const isSeller = currentUser !== undefined && listing !== undefined && currentUser.userId === listing.sellerId;
   const purchasable =
@@ -39,7 +39,7 @@ export default async function PurchasePage({ params }: PurchasePageProps) {
     <MarketplaceShell
       activeSection="catalog"
       authenticated={currentUser !== undefined}
-      humanLabel={humanLabel}
+      humanLabel={humanLabel} humanVerified={humanVerified}
       userLabel={userLabel}
     >
       <PageHeader eyebrow={t("eyebrow")} title={t("title")} />

@@ -8,7 +8,8 @@ export type ListingViewModel = {
   currency: "JPY";
   category: string;
   sellerId: string;
-  signed: boolean;
+  // 出品者が人間認証済みか。Seal(認証マーク)の表示判定に使う（アカウント認証が正本）。
+  sellerVerified: boolean;
   status: Listing["status"];
   createdAt: string;
   imageUrl?: string;

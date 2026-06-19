@@ -26,13 +26,13 @@ export default async function OrderPage({ params }: OrderPageProps) {
     listReviews({ orderId, limit: 20 }),
     getTranslations("pages.orderDetail"),
   ]);
-  const { humanLabel, userLabel } = toShellUserLabels(currentUser);
+  const { humanLabel, humanVerified, userLabel } = toShellUserLabels(currentUser);
 
   return (
     <MarketplaceShell
       activeSection="orders"
       authenticated={currentUser !== undefined}
-      humanLabel={humanLabel}
+      humanLabel={humanLabel} humanVerified={humanVerified}
       userLabel={userLabel}
     >
       <PageHeader eyebrow={t("eyebrow")} title={t("title")} />

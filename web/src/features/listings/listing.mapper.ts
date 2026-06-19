@@ -10,7 +10,7 @@ export function mapListingToViewModel(listing: Listing, liked = false): ListingV
     currency: listing.currency,
     category: listing.category,
     sellerId: listing.sellerId,
-    signed: listing.signatureId !== undefined,
+    sellerVerified: listing.sellerVerified === true,
     status: listing.status,
     createdAt: listing.createdAt,
     imageUrl: listing.images?.[0]?.url,

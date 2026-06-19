@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 
 import { ActionButton } from "../ui/action-button";
 import { Avatar } from "../ui/avatar";
+import { Seal } from "../ui/seal";
 import { LocaleSwitcher } from "./locale-switcher";
 
 // 右上を整理する単一のアカウントメニュー。言語切替を両状態で内包し、
@@ -15,12 +16,13 @@ type AccountMenuProps = {
   authenticated: boolean;
   userLabel: string;
   humanLabel: string;
+  humanVerified: boolean;
 };
 
 const ITEM_CLASS =
   "block rounded-sm px-3 py-2 text-sm font-medium text-ink outline-none transition-colors hover:bg-paper focus-visible:bg-paper";
 
-export function AccountMenu({ authenticated, humanLabel, userLabel }: AccountMenuProps) {
+export function AccountMenu({ authenticated, humanLabel, humanVerified, userLabel }: AccountMenuProps) {
   const t = useTranslations();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -67,21 +69,22 @@ export function AccountMenu({ authenticated, humanLabel, userLabel }: AccountMen
       <button
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex max-w-44 items-center gap-2 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors hover:bg-line/60 focus-visible:ring-2 focus-visible:ring-ink/30"
+        aria-label={t("account.label")}
+        className="flex items-center gap-1.5 rounded-md px-2 py-1.5 outline-none transition-colors hover:bg-line/60 focus-visible:ring-2 focus-visible:ring-ink/30"
         onClick={() => setOpen((current) => !current)}
         ref={triggerRef}
         type="button"
       >
-        {authenticated ? <Avatar alt="" className="size-7" seed={userLabel} /> : <UserIcon />}
         {authenticated ? (
-          <span className="hidden min-w-0 flex-col leading-tight sm:flex">
-            <span className="truncate text-sm font-semibold text-ink">{userLabel}</span>
-            <span className="truncate font-mono text-[10px] uppercase tracking-[0.1em] text-ink-faint">
-              {humanLabel}
-            </span>
+          // 身元＝アバターに検証バッジを重ねた単一グリフ。名前は内側メニューで提示する。
+          <span className="relative inline-flex">
+            <Avatar alt="" className="size-8" seed={userLabel} />
+            {humanVerified && (
+              <Seal className="absolute -bottom-0.5 -right-0.5" label={humanLabel} size="2xs" variant="badge" />
+            )}
           </span>
         ) : (
-          <span className="hidden text-sm font-medium text-ink sm:inline">{t("account.label")}</span>
+          <UserIcon />
         )}
         <Chevron open={open} />
       </button>
@@ -95,11 +98,29 @@ export function AccountMenu({ authenticated, humanLabel, userLabel }: AccountMen
         >
           {authenticated ? (
             <>
-              <div className="px-3 pb-2 pt-1">
-                <p className="truncate text-sm font-semibold text-ink">{userLabel}</p>
-                <p className="truncate font-mono text-[10px] uppercase tracking-[0.1em] text-ink-faint">
-                  {humanLabel}
-                </p>
+              <div className="flex items-center gap-3 px-3 pb-2.5 pt-1.5">
+                <span className="relative inline-flex">
+                  <Avatar alt="" className="size-9" seed={userLabel} />
+                  {humanVerified && (
+                    <Seal className="absolute -bottom-0.5 -right-0.5" label={humanLabel} size="2xs" variant="badge" />
+                  )}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-ink">{userLabel}</p>
+                  {humanVerified ? (
+                    <span className="mt-0.5 flex items-center gap-1 text-xs font-medium text-seal-strong">
+                      <Seal size="2xs" variant="badge" />
+                      {t("account.verified")}
+                    </span>
+                  ) : (
+                    <a
+                      className="mt-0.5 inline-block text-xs font-medium text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+                      href="/onboarding"
+                    >
+                      {t("account.verify")}
+                    </a>
+                  )}
+                </div>
               </div>
               <div className="mb-1 border-t border-line" />
               <a className={ITEM_CLASS} href="/me" role="menuitem">
@@ -114,10 +135,6 @@ export function AccountMenu({ authenticated, humanLabel, userLabel }: AccountMen
               <a className={`${ITEM_CLASS} md:hidden`} href="/sell" role="menuitem">
                 {t("nav.sell")}
               </a>
-              <div className="my-1 flex items-center justify-between gap-2 px-3 py-1">
-                <span className="text-xs text-ink-soft">{t("locale.label")}</span>
-                <LocaleSwitcher />
-              </div>
               <div className="my-1 border-t border-line" />
               <a
                 className="block rounded-sm px-3 py-2 text-sm font-medium text-seal-strong outline-none transition-colors hover:bg-seal-tint focus-visible:bg-seal-tint"

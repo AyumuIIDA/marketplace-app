@@ -12,6 +12,8 @@ export type Listing = {
   condition: string;
   status: "DRAFT" | "PUBLISHED" | "SOLD" | "HIDDEN";
   signatureId?: string;
+  // 出品者アカウントが人間認証済みか。Seal(認証マーク)の正本。行為署名(signatureId)ではなくアカウント認証で判断する。
+  sellerVerified?: boolean;
   likeCount: number;
   commentCount: number;
   images: { url: string; sortOrder: number }[];

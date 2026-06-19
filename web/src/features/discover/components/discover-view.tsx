@@ -424,7 +424,7 @@ function DiscoverCard({
               no photo
             </span>
           )}
-          {item.signed && (
+          {item.sellerVerified && (
             <span className="absolute left-2 top-2">
               <Seal label={signedLabel} size="sm" tone="dark" />
             </span>

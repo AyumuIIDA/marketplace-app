@@ -13,13 +13,13 @@ export const dynamic = "force-dynamic";
 export default async function NewListingPage() {
   await ensureOnboarded("/listings/new");
   const [currentUser, t] = await Promise.all([getCurrentUser(), getTranslations("pages.sell")]);
-  const { humanLabel, userLabel } = toShellUserLabels(currentUser);
+  const { humanLabel, humanVerified, userLabel } = toShellUserLabels(currentUser);
 
   return (
     <MarketplaceShell
       activeSection="sell"
       authenticated={currentUser !== undefined}
-      humanLabel={humanLabel}
+      humanLabel={humanLabel} humanVerified={humanVerified}
       userLabel={userLabel}
     >
       <PageHeader description={t("description")} title={t("title")} />
