@@ -6,6 +6,7 @@ package gcsstorage
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	gcs "cloud.google.com/go/storage"
 
@@ -24,6 +25,8 @@ func New(ctx context.Context, bucket, publicBaseURL string) (*GcsObjectStorage, 
 	if err != nil {
 		return nil, fmt.Errorf("gcs: new client: %w", err)
 	}
+	// env由来の前後空白/末尾スラッシュを除去（混入すると生成URLが不正になりAI等の url 検証で弾かれる）。
+	publicBaseURL = strings.TrimRight(strings.TrimSpace(publicBaseURL), "/")
 	return &GcsObjectStorage{client: client, bucket: bucket, publicBaseURL: publicBaseURL}, nil
 }
 
