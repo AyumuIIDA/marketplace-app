@@ -38,6 +38,9 @@ func (m *memListingRepo) FindByIDs(_ context.Context, _ []uuid.UUID) ([]*listing
 func (m *memListingRepo) Search(context.Context, listingsdomain.SearchInput) ([]*listingsdomain.Listing, error) {
 	return nil, nil
 }
+func (m *memListingRepo) ListCategories(context.Context) ([]listingsdomain.CategoryCount, error) {
+	return nil, nil
+}
 func (m *memListingRepo) ClaimForPurchase(context.Context, listingsdomain.ClaimForPurchaseInput) (*listingsdomain.Listing, error) {
 	return nil, nil
 }
