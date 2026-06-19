@@ -112,21 +112,26 @@ func NewGeminiDiscoverAgentResponder(ctx context.Context, project, location, mod
 
 func (r *GeminiDiscoverAgentResponder) BuildReply(ctx context.Context, in agentsapp.BuildDiscoverReplyInput) (agentsapp.BuildDiscoverReplyOutput, error) {
 	schema := &genai.Schema{
-		Type:       genai.TypeObject,
-		Properties: map[string]*genai.Schema{"assistantMessage": {Type: genai.TypeString}},
-		Required:   []string{"assistantMessage"},
+		Type: genai.TypeObject,
+		Properties: map[string]*genai.Schema{
+			"assistantMessage": {Type: genai.TypeString},
+			// 表示に値する候補の listingId を関連順で。汚染候補は含めない（空可）。
+			"listingIds": {Type: genai.TypeArray, Items: &genai.Schema{Type: genai.TypeString}},
+		},
+		Required: []string{"assistantMessage", "listingIds"},
 	}
 	text, err := geminiGenerateJSON(ctx, r.client, r.model, buildResponderPrompt(in), schema)
 	if err != nil {
 		return agentsapp.BuildDiscoverReplyOutput{}, err
 	}
 	var reply struct {
-		AssistantMessage string `json:"assistantMessage"`
+		AssistantMessage string   `json:"assistantMessage"`
+		ListingIDs       []string `json:"listingIds"`
 	}
 	if err := json.Unmarshal([]byte(extractJSONText(text)), &reply); err != nil || strings.TrimSpace(reply.AssistantMessage) == "" {
 		return agentsapp.BuildDiscoverReplyOutput{}, aiAssistFailed("Gemini discover agent returned invalid structured output.")
 	}
-	return agentsapp.BuildDiscoverReplyOutput{AssistantMessage: reply.AssistantMessage}, nil
+	return agentsapp.BuildDiscoverReplyOutput{AssistantMessage: reply.AssistantMessage, ListingIDs: reply.ListingIDs}, nil
 }
 
 var (
