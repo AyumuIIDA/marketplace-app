@@ -22,13 +22,12 @@ func (presentDiscoverOutputTool) Execute(_ context.Context, in map[string]any, _
 	}
 
 	listingIDs := argStrSlice(in, "listingIds")
-	if len(listingIDs) > 24 {
-		return ToolResult{}, apperr.Validation(
-			"listingIds must contain at most 24 ids.",
-			apperr.FieldError{Field: "listingIds", Reason: "max"})
-	}
 	if listingIDs == nil {
 		listingIDs = []string{}
+	}
+	// LLMが上限超のidを渡しても run を落とさず先頭24件へ切り詰める（discover出力は最大24件表示）。
+	if len(listingIDs) > 24 {
+		listingIDs = listingIDs[:24]
 	}
 
 	return Succeeded(map[string]any{
