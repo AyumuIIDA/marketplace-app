@@ -1,5 +1,5 @@
 """Qdrant アクセス。1 point = listing。名前付き2ベクトル(clip_image / text)を持つ。
-検索は Query API の prefetch + RRF 融合で両ベクトルを統合する。
+検索は2ベクトルを個別取得し、重み付きRRF（text厚め）で統合する。
 payload(category/price/status/seller_id) で前段フィルタ。
 """
 from __future__ import annotations
@@ -84,19 +84,33 @@ class VectorStore:
     def search_by_text(
         self, clip_vec: list[float], text_vec: list[float], top_k: int, f
     ) -> list[tuple[str, float]]:
-        """両ベクトルで近傍を取り、RRFで融合。"""
+        """clip_image と text を別々に検索し、重み付きRRFで融合する。
+        Qdrant既定のRRFは両リスト等価重みのため、画像類似(clip)のハブ（白背景アクセサリ等）が
+        無関係/多言語クエリに過剰侵入する。text(Gemini)を厚く・clipを薄く重み付けして抑制する。
+        重みは env(RRF_TEXT_WEIGHT/RRF_CLIP_WEIGHT/RRF_K)で調整可。
+        """
         flt = self._filter(f)
-        res = self.client.query_points(
-            collection_name=self.collection,
-            prefetch=[
-                models.Prefetch(query=clip_vec, using="clip_image", limit=top_k * 4, filter=flt),
-                models.Prefetch(query=text_vec, using="text", limit=top_k * 4, filter=flt),
-            ],
-            query=models.FusionQuery(fusion=models.Fusion.RRF),
-            limit=top_k,
-            with_payload=False,
-        )
-        return [(str(p.id), float(p.score)) for p in res.points]
+        fetch = max(top_k * 4, top_k)
+        clip_hits = self.client.query_points(
+            collection_name=self.collection, query=clip_vec, using="clip_image",
+            query_filter=flt, limit=fetch, with_payload=False,
+        ).points
+        text_hits = self.client.query_points(
+            collection_name=self.collection, query=text_vec, using="text",
+            query_filter=flt, limit=fetch, with_payload=False,
+        ).points
+
+        k = CONFIG.rrf_k
+        scores: dict[str, float] = {}
+        for rank, p in enumerate(text_hits):
+            pid = str(p.id)
+            scores[pid] = scores.get(pid, 0.0) + CONFIG.rrf_text_weight / (k + rank + 1)
+        for rank, p in enumerate(clip_hits):
+            pid = str(p.id)
+            scores[pid] = scores.get(pid, 0.0) + CONFIG.rrf_clip_weight / (k + rank + 1)
+
+        ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)[:top_k]
+        return [(pid, float(score)) for pid, score in ranked]
 
     def similar_by_image(self, clip_vec: list[float], top_k: int, f) -> list[tuple[str, float]]:
         res = self.client.query_points(

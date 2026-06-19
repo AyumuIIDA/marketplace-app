@@ -26,5 +26,11 @@ class Config:
 
     default_top_k: int = int(os.getenv("DEFAULT_TOP_K", "24"))
 
+    # 重み付きRRF（意味検索の融合）。Qdrant既定RRFは等価重みで、画像類似(clip)のハブ
+    # （白背景アクセサリ等）が無関係クエリに侵入する。text(Gemini)を厚く・clipを薄くして抑制。
+    rrf_k: int = int(os.getenv("RRF_K", "60"))
+    rrf_text_weight: float = float(os.getenv("RRF_TEXT_WEIGHT", "1.0"))
+    rrf_clip_weight: float = float(os.getenv("RRF_CLIP_WEIGHT", "0.3"))
+
 
 CONFIG = Config()
