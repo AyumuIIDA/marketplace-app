@@ -14,7 +14,9 @@ class Config:
     clip_dim: int = int(os.getenv("CLIP_DIM", "512"))
 
     # Gemini text-embedding（Vertex, ADC=recommendation-py の SA に aiplatform.user）。
-    gemini_embed_model: str = os.getenv("GEMINI_EMBED_MODEL", "text-embedding-004")
+    # 多言語モデル（100+言語, 768次元）。text-embedding-004 は英語専用で日本語クエリが
+    # 退化しjewelryハブへ収束したため、cross-lingual対応の -002 を既定にする（次元は同じ）。
+    gemini_embed_model: str = os.getenv("GEMINI_EMBED_MODEL", "text-multilingual-embedding-002")
     gemini_dim: int = int(os.getenv("GEMINI_DIM", "768"))
     gcp_project: str = os.getenv("GOOGLE_CLOUD_PROJECT", "term9-ayumu-iida")
     gcp_location: str = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
