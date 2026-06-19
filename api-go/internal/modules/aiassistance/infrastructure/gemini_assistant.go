@@ -182,7 +182,9 @@ func (g *GeminiAiAssistant) generateStructured(ctx context.Context, schema *gena
 		ResponseSchema:   schema,
 	})
 	if err != nil {
-		return aiAssistFailed("Gemini assistant request failed.")
+		// 生のVertex/SDKエラーを cause として保持する（AppError.Error()がログに含める）。
+		// これが無いと失敗理由が観測できない（従来は固定文言に潰れていた）。
+		return apperr.Infrastructure("Gemini assistant request failed.", err)
 	}
 	text := strings.TrimSpace(result.Text())
 	if text == "" {
@@ -190,7 +192,7 @@ func (g *GeminiAiAssistant) generateStructured(ctx context.Context, schema *gena
 	}
 	// markdownフェンスや前後文を含む応答に頑健にするため、JSON本体を抽出してからparseする。
 	if err := json.Unmarshal([]byte(extractJSONText(text)), dst); err != nil {
-		return aiAssistFailed("Gemini assistant returned invalid structured output.")
+		return apperr.Infrastructure("Gemini assistant returned invalid structured output.", err)
 	}
 	return nil
 }
