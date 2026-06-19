@@ -27,7 +27,8 @@ func NewDiscoverRagWorkflow(search *SemanticSearchWorkflow, registry *agentsapp.
 	return &DiscoverRagWorkflow{search: search, registry: registry}
 }
 
-const discoverRagTopK = 12
+// 取得は多めに行い、表示はLLMが選別する（CLIPノイズ/データ偏りの除去）。
+const discoverRagTopK = 16
 
 // Execute は query を意味検索し、取得候補のみを文脈に LLM で回答を生成する（grounding）。
 func (w *DiscoverRagWorkflow) Execute(ctx context.Context, query, provider string, requesterID uuid.UUID) (DiscoverRagResult, error) {
@@ -62,5 +63,17 @@ func (w *DiscoverRagWorkflow) Execute(ctx context.Context, query, provider strin
 		return DiscoverRagResult{}, err
 	}
 
-	return DiscoverRagResult{AssistantMessage: reply.AssistantMessage, Items: retrieved.Items}, nil
+	// 表示タイルはLLMが選んだ listingId のみ・関連順（取得候補からの部分集合）。
+	byID := make(map[string]ScoredListing, len(retrieved.Items))
+	for _, it := range retrieved.Items {
+		byID[it.ListingID] = it
+	}
+	items := make([]ScoredListing, 0, len(reply.ListingIDs))
+	for _, id := range reply.ListingIDs {
+		if it, ok := byID[id]; ok {
+			items = append(items, it)
+		}
+	}
+
+	return DiscoverRagResult{AssistantMessage: reply.AssistantMessage, Items: items}, nil
 }

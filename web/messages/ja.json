@@ -114,6 +114,7 @@
     "replyLabel": "返信",
     "replyPlaceholder": "返信を書く",
     "replyCount": "{count}件の返信",
+    "nameLabel": "名前",
     "verified": "本人確認済み",
     "backToBoard": "掲示板へ戻る",
     "invalid": "タイトルと本文を入力してください。",
@@ -414,7 +415,8 @@
     "count": "{count}件",
     "noResults": "一致する商品が見つかりませんでした。別の言い方を試してください。",
     "matched": "keyword一致",
-    "signed": "本人署名済み"
+    "signed": "本人署名済み",
+    "buy": "購入手続きへ"
   },
   "sell": {
     "title": "出品管理",

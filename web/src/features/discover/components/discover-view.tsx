@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
+import { Markdown } from "../../../components/ui/markdown";
 import { Seal } from "../../../components/ui/seal";
 import type { ListingViewModel } from "../../listings/listing-view-model";
 import {
@@ -296,7 +297,7 @@ function AssistantTurn({ turn }: { turn: Extract<AgentTurn, { kind: "assistant" 
   return (
     <div className="space-y-3">
       {turn.steps.length > 0 && <AgentTrace steps={turn.steps} />}
-      <p className="text-sm leading-7 text-canvas-ink">{turn.text}</p>
+      {turn.text.length > 0 && <Markdown className="text-canvas-ink">{turn.text}</Markdown>}
       {turn.listings.length > 0 && <ResultTiles items={turn.listings} />}
     </div>
   );
@@ -373,7 +374,14 @@ function ResultTiles({ items }: { items: ListingViewModel[] }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {items.map((item, index) => (
-        <DiscoverCard index={index} item={item} key={item.id} matchLabel={t("matched")} signedLabel={t("signed")} />
+        <DiscoverCard
+          buyLabel={t("buy")}
+          index={index}
+          item={item}
+          key={item.id}
+          matchLabel={t("matched")}
+          signedLabel={t("signed")}
+        />
       ))}
     </div>
   );
@@ -386,48 +394,63 @@ function toHistory(turns: AgentTurn[]): DiscoverAgentMessageInput[] {
 }
 
 function DiscoverCard({
+  buyLabel,
   index,
   item,
   matchLabel,
   signedLabel,
 }: {
+  buyLabel?: string;
   index: number;
   item: ListingViewModel;
   matchLabel?: string;
   signedLabel: string;
 }) {
   return (
-    <a
-      className="group flex animate-reveal-up flex-col overflow-hidden rounded-lg border border-canvas-line bg-canvas-2 transition-colors hover:border-seal/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal"
-      href={`/listings/${item.id}`}
+    <div
+      className="group flex animate-reveal-up flex-col overflow-hidden rounded-lg border border-canvas-line bg-canvas-2 transition-colors hover:border-seal/60"
       style={{ animationDelay: `${Math.min(index, 12) * 40}ms` }}
     >
-      <div className="relative aspect-square bg-canvas">
-        {item.imageUrl !== undefined ? (
-          // 商品画像はブラウザが storage を直接読む公開アセット
-          <img alt={item.title} className="size-full object-cover" loading="lazy" src={item.imageUrl} />
-        ) : (
-          <span className="grid size-full place-items-center font-mono text-[11px] uppercase tracking-[0.2em] text-canvas-ink-soft/60">
-            no photo
-          </span>
-        )}
-        {item.signed && (
-          <span className="absolute left-2 top-2">
-            <Seal label={signedLabel} size="sm" tone="dark" />
-          </span>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col gap-1 p-3">
-        <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-canvas-ink-soft">{item.category}</p>
-        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-canvas-ink">{item.title}</h3>
-        <p className="mt-auto pt-1.5 font-mono text-base font-semibold text-canvas-ink">¥{item.priceLabel}</p>
-        {matchLabel !== undefined && (
-          <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-full border border-seal/40 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-seal">
-            {matchLabel}
-          </span>
-        )}
-      </div>
-    </a>
+      <a
+        className="flex flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-seal"
+        href={`/listings/${item.id}`}
+      >
+        <div className="relative aspect-square bg-canvas">
+          {item.imageUrl !== undefined ? (
+            // 商品画像はブラウザが storage を直接読む公開アセット
+            <img alt={item.title} className="size-full object-cover" loading="lazy" src={item.imageUrl} />
+          ) : (
+            <span className="grid size-full place-items-center font-mono text-[11px] uppercase tracking-[0.2em] text-canvas-ink-soft/60">
+              no photo
+            </span>
+          )}
+          {item.signed && (
+            <span className="absolute left-2 top-2">
+              <Seal label={signedLabel} size="sm" tone="dark" />
+            </span>
+          )}
+        </div>
+        <div className="flex flex-1 flex-col gap-1 p-3">
+          <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-canvas-ink-soft">{item.category}</p>
+          <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-canvas-ink">{item.title}</h3>
+          <p className="mt-auto pt-1.5 font-mono text-base font-semibold text-canvas-ink">¥{item.priceLabel}</p>
+          {matchLabel !== undefined && (
+            <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-full border border-seal/40 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-seal">
+              {matchLabel}
+            </span>
+          )}
+        </div>
+      </a>
+      {/* discover→購入の最短動線。確認画面(/purchase)に直行。SOLD/自分の出品は確認画面側でガード。 */}
+      {buyLabel !== undefined && item.status === "PUBLISHED" && (
+        <a
+          className="border-t border-canvas-line px-3 py-2 text-center text-xs font-semibold text-seal transition-colors hover:bg-seal hover:text-white"
+          href={`/listings/${item.id}/purchase`}
+        >
+          {buyLabel} →
+        </a>
+      )}
+    </div>
   );
 }
 

@@ -114,6 +114,7 @@
     "replyLabel": "Reply",
     "replyPlaceholder": "Write a reply",
     "replyCount": "{count} replies",
+    "nameLabel": "Name",
     "verified": "Verified",
     "backToBoard": "Back to board",
     "invalid": "Enter a title and body.",
@@ -414,7 +415,8 @@
     "count": "{count} items",
     "noResults": "No matching items. Try describing it differently.",
     "matched": "keyword match",
-    "signed": "Human-signed"
+    "signed": "Human-signed",
+    "buy": "Buy now"
   },
   "sell": {
     "title": "Your listings",

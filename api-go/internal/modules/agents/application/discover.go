@@ -58,8 +58,11 @@ type BuildDiscoverReplyInput struct {
 }
 
 // BuildDiscoverReplyOutput は responder の出力（最終アシスタント返答）。
+// ListingIDs は LLM が「表示に値する」と判断した候補の部分集合（関連順）。
+// 取得結果には画像類似ノイズ等の汚染が混じるため、表示タイルはこの選定に絞る。
 type BuildDiscoverReplyOutput struct {
 	AssistantMessage string
+	ListingIDs       []string
 }
 
 // DiscoverAgentResponder は tool結果を読んで自然な返答を生成する。

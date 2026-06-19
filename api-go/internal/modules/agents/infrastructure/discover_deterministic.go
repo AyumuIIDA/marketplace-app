@@ -194,17 +194,29 @@ func (DeterministicDiscoverAgentResponder) BuildReply(_ context.Context, in agen
 		}
 	}
 	summary := strings.Join(lines, "\n")
+	// 決定論版は判断しないため候補をそのまま表示対象にする（LLM不在時のフォールバック）。
+	ids := candidateIDs(in.Listings)
 
 	if ja {
 		return agentsapp.BuildDiscoverReplyOutput{
 			AssistantMessage: strconv.Itoa(len(in.Listings)) + "件の候補を見つけました。上位候補です。\n" + summary +
 				"\n気になる商品があれば詳細を開いて比較できます。",
+			ListingIDs: ids,
 		}, nil
 	}
 	return agentsapp.BuildDiscoverReplyOutput{
 		AssistantMessage: "I found " + strconv.Itoa(len(in.Listings)) + " matching listings. Top candidates:\n" + summary +
 			"\nOpen a listing to inspect details or ask me to narrow the results.",
+		ListingIDs: ids,
 	}, nil
+}
+
+func candidateIDs(listings []agentsapp.DiscoverListing) []string {
+	out := make([]string, 0, len(listings))
+	for _, l := range listings {
+		out = append(out, l.ListingID)
+	}
+	return out
 }
 
 // formatThousands / formatJPY は価格を3桁区切りで表示する（toLocaleString相当）。

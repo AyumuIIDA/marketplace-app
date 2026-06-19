@@ -58,8 +58,8 @@ type discoverResultListing struct {
 
 func resultListings(in agentsapp.BuildDiscoverReplyInput) []discoverResultListing {
 	listings := in.Listings
-	if len(listings) > 8 {
-		listings = listings[:8]
+	if len(listings) > 16 {
+		listings = listings[:16]
 	}
 	out := make([]discoverResultListing, 0, len(listings))
 	for _, l := range listings {
@@ -84,6 +84,10 @@ func buildResponderPrompt(in agentsapp.BuildDiscoverReplyInput) string {
 		"Do not invent facts that are not present in the search results.",
 		"If there are candidates, compare them briefly using title, price, condition, category, and signed status.",
 		"If there are no candidates, suggest how to broaden the request.",
+		// 取得は画像類似/データ偏りのノイズを含む。LLMが表示タイルを選別する。
+		"The search results are retrieval candidates and may include irrelevant items (image-similarity noise or biased data).",
+		"In the listingIds field, return ONLY the listingId values that genuinely match the user's intent, ordered by relevance.",
+		"If nothing truly matches, return an empty listingIds array and say so. Only describe listings you put in listingIds.",
 		"Respond in the user's language.",
 		"Conversation history JSON:",
 		jsonString(lastMessages(in.Messages, 8)),
