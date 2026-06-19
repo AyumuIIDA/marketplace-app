@@ -1,7 +1,7 @@
 "use server";
 
 import { searchListings } from "../../../lib/api/listings.api";
-import { semanticSearch } from "../../../lib/api/recommendations.api";
+import { discoverAsk, semanticSearch } from "../../../lib/api/recommendations.api";
 import { bffJson } from "../../../lib/api/bff-client";
 import type { Listing } from "../../../lib/api/listings.api";
 import type { ListingViewModel } from "../../listings/listing-view-model";
@@ -50,6 +50,28 @@ export type DiscoverAgentMessageInput = {
 
 // AIベンダー。UIで毎回切替できる（gemini=Gemini, openai=ChatGPT）。
 export type DiscoverProvider = "gemini" | "openai";
+
+// 単段RAG（取得→生成）。discoverの主導線。多段ツール無しで堅牢・多言語。
+// 出力は agent と同形（steps/toolCalls は空）にして UI をそのまま使える。
+export async function discoverRagAction(
+  message: string,
+  provider: DiscoverProvider = "gemini",
+): Promise<DiscoverAgentActionOutput> {
+  const trimmed = message.trim();
+
+  if (trimmed.length === 0) {
+    return { assistantMessage: "", listings: [], steps: [], toolCalls: [] };
+  }
+
+  const out = await discoverAsk({ query: trimmed, provider });
+
+  return {
+    assistantMessage: out.assistantMessage,
+    listings: mapListingsToViewModels(out.items),
+    steps: [],
+    toolCalls: [],
+  };
+}
 
 export async function discoverAgentAction(
   message: string,

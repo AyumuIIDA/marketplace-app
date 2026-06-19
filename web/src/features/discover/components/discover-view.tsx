@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { Seal } from "../../../components/ui/seal";
 import type { ListingViewModel } from "../../listings/listing-view-model";
 import {
-  discoverAgentAction,
+  discoverRagAction,
   discoverSearchAction,
   type DiscoverAgentActionOutput,
   type DiscoverAgentMessageInput,
@@ -59,11 +59,10 @@ export function DiscoverView({ initial }: DiscoverViewProps) {
       return;
     }
 
-    const history = toHistory(turns);
     setInput("");
     setTurns((current) => [...current, { kind: "user", id: `u-${Date.now()}`, text }]);
     startAgent(async () => {
-      const out = await discoverAgentAction(text, history, provider);
+      const out = await discoverRagAction(text, provider);
       setTurns((current) => [
         ...current,
         {

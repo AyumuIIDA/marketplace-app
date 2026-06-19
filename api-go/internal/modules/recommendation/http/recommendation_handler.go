@@ -21,6 +21,7 @@ const defaultTopK int32 = 24
 type Deps struct {
 	Search  *workflows.SemanticSearchWorkflow
 	Similar *workflows.SimilarListingsWorkflow
+	Ask     *workflows.DiscoverRagWorkflow
 }
 
 // RegisterRoutes は /recommendations 系を認証済みグループへ登録する。
@@ -28,7 +29,39 @@ func RegisterRoutes(r chi.Router, deps Deps) {
 	r.Route("/recommendations", func(rr chi.Router) {
 		rr.Get("/search", deps.handleSearch)
 		rr.Get("/similar/{listingId}", deps.handleSimilar)
+		rr.Post("/ask", deps.handleAsk)
 	})
+}
+
+type askRequest struct {
+	Query    string `json:"query" validate:"required"`
+	Provider string `json:"provider"`
+}
+
+// handleAsk は単段RAG（意味検索→LLM生成）で根拠付き回答＋候補出品を返す。
+func (deps Deps) handleAsk(w http.ResponseWriter, r *http.Request) {
+	requesterID, err := httpinterface.CurrentUserID(r)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	var body askRequest
+	if err := httpinterface.DecodeJSON(r, &body); err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	query := strings.TrimSpace(body.Query)
+	if query == "" {
+		httpinterface.WriteError(w, r, apperr.Validation("query is required.",
+			apperr.FieldError{Field: "query", Reason: "required"}))
+		return
+	}
+	out, err := deps.Ask.Execute(r.Context(), query, strings.TrimSpace(body.Provider), requesterID)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	httpinterface.WriteJSON(w, http.StatusOK, out)
 }
 
 func (deps Deps) handleSearch(w http.ResponseWriter, r *http.Request) {
