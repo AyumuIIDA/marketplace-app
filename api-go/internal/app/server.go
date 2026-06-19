@@ -199,6 +199,10 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 	listingCounts := newListingCountsAdapter(socialRepo)
 	listingDeps.Get.WithCounts(listingCounts)
 	listingDeps.Search.WithCounts(listingCounts)
+	// 出品者アカウントの人間認証を listings の読取に注入（Seal の正本＝アカウント認証）。peer分離のため adapter 経由。
+	listingSellerVerified := newListingSellerVerifiedAdapter(pool)
+	listingDeps.Get.WithSellerVerified(listingSellerVerified)
+	listingDeps.Search.WithSellerVerified(listingSellerVerified)
 	sellerSummary := socialapp.NewGetSellerSummaryUseCase(socialRepo)
 	listListingsByIDs := listingsapp.NewListListingsByIDsUseCase(listingRepo)
 	socialDeps := socialhttp.Deps{
@@ -265,6 +269,7 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		SuggestListingFields: aiDeps.SuggestListingFields,
 		Assistant:            aiAssistant,
 		CompareListings:      workflows.NewCompareListingsWorkflow(listingDeps.Get, aiAssistant),
+		ImageFetcher:         newMcpImageFetcher(cfg.ImageFetchBaseURL),
 	})
 	toolRunner := mcpinterface.NewToolRunner(mcpRecord)
 	mcpHandler := mcpinterface.NewHTTPHandler(mcpTools, toolRunner,

@@ -60,8 +60,19 @@ func toCallToolResult(result ToolResult) *mcp.CallToolResult {
 	case ToolRequiresHumanSignature:
 		text = "This tool requires a human signature before it can continue."
 	}
+	// 画像ブロックを先頭に積む。Data 有→インライン(ImageContent/base64・確実描画)、無→ResourceLink(軽量)。
+	// リッチclient(Desktop/ChatGPT等)が描画し、テキスト面のclientは text/リンクへ劣化する。
+	content := make([]mcp.Content, 0, len(result.Images)+1)
+	for _, img := range result.Images {
+		if len(img.Data) > 0 {
+			content = append(content, &mcp.ImageContent{Data: img.Data, MIMEType: img.MimeType})
+		} else if img.URL != "" {
+			content = append(content, &mcp.ResourceLink{URI: img.URL, Name: img.Title, MIMEType: img.MimeType})
+		}
+	}
+	content = append(content, &mcp.TextContent{Text: text})
 	return &mcp.CallToolResult{
-		Content:           []mcp.Content{&mcp.TextContent{Text: text}},
+		Content:           content,
 		StructuredContent: result,
 		IsError:           result.Status == ToolFailed,
 	}

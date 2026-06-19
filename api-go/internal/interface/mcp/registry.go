@@ -27,6 +27,8 @@ type ToolDeps struct {
 	SuggestListingFields *aiapp.SuggestListingFieldsUseCase
 	Assistant            aiapp.AiAssistant
 	CompareListings      *workflows.CompareListingsWorkflow
+	// ImageFetcher は get_listing のヒーロー画像インライン化用（任意。未注入なら ResourceLink へ劣化）。
+	ImageFetcher ImageFetcher
 }
 
 // BuildTools は全MCPツールを構築する。
@@ -34,7 +36,7 @@ func BuildTools(d ToolDeps) []McpTool {
 	return []McpTool{
 		getCurrentUserTool{d.GetCurrentUser},
 		searchListingsTool{d.SearchListings},
-		getListingTool{d.GetListing},
+		getListingTool{d.GetListing, d.ImageFetcher},
 		createListingDraftTool{d.CreateListing},
 		publishListingTool{d.PublishListing},
 		updateListingTool{d.UpdateListing},
