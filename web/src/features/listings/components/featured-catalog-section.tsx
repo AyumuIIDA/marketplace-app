@@ -1,14 +1,19 @@
 import { getTranslations } from "next-intl/server";
 
 import { StatePanel } from "../../../components/ui/state-panel";
+import { searchListings, type ListingCategory } from "../../../lib/api/listings.api";
 import { groupByCategory, type ListingSort } from "../listing-sort";
 import type { ListingViewModel } from "../listing-view-model";
+import { mapListingsToViewModels } from "../listing.mapper";
 import { ListingGrid } from "./listing-grid";
 
 type CatalogSectionProps = {
-  listings: ListingViewModel[];
+  categories: ListingCategory[];
+  likedIds: Set<string>;
   searchQuery?: string;
   sort: ListingSort;
+  seed?: string;
+  signed?: boolean;
   previewPerCategory: number;
 };
 
@@ -21,22 +26,52 @@ function categoryHref(category: string, searchQuery: string | undefined, sort: L
     params.set("keyword", searchQuery);
   }
 
-  if (sort !== "newest") {
+  if (sort !== "shuffle") {
     params.set("sort", sort);
   }
 
   return `/?${params.toString()}`;
 }
 
+// ホームの注目カタログ。純粋なランディングでは「カテゴリごとに上位 previewPerCategory 件」をサーバから
+// 並列取得し、公開中の全カテゴリを網羅する（フラットなサンプルを分割していた頃の「薄い/カテゴリ欠落」を解消）。
+// keyword 検索時はカテゴリ横断で一致を集めてからグループ化する（検索結果のカテゴリ別表示）。
 export async function FeaturedCatalogSection({
-  listings,
+  categories,
+  likedIds,
   previewPerCategory,
   searchQuery,
+  seed,
+  signed,
   sort,
 }: CatalogSectionProps) {
   const t = await getTranslations("catalog");
 
-  if (listings.length === 0) {
+  let groups: { category: string; items: ListingViewModel[] }[];
+  if (searchQuery !== undefined) {
+    const flat = mapListingsToViewModels(
+      await searchListings({ keyword: searchQuery, limit: 60, sort, seed, signed }),
+      likedIds,
+    );
+    groups = groupByCategory(flat).map((group) => ({
+      category: group.category,
+      items: group.items.slice(0, previewPerCategory),
+    }));
+  } else {
+    groups = (
+      await Promise.all(
+        categories.map(async (category) => ({
+          category: category.category,
+          items: mapListingsToViewModels(
+            await searchListings({ category: category.category, limit: previewPerCategory, sort, seed, signed }),
+            likedIds,
+          ),
+        })),
+      )
+    ).filter((group) => group.items.length > 0);
+  }
+
+  if (groups.length === 0) {
     return searchQuery === undefined ? (
       <StatePanel actionHref="/listings/new" actionLabel={t("emptyAction")} title={t("emptyTitle")}>
         {t("emptyBody")}
@@ -47,8 +82,6 @@ export async function FeaturedCatalogSection({
       </StatePanel>
     );
   }
-
-  const groups = groupByCategory(listings, sort);
 
   return (
     <div className="space-y-10">
@@ -63,7 +96,7 @@ export async function FeaturedCatalogSection({
               {t("showMore")}
             </a>
           </div>
-          <ListingGrid listings={group.items.slice(0, previewPerCategory)} />
+          <ListingGrid listings={group.items} />
         </section>
       ))}
     </div>

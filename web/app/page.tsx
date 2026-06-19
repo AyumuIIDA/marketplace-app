@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { getTranslations } from "next-intl/server";
 
 import { MarketplaceHomeView } from "../src/features/marketplace-home/components/marketplace-home-view";
@@ -5,8 +6,9 @@ import { toShellUserLabels } from "../src/features/current-user/shell-user";
 import { PurchaseToast } from "../src/features/listings/components/purchase-toast";
 import { parseListingSort } from "../src/features/listings/listing-sort";
 import { mapListingsToViewModels } from "../src/features/listings/listing.mapper";
+import { FEED_SEED_COOKIE } from "../src/lib/feed/seed";
 import { getCurrentUser } from "../src/lib/api/current-user.api";
-import { searchListings } from "../src/lib/api/listings.api";
+import { getCategories, searchListings } from "../src/lib/api/listings.api";
 import { getLikedListingIds } from "../src/lib/api/social.api";
 import { ensureOnboarded } from "../src/lib/auth/onboarding";
 
@@ -30,19 +32,35 @@ export default async function Page({ searchParams }: PageProps) {
   const trimmedCategory = category?.trim();
   const selectedCategory = trimmedCategory === undefined || trimmedCategory.length === 0 ? undefined : trimmedCategory;
   const verifiedOnly = verified === "1";
+  const signed = verifiedOnly ? true : undefined;
+  const sortValue = parseListingSort(sort);
+  // shuffle(おすすめ順)はセッション一貫の seed で決定的に。middleware が発行したクッキーを読む。
+  const seed = (await cookies()).get(FEED_SEED_COOKIE)?.value;
   const pageSize = 24;
-  const [currentUser, apiListings, categoryPage, likedIds] = await Promise.all([
+
+  // 並び順・認証フィルタ・カテゴリ候補はすべてサーバ側で確定する（取得窓の上で近似しない）。
+  // 注目カタログ(カテゴリ別プレビュー)は FeaturedCatalogSection が facet を元に自分で取得する。
+  // ここではカテゴリ選択時のみ、そのカテゴリの1ページ目を取る。
+  const [currentUser, categories, categoryPage, likedIds] = await Promise.all([
     getCurrentUser(),
-    searchListings({ keyword: searchQuery, limit: 60 }),
+    getCategories(),
     selectedCategory === undefined
       ? Promise.resolve([])
-      : searchListings({ keyword: searchQuery, category: selectedCategory, limit: pageSize }),
+      : searchListings({
+          keyword: searchQuery,
+          category: selectedCategory,
+          limit: pageSize,
+          sort: sortValue,
+          seed,
+          signed,
+        }),
     getLikedListingIds(),
   ]);
-  // 署名フィルタは backend に signed パラメータが無いため取得集合で絞る（要: 将来のファセットAPI）。
-  const filterSigned = (items: ReturnType<typeof mapListingsToViewModels>) =>
-    verifiedOnly ? items.filter((item) => item.signed) : items;
-  const listings = filterSigned(mapListingsToViewModels(apiListings, likedIds));
+  // カテゴリ見出しの件数は読み込んだページ数ではなく facet の総数を出す（「24件」ではなく実数）。
+  const categoryTotal =
+    selectedCategory === undefined
+      ? 0
+      : (categories.find((c) => c.category === selectedCategory)?.count ?? categoryPage.length);
   const { humanLabel, userLabel } = toShellUserLabels(currentUser);
   const purchaseT = await getTranslations("purchase");
 
@@ -51,13 +69,17 @@ export default async function Page({ searchParams }: PageProps) {
       {purchased === "1" && <PurchaseToast message={purchaseT("completed")} />}
       <MarketplaceHomeView
       authenticated={currentUser !== undefined}
+      categories={categories}
       category={selectedCategory}
-      categoryItems={filterSigned(mapListingsToViewModels(categoryPage, likedIds))}
+      categoryItems={mapListingsToViewModels(categoryPage, likedIds)}
+      categoryTotal={categoryTotal}
       humanLabel={humanLabel}
-      listings={listings}
+      likedIds={likedIds}
       pageSize={pageSize}
       searchQuery={searchQuery}
-      sort={parseListingSort(sort)}
+      seed={seed}
+      signed={signed}
+      sort={sortValue}
       userLabel={userLabel}
       verifiedOnly={verifiedOnly}
       />
