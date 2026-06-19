@@ -1,32 +1,16 @@
 import type { ListingViewModel } from "./listing-view-model";
 
-export type ListingSort = "newest" | "priceAsc" | "priceDesc";
+// 並び順はサーバ側で確定する（一覧クエリの ORDER BY）。ここでは型と選択肢、URL パラメータの解釈だけを持つ。
+// shuffle=おすすめ（seed付き決定的シャッフル・既定）/ newest / popular（いいね順）/ commented（コメント数順）/ 価格。
+export type ListingSort = "shuffle" | "newest" | "popular" | "commented" | "priceAsc" | "priceDesc";
 
-export const LISTING_SORTS: ListingSort[] = ["newest", "priceAsc", "priceDesc"];
+export const LISTING_SORTS: ListingSort[] = ["shuffle", "newest", "popular", "commented", "priceAsc", "priceDesc"];
+
+// 既定は shuffle（セッション内一貫のおすすめ順）。未知値もここに畳む。
+export const DEFAULT_LISTING_SORT: ListingSort = "shuffle";
 
 export function parseListingSort(value: string | undefined): ListingSort {
-  return value === "priceAsc" || value === "priceDesc" || value === "newest" ? value : "newest";
-}
-
-export function sortListings(items: ListingViewModel[], sort: ListingSort): ListingViewModel[] {
-  const copy = [...items];
-
-  if (sort === "priceAsc") {
-    copy.sort((a, b) => a.price - b.price);
-  } else if (sort === "priceDesc") {
-    copy.sort((a, b) => b.price - a.price);
-  } else {
-    // newest first（createdAt は ISO 文字列なので辞書順比較で時刻順になる）。
-    copy.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }
-
-  return copy;
-}
-
-// 取得済み集合に含まれるカテゴリ一覧（重複排除・名前順）。カテゴリ選択肢に使う。
-// 後でbackend側のファセット/カテゴリ一覧APIに差し替え予定。
-export function distinctCategories(items: ListingViewModel[]): string[] {
-  return [...new Set(items.map((item) => item.category))].sort((a, b) => a.localeCompare(b));
+  return LISTING_SORTS.includes(value as ListingSort) ? (value as ListingSort) : DEFAULT_LISTING_SORT;
 }
 
 export type CategoryGroup = {
@@ -34,8 +18,9 @@ export type CategoryGroup = {
   items: ListingViewModel[];
 };
 
-// カテゴリで分割し、各グループ内を sort で並べ替える。件数の多いカテゴリを上に。
-export function groupByCategory(items: ListingViewModel[], sort: ListingSort): CategoryGroup[] {
+// カテゴリで分割する。各グループ内の順序はサーバが返した並び順をそのまま保つ（再ソートしない）。
+// グループ自体は件数の多いカテゴリを上に出す（ホームの注目セクションの見せ方）。
+export function groupByCategory(items: ListingViewModel[]): CategoryGroup[] {
   const byCategory = new Map<string, ListingViewModel[]>();
 
   for (const item of items) {
@@ -45,6 +30,6 @@ export function groupByCategory(items: ListingViewModel[], sort: ListingSort): C
   }
 
   return [...byCategory.entries()]
-    .map(([category, list]) => ({ category, items: sortListings(list, sort) }))
+    .map(([category, list]) => ({ category, items: list }))
     .sort((a, b) => b.items.length - a.items.length || a.category.localeCompare(b.category));
 }

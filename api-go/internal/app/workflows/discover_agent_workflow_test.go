@@ -40,6 +40,9 @@ func (r *discoverFakeRepo) FindByID(_ context.Context, id uuid.UUID) (*listingsd
 func (r *discoverFakeRepo) FindByIDs(_ context.Context, _ []uuid.UUID) ([]*listingsdomain.Listing, error) {
 	return nil, nil
 }
+func (r *discoverFakeRepo) ListCategories(_ context.Context) ([]listingsdomain.CategoryCount, error) {
+	return nil, nil
+}
 func (r *discoverFakeRepo) ClaimForPurchase(_ context.Context, _ listingsdomain.ClaimForPurchaseInput) (*listingsdomain.Listing, error) {
 	return nil, nil
 }

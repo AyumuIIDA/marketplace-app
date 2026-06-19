@@ -168,7 +168,10 @@
     },
     "sort": {
       "label": "並び替え",
+      "shuffle": "おすすめ順",
       "newest": "新着順",
+      "popular": "いいね順",
+      "commented": "コメント数順",
       "priceAsc": "価格が安い順",
       "priceDesc": "価格が高い順"
     },

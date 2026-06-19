@@ -19,7 +19,7 @@ func CanSellerMutate(l *Listing, sellerID uuid.UUID) bool {
 	return l.sellerID == sellerID && l.status != ListingStatusSold && l.status != ListingStatusHidden
 }
 
-// SearchInput は有界(7フィルタ)の検索条件。各フィールドはnilで無効。
+// SearchInput は有界(8フィルタ)の検索条件。各フィールドはnilで無効。
 type SearchInput struct {
 	Keyword   *string
 	Category  *string
@@ -28,10 +28,40 @@ type SearchInput struct {
 	MaxPrice  *int32
 	Status    *ListingStatus
 	SellerID  *uuid.UUID
-	Limit     *int32
-	Offset    *int32
-	// Randomize=true は結果をランダム順で返す（無フィルタのホームフィードで全カテゴリを混ぜる用途）。
-	Randomize bool
+	// Signed=true は署名(認証)済みのみ、false は未署名のみ。nilは全件（認証ファセット）。
+	Signed *bool
+	Limit  *int32
+	Offset *int32
+	// Sort は並び順。nil/未知値は newest 扱い。SortShuffle 時は Seed で決定的シャッフル。
+	Sort *string
+	// Seed は SortShuffle の決定的シャッフルに使う種（セッション内一貫）。
+	Seed *string
+}
+
+// 並び順の許容値。未知値は newest にフォールバックする（SQLのCASEがどれにも合致しないため）。
+const (
+	SortNewest    = "newest"
+	SortShuffle   = "shuffle"
+	SortPopular   = "popular"
+	SortCommented = "commented"
+	SortPriceAsc  = "priceAsc"
+	SortPriceDesc = "priceDesc"
+)
+
+// IsValidSort は許容する並び順か判定する。
+func IsValidSort(s string) bool {
+	switch s {
+	case SortNewest, SortShuffle, SortPopular, SortCommented, SortPriceAsc, SortPriceDesc:
+		return true
+	default:
+		return false
+	}
+}
+
+// CategoryCount は公開中の出品のカテゴリ別件数（ファセット）。
+type CategoryCount struct {
+	Category string
+	Count    int64
 }
 
 // ImageToSave は listing_images への保存入力（hashはcontent-addressed keyに必要）。
@@ -62,6 +92,8 @@ type ListingRepository interface {
 	// FindByIDs は指定idの出品をまとめて取得する（順序は未規定。呼び出し側で復元）。
 	FindByIDs(ctx context.Context, ids []uuid.UUID) ([]*Listing, error)
 	Search(ctx context.Context, in SearchInput) ([]*Listing, error)
+	// ListCategories は公開中の出品のカテゴリ別件数を件数降順で返す。
+	ListCategories(ctx context.Context) ([]CategoryCount, error)
 	// ClaimForPurchase は公開中かつ売り手≠買い手の出品を原子的にSOLDへ遷移する。
 	// claimできなければ (nil, nil)（競合/不可）。
 	ClaimForPurchase(ctx context.Context, in ClaimForPurchaseInput) (*Listing, error)

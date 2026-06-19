@@ -184,6 +184,7 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		UploadImage:     listingsapp.NewUploadListingImageUseCase(imageStore),
 		Get:             listingsapp.NewGetListingUseCase(listingRepo),
 		Search:          listingsapp.NewSearchListingsUseCase(listingRepo),
+		ListCategories:  listingsapp.NewListCategoriesUseCase(listingRepo),
 		UpdateDraft:     listingsapp.NewUpdateDraftListingUseCase(listingRepo, sysClock),
 		Hide:            listingsapp.NewHideListingUseCase(listingRepo, sysClock),
 		Purchase:        purchaseWorkflow,
@@ -225,9 +226,14 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 	// recommendation module の配線。意味検索/類似は listings(本体) と vector(recommendation-py) の合成。
 	// RECOMMENDATION_SERVICE_URL 未設定なら縮退（空結果→フロントはkeyword検索へフォールバック）。
 	vectorIndex := buildVectorIndex(ctx, cfg)
+	// discover の provider別 planner/responder。RAG(/recommendations/ask)とagent(/agents/runs)で共有。
+	discoverRegistry := buildDiscoverRegistry(ctx, cfg)
+	semanticSearch := workflows.NewSemanticSearchWorkflow(vectorIndex, listingDeps.Get.Execute)
 	recommendationDeps := recommendationhttp.Deps{
-		Search:  workflows.NewSemanticSearchWorkflow(vectorIndex, listingDeps.Get.Execute),
+		Search:  semanticSearch,
 		Similar: workflows.NewSimilarListingsWorkflow(vectorIndex, listingDeps.Get.Execute),
+		// 単段RAG: 意味検索で候補取得→LLMで根拠付き回答（discoverの主導線）。
+		Ask: workflows.NewDiscoverRagWorkflow(semanticSearch, discoverRegistry),
 	}
 
 	// agents module の配線（pool-bound repo）。/agents/runs(discover agent)は下のMCP配線後に充填する。
@@ -276,7 +282,7 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 	}
 	agentDeps.RunDiscover = workflows.NewRunDiscoverAgentWorkflow(
 		gatewayFactory,
-		buildDiscoverRegistry(ctx, cfg),
+		discoverRegistry,
 	)
 
 	// pgxpool.Pool は Ping(ctx) error を持ち HealthChecker を満たす。

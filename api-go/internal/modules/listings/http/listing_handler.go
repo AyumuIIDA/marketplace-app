@@ -27,6 +27,7 @@ type Deps struct {
 	UploadImage     *listingsapp.UploadListingImageUseCase
 	Get             *listingsapp.GetListingUseCase
 	Search          *listingsapp.SearchListingsUseCase
+	ListCategories  *listingsapp.ListCategoriesUseCase
 	UpdateDraft     *listingsapp.UpdateDraftListingUseCase
 	Hide            *listingsapp.HideListingUseCase
 	Purchase        *workflows.PurchaseItemWorkflow
@@ -51,6 +52,8 @@ func RegisterRoutes(r chi.Router, deps Deps) {
 // 呼び出し側は OptionalAuth グループ内で呼ぶこと（匿名は PUBLISHED のみ閲覧可）。
 func RegisterPublicRoutes(r chi.Router, deps Deps) {
 	r.Get("/listings", deps.handleSearch)
+	// 静的セグメントは {listingId} より先に登録し、"categories" がIDとして解釈されるのを避ける。
+	r.Get("/listings/categories", deps.handleListCategories)
 	r.Get("/listings/{listingId}", deps.handleGet)
 }
 
@@ -323,14 +326,29 @@ func (deps Deps) handleSearch(w http.ResponseWriter, r *http.Request) {
 	// 匿名は mine 無効（自分の下書きは見せない）。
 	mineForSeller := mine && currentUserID != nil
 
+	sort, err := optionalSort(q.Get("sort"))
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	seed := httpinterface.OptionalStr(q.Get("seed"))
+	signed, err := optionalSigned(q.Get("signed"))
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+
 	in := listingsapp.SearchListingsInput{
 		Keyword:                keyword,
 		Category:               category,
 		Condition:              condition,
 		MinPrice:               minPrice,
 		MaxPrice:               maxPrice,
+		Signed:                 signed,
 		Limit:                  limit,
 		Offset:                 offset,
+		Sort:                   sort,
+		Seed:                   seed,
 		IncludeDraftsForSeller: mineForSeller,
 	}
 	switch {
@@ -341,6 +359,16 @@ func (deps Deps) handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	out, err := deps.Search.Execute(r.Context(), in)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	httpinterface.WriteJSON(w, http.StatusOK, out)
+}
+
+// handleListCategories は公開中の出品のカテゴリ別件数を返す（認証任意・公開）。
+func (deps Deps) handleListCategories(w http.ResponseWriter, r *http.Request) {
+	out, err := deps.ListCategories.Execute(r.Context())
 	if err != nil {
 		httpinterface.WriteError(w, r, err)
 		return
@@ -483,6 +511,36 @@ func optionalNonNegativeInt(s, field string) (*int32, error) {
 	}
 	n := int32(v)
 	return &n, nil
+}
+
+// optionalSort は sort クエリを検証する。未指定→nil（SQL側でnewest扱い）。未知値→400。
+func optionalSort(s string) (*string, error) {
+	if strings.TrimSpace(s) == "" {
+		return nil, nil
+	}
+	if !listingsdomain.IsValidSort(s) {
+		return nil, apperr.Validation("sort is not a supported value.",
+			apperr.FieldError{Field: "sort", Reason: "enum"})
+	}
+	v := s
+	return &v, nil
+}
+
+// optionalSigned は signed クエリ（認証ファセット）を解釈する。未指定→nil（全件）。"true"/"false"のみ。
+func optionalSigned(s string) (*bool, error) {
+	switch s {
+	case "":
+		return nil, nil
+	case "true":
+		v := true
+		return &v, nil
+	case "false":
+		v := false
+		return &v, nil
+	default:
+		return nil, apperr.Validation("signed must be 'true' or 'false'.",
+			apperr.FieldError{Field: "signed", Reason: "enum"})
+	}
 }
 
 // optionalMine は mine クエリを厳格に解釈する（TS: z.enum(["true","false"])）。

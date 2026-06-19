@@ -22,7 +22,18 @@ export type Listing = {
 };
 
 export async function searchListings(
-  input: { keyword?: string; category?: string; sellerId?: string; limit?: number; offset?: number } = {},
+  input: {
+    keyword?: string;
+    category?: string;
+    sellerId?: string;
+    limit?: number;
+    offset?: number;
+    // 並び順（shuffle/newest/popular/commented/priceAsc/priceDesc）。seed は shuffle の決定的シャッフル用。
+    sort?: string;
+    seed?: string;
+    // signed=true で認証済みのみ。認証ファセットはサーバ側で全件に対し適用する。
+    signed?: boolean;
+  } = {},
 ): Promise<Listing[]> {
   const params = new URLSearchParams();
   const keyword = input.keyword?.trim();
@@ -49,6 +60,18 @@ export async function searchListings(
     params.set("offset", input.offset.toString());
   }
 
+  if (input.sort !== undefined && input.sort.length > 0) {
+    params.set("sort", input.sort);
+  }
+
+  if (input.seed !== undefined && input.seed.length > 0) {
+    params.set("seed", input.seed);
+  }
+
+  if (input.signed === true) {
+    params.set("signed", "true");
+  }
+
   try {
     const output = await bffJson<{ items: Listing[] }>(
       `/listings${params.size > 0 ? `?${params.toString()}` : ""}`,
@@ -73,6 +96,26 @@ export async function searchMyListings(input: { limit?: number } = {}): Promise<
 
   try {
     const output = await bffJson<{ items: Listing[] }>(`/listings?${params.toString()}`);
+
+    return output.items;
+  } catch (error) {
+    if (isBffError(error) && error.status === 401) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+export type ListingCategory = {
+  category: string;
+  count: number;
+};
+
+// 公開中の出品のカテゴリ別件数。取得窓に依存しないカテゴリ選択肢/ファセットの正本。
+export async function getCategories(): Promise<ListingCategory[]> {
+  try {
+    const output = await bffJson<{ items: ListingCategory[] }>("/listings/categories");
 
     return output.items;
   } catch (error) {

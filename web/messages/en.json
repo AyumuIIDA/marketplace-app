@@ -168,7 +168,10 @@
     },
     "sort": {
       "label": "Sort",
+      "shuffle": "Recommended",
       "newest": "Newest",
+      "popular": "Most liked",
+      "commented": "Most discussed",
       "priceAsc": "Price: low to high",
       "priceDesc": "Price: high to low"
     },

@@ -8,7 +8,8 @@ import { CategoryFilter } from "../../listings/components/category-filter";
 import { FeaturedCatalogSection } from "../../listings/components/featured-catalog-section";
 import { SortControl } from "../../listings/components/sort-control";
 import { VerifiedFilter } from "../../listings/components/verified-filter";
-import { distinctCategories, type ListingSort } from "../../listings/listing-sort";
+import type { ListingCategory } from "../../../lib/api/listings.api";
+import type { ListingSort } from "../../listings/listing-sort";
 import type { ListingViewModel } from "../../listings/listing-view-model";
 
 // ホームの各カテゴリで先頭に出すプレビュー件数。
@@ -17,11 +18,15 @@ const PREVIEW_PER_CATEGORY = 6;
 type MarketplaceHomeViewProps = {
   authenticated: boolean;
   category?: string;
+  categories: ListingCategory[];
   categoryItems: ListingViewModel[];
+  categoryTotal: number;
   humanLabel: string;
-  listings: ListingViewModel[];
+  likedIds: Set<string>;
   pageSize: number;
   searchQuery?: string;
+  seed?: string;
+  signed?: boolean;
   sort: ListingSort;
   userLabel: string;
   verifiedOnly: boolean;
@@ -30,23 +35,27 @@ type MarketplaceHomeViewProps = {
 export async function MarketplaceHomeView({
   authenticated,
   category,
+  categories,
   categoryItems,
+  categoryTotal,
   humanLabel,
-  listings,
+  likedIds,
   pageSize,
   searchQuery,
+  seed,
+  signed,
   sort,
   userLabel,
   verifiedOnly,
 }: MarketplaceHomeViewProps) {
   const [t, home] = await Promise.all([getTranslations("catalog"), getTranslations("home")]);
 
-  // カテゴリ候補は取得集合から抽出。選択中カテゴリが含まれなければ補う。
-  const categories = distinctCategories(listings);
+  // カテゴリ候補はサーバ（公開中の全出品）から取得した正本。選択中カテゴリが含まれなければ補う。
+  const categoryNames = categories.map((item) => item.category);
   const options =
-    category !== undefined && !categories.includes(category)
-      ? [...categories, category].sort((a, b) => a.localeCompare(b))
-      : categories;
+    category !== undefined && !categoryNames.includes(category)
+      ? [...categoryNames, category].sort((a, b) => a.localeCompare(b))
+      : categoryNames;
   // 検索もカテゴリ選択もしていない初期着地時にだけヒーロー（主張）を出す。
   const isLanding = searchQuery === undefined && category === undefined;
 
@@ -101,18 +110,26 @@ export async function MarketplaceHomeView({
 
       {category === undefined ? (
         <FeaturedCatalogSection
-          listings={listings}
+          categories={categories}
+          likedIds={likedIds}
           previewPerCategory={PREVIEW_PER_CATEGORY}
           searchQuery={searchQuery}
+          seed={seed}
+          signed={signed}
           sort={sort}
         />
       ) : (
         <CategoryBrowser
+          // initialItems を変える入力（カテゴリ/検索語/並び順/認証）が変わったら再マウントして state を作り直す。
+          // これが無いと「カテゴリ→別カテゴリ」のクライアント遷移で useState(initialItems) が前の値のまま固定される。
+          key={`${category}:${searchQuery ?? ""}:${sort}:${verifiedOnly}`}
           category={category}
           initialItems={categoryItems}
           keyword={searchQuery}
           pageSize={pageSize}
+          seed={seed}
           sort={sort}
+          totalCount={categoryTotal}
           verifiedOnly={verifiedOnly}
         />
       )}

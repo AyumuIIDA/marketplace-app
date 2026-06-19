@@ -9,6 +9,7 @@ import (
 	"google.golang.org/api/idtoken"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/credentials/oauth"
 
 	recommendationapp "marketplace/api-go/internal/modules/recommendation/application"
@@ -23,11 +24,25 @@ type GrpcVectorIndex struct {
 	client recv1.RecommendationServiceClient
 }
 
-// NewGrpcVectorIndex は serviceURL(例 https://...run.app) への接続を構築する。
+// NewGrpcVectorIndex は serviceURL への接続を構築する。
+//   - https://...run.app（既定/Cloud Run）: TLS＋ID token(per-RPC, audience=URL)。
+//   - http://host:port（ローカル）: 平文 insecure 接続。ID token/TLSを使わずそのまま host:port へ dial。
 func NewGrpcVectorIndex(ctx context.Context, serviceURL string) (*GrpcVectorIndex, error) {
-	audience := strings.TrimRight(serviceURL, "/")
-	host := strings.TrimPrefix(strings.TrimPrefix(audience, "https://"), "http://")
+	trimmed := strings.TrimRight(serviceURL, "/")
 
+	// ローカル平文接続: recommendation-py をホスト直/composeで insecure 起動した場合。
+	if strings.HasPrefix(trimmed, "http://") {
+		host := strings.TrimPrefix(trimmed, "http://")
+		conn, err := grpc.NewClient(host, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return nil, apperr.Infrastructure("recommendation: dial", err)
+		}
+		return &GrpcVectorIndex{client: recv1.NewRecommendationServiceClient(conn)}, nil
+	}
+
+	// 既定(Cloud Run): TLS＋ID token。
+	audience := trimmed
+	host := strings.TrimPrefix(audience, "https://")
 	ts, err := idtoken.NewTokenSource(ctx, audience)
 	if err != nil {
 		return nil, apperr.Infrastructure("recommendation: id token source", err)

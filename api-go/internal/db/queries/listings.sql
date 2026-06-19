@@ -47,22 +47,51 @@ WHERE listing_id = ANY(sqlc.arg('listing_ids')::uuid[])
 ORDER BY sort_order ASC;
 
 -- name: SearchListings :many
--- 有界(7フィルタ)の検索。各条件は narg がNULLなら無効化される（Query Builder不要）。
-SELECT * FROM listings
-WHERE (sqlc.narg('status')::listing_status IS NULL OR status = sqlc.narg('status')::listing_status)
-  AND (sqlc.narg('seller_id')::uuid IS NULL OR seller_id = sqlc.narg('seller_id')::uuid)
-  AND (sqlc.narg('category')::varchar IS NULL OR category = sqlc.narg('category')::varchar)
-  AND (sqlc.narg('condition')::varchar IS NULL OR condition = sqlc.narg('condition')::varchar)
-  AND (sqlc.narg('min_price')::integer IS NULL OR price >= sqlc.narg('min_price')::integer)
-  AND (sqlc.narg('max_price')::integer IS NULL OR price <= sqlc.narg('max_price')::integer)
+-- 有界(8フィルタ)の検索。各条件は narg がNULLなら無効化される（Query Builder不要）。
+-- ARCH-EXCEPTION(§peer): listings から social の listing_likes/listing_comments を read-only で LEFT JOIN する。
+--   理由: popular(いいね順)/commented(コメント数順) は集計を ORDER BY に置く必要があり、ページング全体で
+--        安定させるには同一クエリ内で集計するしかない（後段の adapter 集計では駆動不可）。表示用カウントは
+--        従来どおり enrichWithCounts が担い、ここの集計は並び替え専用。denormalize 列の導入は write 経路の
+--        相互結合コストが大きいため見送り、読み取りJOINに限定する。
+-- 並び順は sort で選択（shuffle=seed付き決定的シャッフル / newest / popular / commented / priceAsc / priceDesc）。
+-- 末尾の id DESC で常に一意なタイブレーカーを持たせ、offset ページネーションと shuffle を安定させる。
+SELECT
+  listings.id, listings.seller_id, listings.agent_id, listings.title, listings.description,
+  listings.price, listings.currency, listings.category, listings.condition, listings.status,
+  listings.signature_id, listings.created_at, listings.updated_at, listings.published_at, listings.sold_at
+FROM listings
+LEFT JOIN (
+  SELECT listing_id, count(*) AS like_count FROM listing_likes GROUP BY listing_id
+) lc ON lc.listing_id = listings.id
+LEFT JOIN (
+  SELECT listing_id, count(*) AS comment_count FROM listing_comments WHERE hidden_at IS NULL GROUP BY listing_id
+) cc ON cc.listing_id = listings.id
+WHERE (sqlc.narg('status')::listing_status IS NULL OR listings.status = sqlc.narg('status')::listing_status)
+  AND (sqlc.narg('seller_id')::uuid IS NULL OR listings.seller_id = sqlc.narg('seller_id')::uuid)
+  AND (sqlc.narg('category')::varchar IS NULL OR listings.category = sqlc.narg('category')::varchar)
+  AND (sqlc.narg('condition')::varchar IS NULL OR listings.condition = sqlc.narg('condition')::varchar)
+  AND (sqlc.narg('min_price')::integer IS NULL OR listings.price >= sqlc.narg('min_price')::integer)
+  AND (sqlc.narg('max_price')::integer IS NULL OR listings.price <= sqlc.narg('max_price')::integer)
   AND (
     sqlc.narg('keyword')::text IS NULL
-    OR title ILIKE '%' || sqlc.narg('keyword')::text || '%'
-    OR description ILIKE '%' || sqlc.narg('keyword')::text || '%'
+    OR listings.title ILIKE '%' || sqlc.narg('keyword')::text || '%'
+    OR listings.description ILIKE '%' || sqlc.narg('keyword')::text || '%'
   )
--- randomize=true（無フィルタのホームフィード）は全カテゴリを混ぜて返す（UIのカテゴリ別セクション/フィルタ生成のため）。
--- それ以外（keyword/category/seller フィルタ時）は created_at DESC で新着順かつ offset ページネーションを安定させる。
+  AND (sqlc.narg('signed')::boolean IS NULL OR (listings.signature_id IS NOT NULL) = sqlc.narg('signed')::boolean)
 ORDER BY
-  CASE WHEN sqlc.arg('randomize')::boolean THEN random() END,
-  created_at DESC
+  CASE WHEN sqlc.narg('sort')::text = 'priceAsc'  THEN listings.price END ASC,
+  CASE WHEN sqlc.narg('sort')::text = 'priceDesc' THEN listings.price END DESC,
+  CASE WHEN sqlc.narg('sort')::text = 'popular'   THEN COALESCE(lc.like_count, 0) END DESC,
+  CASE WHEN sqlc.narg('sort')::text = 'commented' THEN COALESCE(cc.comment_count, 0) END DESC,
+  CASE WHEN sqlc.narg('sort')::text = 'shuffle'   THEN md5(listings.id::text || COALESCE(sqlc.narg('seed')::text, '')) END ASC,
+  listings.created_at DESC,
+  listings.id DESC
 LIMIT sqlc.arg('result_limit')::integer OFFSET sqlc.arg('result_offset')::integer;
+
+-- name: ListCategories :many
+-- 公開中の出品のカテゴリ別件数。フロントのカテゴリ選択肢/ファセットを取得集合に依存せず提供する。
+SELECT category, count(*)::bigint AS count
+FROM listings
+WHERE status = 'PUBLISHED'
+GROUP BY category
+ORDER BY count DESC, category ASC;

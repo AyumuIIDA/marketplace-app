@@ -38,6 +38,9 @@ func (f *fakeListingRepo) Search(_ context.Context, _ listingsdomain.SearchInput
 	}
 	return out, nil
 }
+func (f *fakeListingRepo) ListCategories(_ context.Context) ([]listingsdomain.CategoryCount, error) {
+	return nil, nil
+}
 func (f *fakeListingRepo) ClaimForPurchase(_ context.Context, _ listingsdomain.ClaimForPurchaseInput) (*listingsdomain.Listing, error) {
 	return nil, nil
 }
