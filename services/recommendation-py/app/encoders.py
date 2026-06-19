@@ -55,11 +55,23 @@ class GeminiTextEncoder:
             vertexai=True, project=CONFIG.gcp_project, location=CONFIG.gcp_location
         )
 
-    def encode(self, text: str) -> list[float]:
+    def _embed(self, text: str, task_type: str) -> list[float]:
+        from google.genai import types
+
         res = self.client.models.embed_content(
-            model=CONFIG.gemini_embed_model, contents=text
+            model=CONFIG.gemini_embed_model,
+            contents=text,
+            config=types.EmbedContentConfig(task_type=task_type),
         )
         return list(res.embeddings[0].values)
+
+    # 検索クエリ用。文書とは非対称に最適化された埋め込みを返す（短クエリのハブ化を抑える）。
+    def encode_query(self, text: str) -> list[float]:
+        return self._embed(text, "RETRIEVAL_QUERY")
+
+    # インデックス(文書)用。task_type を付けるため、既存データは再インデックスが必要。
+    def encode_document(self, text: str) -> list[float]:
+        return self._embed(text, "RETRIEVAL_DOCUMENT")
 
 
 @lru_cache(maxsize=1)
