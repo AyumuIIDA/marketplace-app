@@ -356,7 +356,9 @@ func buildAiAssistant(ctx context.Context, cfg Config) aiapp.AiAssistant {
 			slog.Warn("gemini init failed; falling back to deterministic AI", slog.String("error", err.Error()))
 			return aiinfra.NewDeterministicAiAssistant()
 		}
-		return g
+		// 実呼び出し失敗（Vertex/画像取得等）でも出品支援を止めないよう決定論へ縮退する。
+		// 縮退時は Warn で生エラーを残すので原因も観測できる。
+		return aiinfra.NewFallbackAiAssistant(g, aiinfra.NewDeterministicAiAssistant())
 	default:
 		return aiinfra.NewDeterministicAiAssistant()
 	}
