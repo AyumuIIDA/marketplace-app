@@ -26,11 +26,13 @@ class Config:
 
     default_top_k: int = int(os.getenv("DEFAULT_TOP_K", "24"))
 
-    # 重み付きRRF（意味検索の融合）。Qdrant既定RRFは等価重みで、画像類似(clip)のハブ
-    # （白背景アクセサリ等）が無関係クエリに侵入する。text(Gemini)を厚く・clipを薄くして抑制。
+    # 重み付きRRF（意味検索の融合）。実測では短い/日本語クエリで text(Gemini) 側が
+    # jewelryハブに落ちてノイズ源になり、CLIP(多言語xlm-roberta)の方が的確だった。
+    # よって clip を厚く・text を薄くする（例: 椅子→furniture が安定、jewelry侵入が消える）。
+    # 重みは env で再調整可能（言語別最適化や JA→EN 前処理を入れたら見直す）。
     rrf_k: int = int(os.getenv("RRF_K", "60"))
-    rrf_text_weight: float = float(os.getenv("RRF_TEXT_WEIGHT", "1.0"))
-    rrf_clip_weight: float = float(os.getenv("RRF_CLIP_WEIGHT", "0.3"))
+    rrf_text_weight: float = float(os.getenv("RRF_TEXT_WEIGHT", "0.3"))
+    rrf_clip_weight: float = float(os.getenv("RRF_CLIP_WEIGHT", "1.0"))
 
 
 CONFIG = Config()
