@@ -127,6 +127,40 @@ type InsertListingImagesParams struct {
 	SortOrder int32
 }
 
+const listCategories = `-- name: ListCategories :many
+SELECT category, count(*)::bigint AS count
+FROM listings
+WHERE status = 'PUBLISHED'
+GROUP BY category
+ORDER BY count DESC, category ASC
+`
+
+type ListCategoriesRow struct {
+	Category string
+	Count    int64
+}
+
+// 公開中の出品のカテゴリ別件数。フロントのカテゴリ選択肢/ファセットを取得集合に依存せず提供する。
+func (q *Queries) ListCategories(ctx context.Context) ([]ListCategoriesRow, error) {
+	rows, err := q.db.Query(ctx, listCategories)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCategoriesRow{}
+	for rows.Next() {
+		var i ListCategoriesRow
+		if err := rows.Scan(&i.Category, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listImagesByListingIDs = `-- name: ListImagesByListingIDs :many
 SELECT listing_id, url, sort_order
 FROM listing_images
@@ -161,22 +195,38 @@ func (q *Queries) ListImagesByListingIDs(ctx context.Context, listingIds []uuid.
 }
 
 const searchListings = `-- name: SearchListings :many
-SELECT id, seller_id, agent_id, title, description, price, currency, category, condition, status, signature_id, created_at, updated_at, published_at, sold_at FROM listings
-WHERE ($1::listing_status IS NULL OR status = $1::listing_status)
-  AND ($2::uuid IS NULL OR seller_id = $2::uuid)
-  AND ($3::varchar IS NULL OR category = $3::varchar)
-  AND ($4::varchar IS NULL OR condition = $4::varchar)
-  AND ($5::integer IS NULL OR price >= $5::integer)
-  AND ($6::integer IS NULL OR price <= $6::integer)
+SELECT
+  listings.id, listings.seller_id, listings.agent_id, listings.title, listings.description,
+  listings.price, listings.currency, listings.category, listings.condition, listings.status,
+  listings.signature_id, listings.created_at, listings.updated_at, listings.published_at, listings.sold_at
+FROM listings
+LEFT JOIN (
+  SELECT listing_id, count(*) AS like_count FROM listing_likes GROUP BY listing_id
+) lc ON lc.listing_id = listings.id
+LEFT JOIN (
+  SELECT listing_id, count(*) AS comment_count FROM listing_comments WHERE hidden_at IS NULL GROUP BY listing_id
+) cc ON cc.listing_id = listings.id
+WHERE ($1::listing_status IS NULL OR listings.status = $1::listing_status)
+  AND ($2::uuid IS NULL OR listings.seller_id = $2::uuid)
+  AND ($3::varchar IS NULL OR listings.category = $3::varchar)
+  AND ($4::varchar IS NULL OR listings.condition = $4::varchar)
+  AND ($5::integer IS NULL OR listings.price >= $5::integer)
+  AND ($6::integer IS NULL OR listings.price <= $6::integer)
   AND (
     $7::text IS NULL
-    OR title ILIKE '%' || $7::text || '%'
-    OR description ILIKE '%' || $7::text || '%'
+    OR listings.title ILIKE '%' || $7::text || '%'
+    OR listings.description ILIKE '%' || $7::text || '%'
   )
+  AND ($8::boolean IS NULL OR (listings.signature_id IS NOT NULL) = $8::boolean)
 ORDER BY
-  CASE WHEN $8::boolean THEN random() END,
-  created_at DESC
-LIMIT $10::integer OFFSET $9::integer
+  CASE WHEN $9::text = 'priceAsc'  THEN listings.price END ASC,
+  CASE WHEN $9::text = 'priceDesc' THEN listings.price END DESC,
+  CASE WHEN $9::text = 'popular'   THEN COALESCE(lc.like_count, 0) END DESC,
+  CASE WHEN $9::text = 'commented' THEN COALESCE(cc.comment_count, 0) END DESC,
+  CASE WHEN $9::text = 'shuffle'   THEN md5(listings.id::text || COALESCE($10::text, '')) END ASC,
+  listings.created_at DESC,
+  listings.id DESC
+LIMIT $12::integer OFFSET $11::integer
 `
 
 type SearchListingsParams struct {
@@ -187,14 +237,23 @@ type SearchListingsParams struct {
 	MinPrice     *int32
 	MaxPrice     *int32
 	Keyword      *string
-	Randomize    bool
+	Signed       *bool
+	Sort         *string
+	Seed         *string
 	ResultOffset int32
 	ResultLimit  int32
 }
 
-// 有界(7フィルタ)の検索。各条件は narg がNULLなら無効化される（Query Builder不要）。
-// randomize=true（無フィルタのホームフィード）は全カテゴリを混ぜて返す（UIのカテゴリ別セクション/フィルタ生成のため）。
-// それ以外（keyword/category/seller フィルタ時）は created_at DESC で新着順かつ offset ページネーションを安定させる。
+// 有界(8フィルタ)の検索。各条件は narg がNULLなら無効化される（Query Builder不要）。
+// ARCH-EXCEPTION(§peer): listings から social の listing_likes/listing_comments を read-only で LEFT JOIN する。
+//
+//	理由: popular(いいね順)/commented(コメント数順) は集計を ORDER BY に置く必要があり、ページング全体で
+//	     安定させるには同一クエリ内で集計するしかない（後段の adapter 集計では駆動不可）。表示用カウントは
+//	     従来どおり enrichWithCounts が担い、ここの集計は並び替え専用。denormalize 列の導入は write 経路の
+//	     相互結合コストが大きいため見送り、読み取りJOINに限定する。
+//
+// 並び順は sort で選択（shuffle=seed付き決定的シャッフル / newest / popular / commented / priceAsc / priceDesc）。
+// 末尾の id DESC で常に一意なタイブレーカーを持たせ、offset ページネーションと shuffle を安定させる。
 func (q *Queries) SearchListings(ctx context.Context, arg SearchListingsParams) ([]Listing, error) {
 	rows, err := q.db.Query(ctx, searchListings,
 		arg.Status,
@@ -204,7 +263,9 @@ func (q *Queries) SearchListings(ctx context.Context, arg SearchListingsParams) 
 		arg.MinPrice,
 		arg.MaxPrice,
 		arg.Keyword,
-		arg.Randomize,
+		arg.Signed,
+		arg.Sort,
+		arg.Seed,
 		arg.ResultOffset,
 		arg.ResultLimit,
 	)

@@ -145,9 +145,12 @@ type SearchListingsInput struct {
 	MinPrice               *int32
 	MaxPrice               *int32
 	SellerID               *uuid.UUID
+	Signed                 *bool
 	IncludeDraftsForSeller bool
 	Limit                  *int32
 	Offset                 *int32
+	Sort                   *string
+	Seed                   *string
 }
 
 type SearchListingsResult struct {
@@ -181,10 +184,7 @@ func (uc *SearchListingsUseCase) Execute(ctx context.Context, in SearchListingsI
 		status = &published
 	}
 
-	// 無フィルタの一覧（ホームの注目フィード）は全カテゴリを混ぜて返す。
-	// keyword/category/seller のいずれかが指定された絞り込み/ページネーション時は新着順で安定させる。
-	randomize := in.Keyword == nil && in.Category == nil && in.SellerID == nil
-
+	// 並び順は呼び出し側(handler)が検証済みの値を渡す。nil/未知は SQL 側で newest にフォールバック。
 	listings, err := uc.listings.Search(ctx, listingsdomain.SearchInput{
 		Keyword:   in.Keyword,
 		Category:  in.Category,
@@ -193,9 +193,11 @@ func (uc *SearchListingsUseCase) Execute(ctx context.Context, in SearchListingsI
 		MaxPrice:  in.MaxPrice,
 		Status:    status,
 		SellerID:  in.SellerID,
+		Signed:    in.Signed,
 		Limit:     in.Limit,
 		Offset:    in.Offset,
-		Randomize: randomize,
+		Sort:      in.Sort,
+		Seed:      in.Seed,
 	})
 	if err != nil {
 		return SearchListingsResult{}, err
@@ -207,6 +209,38 @@ func (uc *SearchListingsUseCase) Execute(ctx context.Context, in SearchListingsI
 	}
 	enrichWithCounts(ctx, uc.counts, items)
 	return SearchListingsResult{Items: items}, nil
+}
+
+// --- ListCategories ---
+
+type CategoryView struct {
+	Category string `json:"category"`
+	Count    int64  `json:"count"`
+}
+
+type ListCategoriesResult struct {
+	Items []CategoryView `json:"items"`
+}
+
+type ListCategoriesUseCase struct {
+	listings listingsdomain.ListingRepository
+}
+
+func NewListCategoriesUseCase(r listingsdomain.ListingRepository) *ListCategoriesUseCase {
+	return &ListCategoriesUseCase{listings: r}
+}
+
+// Execute は公開中の出品のカテゴリ別件数（件数降順）を返す。フロントのカテゴリ選択肢に使う。
+func (uc *ListCategoriesUseCase) Execute(ctx context.Context) (ListCategoriesResult, error) {
+	cats, err := uc.listings.ListCategories(ctx)
+	if err != nil {
+		return ListCategoriesResult{}, err
+	}
+	items := make([]CategoryView, 0, len(cats))
+	for _, c := range cats {
+		items = append(items, CategoryView{Category: c.Category, Count: c.Count})
+	}
+	return ListCategoriesResult{Items: items}, nil
 }
 
 // --- UpdateDraftListing ---

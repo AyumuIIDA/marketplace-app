@@ -131,7 +131,9 @@ func (r *PostgresListingRepository) Search(ctx context.Context, in listingsdomai
 		MinPrice:     in.MinPrice,
 		MaxPrice:     in.MaxPrice,
 		Keyword:      in.Keyword,
-		Randomize:    in.Randomize,
+		Signed:       in.Signed,
+		Sort:         in.Sort,
+		Seed:         in.Seed,
 		ResultOffset: offset,
 		ResultLimit:  limit,
 	})
@@ -151,6 +153,18 @@ func (r *PostgresListingRepository) Search(ctx context.Context, in listingsdomai
 	out := make([]*listingsdomain.Listing, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, mapListingRow(row, imageMap[row.ID]))
+	}
+	return out, nil
+}
+
+func (r *PostgresListingRepository) ListCategories(ctx context.Context) ([]listingsdomain.CategoryCount, error) {
+	rows, err := r.q.ListCategories(ctx)
+	if err != nil {
+		return nil, pgerr.FromPg(err)
+	}
+	out := make([]listingsdomain.CategoryCount, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, listingsdomain.CategoryCount{Category: row.Category, Count: row.Count})
 	}
 	return out, nil
 }
