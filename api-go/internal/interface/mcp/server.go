@@ -47,6 +47,19 @@ func buildServer(tools []McpTool, runner *ToolRunner, toolCtx ToolContext) *mcp.
 }
 
 func toCallToolResult(result ToolResult) *mcp.CallToolResult {
+	// MCP仕様: structuredContent を返す場合でも、後方互換のため同じデータを TextContent にも入れる。
+	// 多くのclient(Claude Desktop等)はモデルに content のテキストだけを渡すため、ここに実データ(JSON)を
+	// 入れないと「成功したが中身が見えない」状態になる。SUCCEEDED は Data を、要確認/要署名は説明＋Data を返す。
+	dataJSON := func() string {
+		if result.Data == nil {
+			return ""
+		}
+		if b, err := json.Marshal(result.Data); err == nil {
+			return string(b)
+		}
+		return ""
+	}
+
 	text := "Tool call succeeded."
 	switch result.Status {
 	case ToolFailed:
@@ -57,8 +70,18 @@ func toCallToolResult(result ToolResult) *mcp.CallToolResult {
 		}
 	case ToolRequiresConfirmation:
 		text = "This tool requires user confirmation before it can continue."
+		if d := dataJSON(); d != "" {
+			text += "\n" + d
+		}
 	case ToolRequiresHumanSignature:
 		text = "This tool requires a human signature before it can continue."
+		if d := dataJSON(); d != "" {
+			text += "\n" + d
+		}
+	default: // ToolSucceeded
+		if d := dataJSON(); d != "" {
+			text = d
+		}
 	}
 	// 画像ブロックを先頭に積む。Data 有→インライン(ImageContent/base64・確実描画)、無→ResourceLink(軽量)。
 	// リッチclient(Desktop/ChatGPT等)が描画し、テキスト面のclientは text/リンクへ劣化する。
