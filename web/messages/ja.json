@@ -135,6 +135,20 @@
     "en": "English",
     "ja": "日本語"
   },
+  "agentAccess": {
+    "title": "エージェント接続（MCP）",
+    "description": "AI エージェント（Claude など）をあなたのアカウントとして接続するトークンを発行します。",
+    "generate": "トークンを発行",
+    "regenerate": "再発行",
+    "issuing": "発行中…",
+    "once": "このトークンは一度だけ表示されます。安全に保管してください（有効期限 {hours} 時間）。",
+    "tokenLabel": "アクセストークン",
+    "cliLabel": "Claude Code（ネイティブ HTTP）",
+    "desktopLabel": "Claude Desktop（mcp-remote）",
+    "copy": "コピー",
+    "copied": "コピーしました",
+    "error": "トークンを発行できませんでした。サインインを確認してください。"
+  },
   "seal": {
     "humanSigned": "本人署名済み"
   },
@@ -237,6 +251,7 @@
       "tabPurchases": "購入",
       "tabListings": "出品",
       "tabLikes": "いいね",
+      "tabConnect": "MCP接続",
       "statListings": "出品",
       "statPurchases": "購入"
     }

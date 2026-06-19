@@ -135,6 +135,20 @@
     "en": "English",
     "ja": "日本語"
   },
+  "agentAccess": {
+    "title": "Connect an agent (MCP)",
+    "description": "Issue a token to connect an AI agent (like Claude) that acts as your account.",
+    "generate": "Generate token",
+    "regenerate": "Regenerate",
+    "issuing": "Issuing…",
+    "once": "This token is shown once. Store it safely (expires in {hours}h).",
+    "tokenLabel": "Access token",
+    "cliLabel": "Claude Code (native HTTP)",
+    "desktopLabel": "Claude Desktop (mcp-remote)",
+    "copy": "Copy",
+    "copied": "Copied",
+    "error": "Could not issue a token. Check that you’re signed in."
+  },
   "seal": {
     "humanSigned": "Signed by a verified human"
   },
@@ -237,6 +251,7 @@
       "tabPurchases": "Purchases",
       "tabListings": "Listings",
       "tabLikes": "Likes",
+      "tabConnect": "Connect",
       "statListings": "Listings",
       "statPurchases": "Purchases"
     }
