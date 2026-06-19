@@ -72,11 +72,19 @@ type ListingCountsReader interface {
 	CountsByListingIDs(ctx context.Context, listingIDs []uuid.UUID) (map[uuid.UUID]ListingSocialCounts, error)
 }
 
+// SellerVerifiedReader は出品者ユーザーの人間認証状態をバッチで返す read port。
+// listings は identity と peer 分離のため、実装(adapter)は composition root が注入する。
+// Seal の正本はアカウント認証（human_verified_at）であり、これが出品カード/詳細の認証マークを駆動する。
+type SellerVerifiedReader interface {
+	VerifiedByUserIDs(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]bool, error)
+}
+
 // --- GetListing ---
 
 type GetListingUseCase struct {
-	listings listingsdomain.ListingRepository
-	counts   ListingCountsReader
+	listings       listingsdomain.ListingRepository
+	counts         ListingCountsReader
+	sellerVerified SellerVerifiedReader
 }
 
 func NewGetListingUseCase(r listingsdomain.ListingRepository) *GetListingUseCase {
@@ -86,6 +94,12 @@ func NewGetListingUseCase(r listingsdomain.ListingRepository) *GetListingUseCase
 // WithCounts はソーシャル集計の reader を注入する（任意。未注入なら likeCount/commentCount は0）。
 func (uc *GetListingUseCase) WithCounts(reader ListingCountsReader) *GetListingUseCase {
 	uc.counts = reader
+	return uc
+}
+
+// WithSellerVerified は出品者認証の reader を注入する（任意。未注入なら sellerVerified は false）。
+func (uc *GetListingUseCase) WithSellerVerified(reader SellerVerifiedReader) *GetListingUseCase {
+	uc.sellerVerified = reader
 	return uc
 }
 
@@ -105,6 +119,7 @@ func (uc *GetListingUseCase) Execute(ctx context.Context, listingID uuid.UUID, r
 	}
 	items := []ListingView{presentListing(listing)}
 	enrichWithCounts(ctx, uc.counts, items)
+	enrichWithSellerVerified(ctx, uc.sellerVerified, items)
 	return items[0], nil
 }
 
@@ -136,6 +151,36 @@ func enrichWithCounts(ctx context.Context, reader ListingCountsReader, items []L
 	}
 }
 
+// enrichWithSellerVerified は items の sellerVerified を reader でその場更新する。
+// reader が nil／取得失敗時は false のまま（認証マークは付加情報のため致命にしない）。
+func enrichWithSellerVerified(ctx context.Context, reader SellerVerifiedReader, items []ListingView) {
+	if reader == nil || len(items) == 0 {
+		return
+	}
+	ids := make([]uuid.UUID, 0, len(items))
+	seen := make(map[uuid.UUID]struct{}, len(items))
+	for _, it := range items {
+		id, err := uuid.Parse(it.SellerID)
+		if err != nil {
+			continue
+		}
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	verified, err := reader.VerifiedByUserIDs(ctx, ids)
+	if err != nil {
+		return
+	}
+	for i := range items {
+		if id, err := uuid.Parse(items[i].SellerID); err == nil {
+			items[i].SellerVerified = verified[id]
+		}
+	}
+}
+
 // --- SearchListings ---
 
 type SearchListingsInput struct {
@@ -158,8 +203,9 @@ type SearchListingsResult struct {
 }
 
 type SearchListingsUseCase struct {
-	listings listingsdomain.ListingRepository
-	counts   ListingCountsReader
+	listings       listingsdomain.ListingRepository
+	counts         ListingCountsReader
+	sellerVerified SellerVerifiedReader
 }
 
 func NewSearchListingsUseCase(r listingsdomain.ListingRepository) *SearchListingsUseCase {
@@ -169,6 +215,12 @@ func NewSearchListingsUseCase(r listingsdomain.ListingRepository) *SearchListing
 // WithCounts はソーシャル集計の reader を注入する（任意）。
 func (uc *SearchListingsUseCase) WithCounts(reader ListingCountsReader) *SearchListingsUseCase {
 	uc.counts = reader
+	return uc
+}
+
+// WithSellerVerified は出品者認証の reader を注入する（任意。未注入なら sellerVerified は false）。
+func (uc *SearchListingsUseCase) WithSellerVerified(reader SellerVerifiedReader) *SearchListingsUseCase {
+	uc.sellerVerified = reader
 	return uc
 }
 
@@ -208,6 +260,7 @@ func (uc *SearchListingsUseCase) Execute(ctx context.Context, in SearchListingsI
 		items = append(items, presentListing(l))
 	}
 	enrichWithCounts(ctx, uc.counts, items)
+	enrichWithSellerVerified(ctx, uc.sellerVerified, items)
 	return SearchListingsResult{Items: items}, nil
 }
 

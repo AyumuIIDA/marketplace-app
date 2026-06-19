@@ -206,6 +206,7 @@ LEFT JOIN (
 LEFT JOIN (
   SELECT listing_id, count(*) AS comment_count FROM listing_comments WHERE hidden_at IS NULL GROUP BY listing_id
 ) cc ON cc.listing_id = listings.id
+LEFT JOIN users su ON su.id = listings.seller_id
 WHERE ($1::listing_status IS NULL OR listings.status = $1::listing_status)
   AND ($2::uuid IS NULL OR listings.seller_id = $2::uuid)
   AND ($3::varchar IS NULL OR listings.category = $3::varchar)
@@ -217,7 +218,9 @@ WHERE ($1::listing_status IS NULL OR listings.status = $1::listing_status)
     OR listings.title ILIKE '%' || $7::text || '%'
     OR listings.description ILIKE '%' || $7::text || '%'
   )
-  AND ($8::boolean IS NULL OR (listings.signature_id IS NOT NULL) = $8::boolean)
+  -- 「認証済みのみ」ファセット。Seal の正本＝出品者アカウントの人間認証(human_verified_at)で絞る
+  -- （行為署名 signature_id ではない）。Route A: 認証済み出品者の出品は認証済みとして扱う。
+  AND ($8::boolean IS NULL OR (su.human_verified_at IS NOT NULL) = $8::boolean)
 ORDER BY
   CASE WHEN $9::text = 'priceAsc'  THEN listings.price END ASC,
   CASE WHEN $9::text = 'priceDesc' THEN listings.price END DESC,

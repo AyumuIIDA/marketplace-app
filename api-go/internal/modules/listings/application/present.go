@@ -20,25 +20,29 @@ type ImageView struct {
 //	で表す。理由: これらは「未発生(null)」と「ゼロ値」を区別すべきnullable列であり、pointerが
 //	null/非null を自然に表現する。必須日時(createdAt/updatedAt)は値型 time.Time のまま。
 type ListingView struct {
-	ListingID   string      `json:"listingId"`
-	SellerID    string      `json:"sellerId"`
-	AgentID     *string     `json:"agentId,omitempty"`
-	Title       string      `json:"title"`
-	Description string      `json:"description"`
-	Price       int32       `json:"price"`
-	Currency    string      `json:"currency"`
-	Category    string      `json:"category"`
-	Condition   string      `json:"condition"`
-	Status      string      `json:"status"`
-	SignatureID *string     `json:"signatureId,omitempty"`
+	ListingID   string  `json:"listingId"`
+	SellerID    string  `json:"sellerId"`
+	AgentID     *string `json:"agentId,omitempty"`
+	Title       string  `json:"title"`
+	Description string  `json:"description"`
+	Price       int32   `json:"price"`
+	Currency    string  `json:"currency"`
+	Category    string  `json:"category"`
+	Condition   string  `json:"condition"`
+	Status      string  `json:"status"`
+	SignatureID *string `json:"signatureId,omitempty"`
+	// SellerVerified は出品者アカウントが人間認証済みか（users.human_verified_at 由来）。
+	// Seal表示の正本。行為署名(signatureId)ではなくアカウント認証を信頼の単位にする（Route A）。
+	// presentListing では埋めず、enrichWithSellerVerified が後段でその場更新する（LikeCount等と同方式）。
+	SellerVerified bool `json:"sellerVerified"`
 	// ソーシャル集計（social module 由来。未取得時は0）。Instagram風カードのいいね/コメント数表示に使う。
 	LikeCount    int64       `json:"likeCount"`
 	CommentCount int64       `json:"commentCount"`
 	Images       []ImageView `json:"images"`
 	CreatedAt    time.Time   `json:"createdAt"`
-	UpdatedAt   time.Time   `json:"updatedAt"`
-	PublishedAt *time.Time  `json:"publishedAt,omitempty"`
-	SoldAt      *time.Time  `json:"soldAt,omitempty"`
+	UpdatedAt    time.Time   `json:"updatedAt"`
+	PublishedAt  *time.Time  `json:"publishedAt,omitempty"`
+	SoldAt       *time.Time  `json:"soldAt,omitempty"`
 }
 
 func presentListing(l *listingsdomain.Listing) ListingView {
