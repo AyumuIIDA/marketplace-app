@@ -70,13 +70,16 @@ export default async function MePage({ searchParams }: MePageProps) {
 
   return (
     <MarketplaceShell activeSection="me" authenticated humanLabel={humanLabel} humanVerified={humanVerified} userLabel={userLabel}>
-      <div className="grid gap-8 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
-        <ProfileSidebar currentUser={currentUser} listingsCount={listings.length} purchasesCount={purchases.length} />
+      {/* lg以上はダッシュボード: ヘッダ(sticky)＋サイドバー＋タブnavを画面固定し、一覧だけ内部スクロール。
+          高さ = 100dvh − ヘッダ(110px)。-my-6 でshellの上下paddingを相殺し、document自体はスクロールさせない。
+          モバイル(<lg)は通常フロー（縦積み・document scroll）を維持。 */}
+      <div className="lg:h-[calc(100dvh_-_158px)] lg:overflow-hidden">
+        <div className="grid gap-8 lg:h-full lg:grid-cols-[300px_minmax(0,1fr)] lg:items-stretch">
+          <ProfileSidebar currentUser={currentUser} listingsCount={listings.length} purchasesCount={purchases.length} />
 
-        <div className="min-w-0">
-          {/* GitHub型のタブバー。実リンク=SSR切替・キーボード可・共有可。 */}
-          {/* overflow-x-auto は overflow-y を auto に昇格させる。タブの -mb-px の1px溢れで縦スクロールバーが出るため y を明示的に隠す。 */}
-          <nav className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line">
+          <div className="min-w-0 lg:flex lg:min-h-0 lg:flex-col">
+            {/* GitHub型のタブバー。lg では固定サブヘッダ（shrink-0）として常時表示。 */}
+            <nav className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line lg:shrink-0">
             {tabs.map((item) => {
               const selected = item.key === active;
 
@@ -100,7 +103,7 @@ export default async function MePage({ searchParams }: MePageProps) {
             })}
           </nav>
 
-          <div className="mt-6">
+          <div className="mt-6 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
             {active === "purchases" && (
               <TransactionList currentUserId={currentUser.userId} emptyLabel={tx("emptyPurchases")} orders={purchases} />
             )}
@@ -170,6 +173,7 @@ export default async function MePage({ searchParams }: MePageProps) {
               ))}
 
             {active === "connect" && <AgentAccessPanel verified={currentUser.humanVerified} />}
+          </div>
           </div>
         </div>
       </div>

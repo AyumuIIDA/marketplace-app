@@ -19,8 +19,11 @@ export async function ListingGrid({ listings, blockUnviewable = false }: Listing
   ]);
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-      {listings.map((item) => (
+    // 列数はビューポートではなくコンテナ幅で決める（@container）。
+    // これで全幅カタログでも /me のサイドバー内の狭い列でもカード幅が一定に保たれ、潰れない。
+    <div className="@container">
+      <div className="grid grid-cols-2 gap-4 @lg:grid-cols-3 @3xl:grid-cols-4 @5xl:grid-cols-5">
+        {listings.map((item) => (
         <ListingCard
           blockUnviewable={blockUnviewable}
           draftLabel={catalog("draft")}
@@ -33,7 +36,8 @@ export async function ListingGrid({ listings, blockUnviewable = false }: Listing
           soldLabel={catalog("sold")}
           unavailableLabel={social("unavailable")}
         />
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

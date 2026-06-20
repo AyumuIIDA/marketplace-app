@@ -25,7 +25,9 @@ export async function TransactionList({ currentUserId, emptyLabel, orders }: Tra
   }
 
   return (
-    <ul className="grid gap-3">
+    // flex-col にする（grid の min-width:auto トラックが長いタイトルで横へ伸び、truncate を無効化して
+    // ページ全体が横スクロールするのを防ぐ）。
+    <ul className="flex flex-col gap-3">
       {orders.map((order) => {
         const role = order.buyerId === currentUserId ? t("buyer") : t("seller");
         const canceled = order.status === "CANCELED";
@@ -34,7 +36,7 @@ export async function TransactionList({ currentUserId, emptyLabel, orders }: Tra
         return (
           <li key={order.orderId}>
             <a
-              className="flex items-center gap-4 rounded-lg border border-line bg-surface p-4 shadow-sm transition-colors hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30"
+              className="flex min-w-0 items-center gap-4 rounded-lg border border-line bg-surface p-4 shadow-sm transition-colors hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30"
               href={`/orders/${order.orderId}`}
             >
               <Thumbnail title={order.listingTitle} url={order.listingImageUrl} />
