@@ -181,7 +181,7 @@
   },
   "catalog": {
     "title": "出品一覧",
-    "subtitle": "人間証明済みの人が出品した商品です。",
+    "subtitle": "",
     "searchResults": "「{query}」の検索結果",
     "create": "出品する",
     "available": "販売中",

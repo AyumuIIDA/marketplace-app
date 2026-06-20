@@ -181,7 +181,7 @@
   },
   "catalog": {
     "title": "Listings",
-    "subtitle": "Items listed by verified people.",
+    "subtitle": "",
     "searchResults": "Results for “{query}”",
     "create": "Sell an item",
     "available": "Available",
