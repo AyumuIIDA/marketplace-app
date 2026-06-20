@@ -565,6 +565,12 @@ type ListingLike struct {
 	CreatedAt pgtype.Timestamptz
 }
 
+type ListingSafe struct {
+	UserID    uuid.UUID
+	ListingID uuid.UUID
+	CreatedAt pgtype.Timestamptz
+}
+
 type McpToolCall struct {
 	ID            uuid.UUID
 	AgentID       *uuid.UUID
@@ -589,19 +595,21 @@ type Message struct {
 }
 
 type Order struct {
-	ID          uuid.UUID
-	ListingID   uuid.UUID
-	BuyerID     uuid.UUID
-	SellerID    uuid.UUID
-	Status      OrderStatus
-	Price       int32
-	Currency    string
-	CreatedAt   pgtype.Timestamptz
-	PaidAt      pgtype.Timestamptz
-	ShippedAt   pgtype.Timestamptz
-	ReceivedAt  pgtype.Timestamptz
-	CompletedAt pgtype.Timestamptz
-	CanceledAt  pgtype.Timestamptz
+	ID              uuid.UUID
+	ListingID       uuid.UUID
+	BuyerID         uuid.UUID
+	SellerID        uuid.UUID
+	Status          OrderStatus
+	Price           int32
+	Currency        string
+	CreatedAt       pgtype.Timestamptz
+	PaidAt          pgtype.Timestamptz
+	ShippedAt       pgtype.Timestamptz
+	ReceivedAt      pgtype.Timestamptz
+	CompletedAt     pgtype.Timestamptz
+	CanceledAt      pgtype.Timestamptz
+	ListingTitle    string
+	ListingImageUrl string
 }
 
 type Review struct {
@@ -617,6 +625,12 @@ type Review struct {
 	CreatedAt   pgtype.Timestamptz
 	SubmittedAt pgtype.Timestamptz
 	HiddenAt    pgtype.Timestamptz
+}
+
+type SellerFollow struct {
+	FollowerID uuid.UUID
+	SellerID   uuid.UUID
+	CreatedAt  pgtype.Timestamptz
 }
 
 type SellerLike struct {

@@ -64,6 +64,62 @@ export async function searchLikedSellers(limit = 50): Promise<SellerSummary[]> {
   }
 }
 
+// --- 私的レイヤー: 保存（商品）/ フォロー（出品者）。公開シグナルのいいねと違い認証不要。 ---
+
+export type SaveStatus = { savedByMe: boolean };
+export type FollowStatus = { followingByMe: boolean };
+
+// 商品の保存トグル。saved=true で POST、false で DELETE。
+export async function setListingSave(listingId: string, saved: boolean): Promise<SaveStatus> {
+  return bffJson<SaveStatus>(`/listings/${listingId}/save`, { method: saved ? "POST" : "DELETE" });
+}
+
+// 出品者のフォロートグル。
+export async function setSellerFollow(sellerId: string, following: boolean): Promise<FollowStatus> {
+  return bffJson<FollowStatus>(`/sellers/${sellerId}/follow`, { method: following ? "POST" : "DELETE" });
+}
+
+// 保存済み商品ID集合（カード/詳細の初期状態hydrate用）。
+export async function getSavedListingIds(limit = 100): Promise<Set<string>> {
+  try {
+    const out = await bffJson<{ items: { listingId: string }[] }>(`/me/saved-listings?limit=${limit}`);
+    return new Set(out.items.map((item) => item.listingId));
+  } catch (error) {
+    if (isBffError(error) && (error.status === 401 || error.status === 404)) {
+      return new Set();
+    }
+    throw error;
+  }
+}
+
+// 保存済み商品の本体（/me の保存タブ用）。
+export async function searchSavedListings(limit = 50): Promise<Listing[]> {
+  try {
+    const out = await bffJson<{ items: Listing[] }>(`/me/saved-listings?limit=${limit}`);
+    return out.items;
+  } catch (error) {
+    if (isBffError(error) && (error.status === 401 || error.status === 404)) {
+      return [];
+    }
+    throw error;
+  }
+}
+
+// フォロー中の出品者サマリ（/me のフォロータブ用）。
+export async function searchFollowedSellers(limit = 50): Promise<SellerSummary[]> {
+  try {
+    const out = await bffJson<{ items: (Omit<SellerSummary, "rating"> & { rating: number | null })[] }>(
+      `/me/following?limit=${limit}`,
+    );
+    return out.items.map((seller) => ({ ...seller, rating: seller.rating ?? undefined }));
+  } catch (error) {
+    if (isBffError(error) && (error.status === 401 || error.status === 404)) {
+      return [];
+    }
+    throw error;
+  }
+}
+
 // 出品コメント。著者は本人認証済みのみ（backendで強制）。authorHumanVerified で認証バッジを出す。
 export type ListingComment = {
   commentId: string;

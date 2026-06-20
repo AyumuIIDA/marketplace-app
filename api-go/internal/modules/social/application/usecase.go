@@ -11,6 +11,22 @@ import (
 	"marketplace/api-go/internal/shared/ids"
 )
 
+// requireHumanVerified は userID が人間認証済み（World ID）かを検証する。
+// 公開シグナル（いいね・コメント）を bot 水増しから守るゲート。未認証は私的レイヤー（保存/フォロー）へ誘導する。
+func requireHumanVerified(ctx context.Context, repo Repository, userID uuid.UUID) error {
+	profile, err := repo.FindSellerProfile(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if profile == nil {
+		return apperr.NotFound("User", userID.String())
+	}
+	if !profile.HumanVerified {
+		return apperr.Forbidden("Only human-verified users can like.")
+	}
+	return nil
+}
+
 // --- ListingLike（商品いいね） ---
 
 // ListingLikeUseCase は商品いいねのトグル（like/unlike）を担う。冪等（PKで二重防止）。
@@ -23,6 +39,11 @@ func NewListingLikeUseCase(r Repository) *ListingLikeUseCase {
 }
 
 func (uc *ListingLikeUseCase) Like(ctx context.Context, userID, listingID uuid.UUID) (LikeStatusView, error) {
+	// いいねは公開シグナル（ランキング/評判に効く）なので、bot 水増しを防ぐため人間認証済みに限定する
+	// （コメントと同じ方針）。未認証ユーザーは「保存」を使う。Unlike は掃除用なのでゲートしない。
+	if err := requireHumanVerified(ctx, uc.repo, userID); err != nil {
+		return LikeStatusView{}, err
+	}
 	if err := uc.repo.LikeListing(ctx, userID, listingID); err != nil {
 		return LikeStatusView{}, err
 	}
@@ -57,6 +78,10 @@ func NewSellerLikeUseCase(r Repository) *SellerLikeUseCase {
 
 func (uc *SellerLikeUseCase) Like(ctx context.Context, userID, sellerID uuid.UUID) (LikeStatusView, error) {
 	if err := socialdomain.EnsureCanLikeSeller(userID, sellerID); err != nil {
+		return LikeStatusView{}, err
+	}
+	// 公開シグナルなので人間認証済みに限定（未認証は「フォロー」を使う）。
+	if err := requireHumanVerified(ctx, uc.repo, userID); err != nil {
 		return LikeStatusView{}, err
 	}
 	if err := uc.repo.LikeSeller(ctx, userID, sellerID); err != nil {
@@ -109,8 +134,13 @@ func (uc *GetSellerSummaryUseCase) Execute(ctx context.Context, sellerID uuid.UU
 		return SellerSummaryView{}, err
 	}
 	likedByMe := false
+	followingByMe := false
 	if viewerID != nil {
 		likedByMe, err = uc.repo.IsSellerLiked(ctx, *viewerID, sellerID)
+		if err != nil {
+			return SellerSummaryView{}, err
+		}
+		followingByMe, err = uc.repo.IsFollowingSeller(ctx, *viewerID, sellerID)
 		if err != nil {
 			return SellerSummaryView{}, err
 		}
@@ -125,6 +155,7 @@ func (uc *GetSellerSummaryUseCase) Execute(ctx context.Context, sellerID uuid.UU
 		ReviewCount:   rating.Count,
 		LikeCount:     likeCount,
 		LikedByMe:     likedByMe,
+		FollowingByMe: followingByMe,
 	}, nil
 }
 

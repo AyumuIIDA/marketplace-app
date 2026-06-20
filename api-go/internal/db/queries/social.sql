@@ -75,3 +75,37 @@ GROUP BY listing_id;
 -- AVG の NULL を COALESCE(...,0) で潰す（float64非null）。0件→Average=nil の判定は repo 側で行う。
 SELECT COALESCE(AVG(rating::float8), 0)::float8 AS rating, count(*) AS review_count
 FROM reviews WHERE reviewee_id = $1 AND status = 'SUBMITTED';
+
+-- 商品の保存（私的ウォッチリスト）。冪等。
+-- name: SaveListing :exec
+INSERT INTO listing_saves (user_id, listing_id) VALUES ($1, $2)
+ON CONFLICT (user_id, listing_id) DO NOTHING;
+
+-- name: UnsaveListing :exec
+DELETE FROM listing_saves WHERE user_id = $1 AND listing_id = $2;
+
+-- name: IsListingSaved :one
+SELECT EXISTS (SELECT 1 FROM listing_saves WHERE user_id = $1 AND listing_id = $2);
+
+-- name: ListSavedListingIDs :many
+SELECT listing_id FROM listing_saves
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT sqlc.arg('result_limit')::integer OFFSET sqlc.arg('result_offset')::integer;
+
+-- 出品者のフォロー（私的）。冪等。
+-- name: FollowSeller :exec
+INSERT INTO seller_follows (follower_id, seller_id) VALUES ($1, $2)
+ON CONFLICT (follower_id, seller_id) DO NOTHING;
+
+-- name: UnfollowSeller :exec
+DELETE FROM seller_follows WHERE follower_id = $1 AND seller_id = $2;
+
+-- name: IsFollowingSeller :one
+SELECT EXISTS (SELECT 1 FROM seller_follows WHERE follower_id = $1 AND seller_id = $2);
+
+-- name: ListFollowedSellerIDs :many
+SELECT seller_id FROM seller_follows
+WHERE follower_id = $1
+ORDER BY created_at DESC
+LIMIT sqlc.arg('result_limit')::integer OFFSET sqlc.arg('result_offset')::integer;

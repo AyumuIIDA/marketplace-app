@@ -17,3 +17,12 @@ func EnsureCanLikeSeller(userID, sellerID uuid.UUID) error {
 	}
 	return nil
 }
+
+// EnsureCanFollowSeller は出品者フォローの不変条件を検証する（自己フォロー禁止。DBのCHECKと二重防御）。
+func EnsureCanFollowSeller(userID, sellerID uuid.UUID) error {
+	if userID == sellerID {
+		return apperr.Validation("You cannot follow your own seller profile.",
+			apperr.FieldError{Field: "sellerId", Reason: "self_follow"})
+	}
+	return nil
+}

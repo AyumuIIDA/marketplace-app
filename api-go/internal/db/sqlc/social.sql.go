@@ -110,6 +110,22 @@ func (q *Queries) CountSellerLikes(ctx context.Context, sellerID uuid.UUID) (int
 	return count, err
 }
 
+const followSeller = `-- name: FollowSeller :exec
+INSERT INTO seller_follows (follower_id, seller_id) VALUES ($1, $2)
+ON CONFLICT (follower_id, seller_id) DO NOTHING
+`
+
+type FollowSellerParams struct {
+	FollowerID uuid.UUID
+	SellerID   uuid.UUID
+}
+
+// 出品者のフォロー（私的）。冪等。
+func (q *Queries) FollowSeller(ctx context.Context, arg FollowSellerParams) error {
+	_, err := q.db.Exec(ctx, followSeller, arg.FollowerID, arg.SellerID)
+	return err
+}
+
 const getSellerProfile = `-- name: GetSellerProfile :one
 SELECT display_name, avatar_url, (human_verified_at IS NOT NULL)::boolean AS human_verified
 FROM users WHERE id = $1
@@ -168,6 +184,22 @@ func (q *Queries) InsertListingComment(ctx context.Context, arg InsertListingCom
 	return err
 }
 
+const isFollowingSeller = `-- name: IsFollowingSeller :one
+SELECT EXISTS (SELECT 1 FROM seller_follows WHERE follower_id = $1 AND seller_id = $2)
+`
+
+type IsFollowingSellerParams struct {
+	FollowerID uuid.UUID
+	SellerID   uuid.UUID
+}
+
+func (q *Queries) IsFollowingSeller(ctx context.Context, arg IsFollowingSellerParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isFollowingSeller, arg.FollowerID, arg.SellerID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const isListingLiked = `-- name: IsListingLiked :one
 SELECT EXISTS (SELECT 1 FROM listing_likes WHERE user_id = $1 AND listing_id = $2)
 `
@@ -179,6 +211,22 @@ type IsListingLikedParams struct {
 
 func (q *Queries) IsListingLiked(ctx context.Context, arg IsListingLikedParams) (bool, error) {
 	row := q.db.QueryRow(ctx, isListingLiked, arg.UserID, arg.ListingID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const isListingSaved = `-- name: IsListingSaved :one
+SELECT EXISTS (SELECT 1 FROM listing_saves WHERE user_id = $1 AND listing_id = $2)
+`
+
+type IsListingSavedParams struct {
+	UserID    uuid.UUID
+	ListingID uuid.UUID
+}
+
+func (q *Queries) IsListingSaved(ctx context.Context, arg IsListingSavedParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isListingSaved, arg.UserID, arg.ListingID)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -286,6 +334,39 @@ func (q *Queries) ListCommentsByListing(ctx context.Context, arg ListCommentsByL
 	return items, nil
 }
 
+const listFollowedSellerIDs = `-- name: ListFollowedSellerIDs :many
+SELECT seller_id FROM seller_follows
+WHERE follower_id = $1
+ORDER BY created_at DESC
+LIMIT $3::integer OFFSET $2::integer
+`
+
+type ListFollowedSellerIDsParams struct {
+	FollowerID   uuid.UUID
+	ResultOffset int32
+	ResultLimit  int32
+}
+
+func (q *Queries) ListFollowedSellerIDs(ctx context.Context, arg ListFollowedSellerIDsParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listFollowedSellerIDs, arg.FollowerID, arg.ResultOffset, arg.ResultLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var seller_id uuid.UUID
+		if err := rows.Scan(&seller_id); err != nil {
+			return nil, err
+		}
+		items = append(items, seller_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLikedListingIDs = `-- name: ListLikedListingIDs :many
 SELECT listing_id FROM listing_likes
 WHERE user_id = $1
@@ -352,6 +433,69 @@ func (q *Queries) ListLikedSellerIDs(ctx context.Context, arg ListLikedSellerIDs
 	return items, nil
 }
 
+const listSavedListingIDs = `-- name: ListSavedListingIDs :many
+SELECT listing_id FROM listing_saves
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT $3::integer OFFSET $2::integer
+`
+
+type ListSavedListingIDsParams struct {
+	UserID       uuid.UUID
+	ResultOffset int32
+	ResultLimit  int32
+}
+
+func (q *Queries) ListSavedListingIDs(ctx context.Context, arg ListSavedListingIDsParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listSavedListingIDs, arg.UserID, arg.ResultOffset, arg.ResultLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var listing_id uuid.UUID
+		if err := rows.Scan(&listing_id); err != nil {
+			return nil, err
+		}
+		items = append(items, listing_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const saveListing = `-- name: SaveListing :exec
+INSERT INTO listing_saves (user_id, listing_id) VALUES ($1, $2)
+ON CONFLICT (user_id, listing_id) DO NOTHING
+`
+
+type SaveListingParams struct {
+	UserID    uuid.UUID
+	ListingID uuid.UUID
+}
+
+// 商品の保存（私的ウォッチリスト）。冪等。
+func (q *Queries) SaveListing(ctx context.Context, arg SaveListingParams) error {
+	_, err := q.db.Exec(ctx, saveListing, arg.UserID, arg.ListingID)
+	return err
+}
+
+const unfollowSeller = `-- name: UnfollowSeller :exec
+DELETE FROM seller_follows WHERE follower_id = $1 AND seller_id = $2
+`
+
+type UnfollowSellerParams struct {
+	FollowerID uuid.UUID
+	SellerID   uuid.UUID
+}
+
+func (q *Queries) UnfollowSeller(ctx context.Context, arg UnfollowSellerParams) error {
+	_, err := q.db.Exec(ctx, unfollowSeller, arg.FollowerID, arg.SellerID)
+	return err
+}
+
 const unlikeListing = `-- name: UnlikeListing :exec
 DELETE FROM listing_likes WHERE user_id = $1 AND listing_id = $2
 `
@@ -377,5 +521,19 @@ type UnlikeSellerParams struct {
 
 func (q *Queries) UnlikeSeller(ctx context.Context, arg UnlikeSellerParams) error {
 	_, err := q.db.Exec(ctx, unlikeSeller, arg.UserID, arg.SellerID)
+	return err
+}
+
+const unsaveListing = `-- name: UnsaveListing :exec
+DELETE FROM listing_saves WHERE user_id = $1 AND listing_id = $2
+`
+
+type UnsaveListingParams struct {
+	UserID    uuid.UUID
+	ListingID uuid.UUID
+}
+
+func (q *Queries) UnsaveListing(ctx context.Context, arg UnsaveListingParams) error {
+	_, err := q.db.Exec(ctx, unsaveListing, arg.UserID, arg.ListingID)
 	return err
 }
