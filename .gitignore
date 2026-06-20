@@ -11,6 +11,7 @@ web/out/
 AGENTS.md
 CLAUDE.md
 .codex/
+*.claude*
 docs/
 prj_context/
 
