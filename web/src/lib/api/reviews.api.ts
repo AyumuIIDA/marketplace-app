@@ -15,11 +15,22 @@ export type Review = {
   hiddenAt?: string;
 };
 
-export async function listReviews(input: { orderId?: string; limit?: number } = {}): Promise<Review[]> {
+export async function listReviews(
+  input: { orderId?: string; revieweeId?: string; reviewerId?: string; limit?: number } = {},
+): Promise<Review[]> {
   const params = new URLSearchParams();
 
   if (input.orderId !== undefined) {
     params.set("orderId", input.orderId);
+  }
+
+  // revieweeId=受け取ったレビュー（出品者プロフィール用）、reviewerId=書いたレビュー。
+  if (input.revieweeId !== undefined) {
+    params.set("revieweeId", input.revieweeId);
+  }
+
+  if (input.reviewerId !== undefined) {
+    params.set("reviewerId", input.reviewerId);
   }
 
   if (input.limit !== undefined) {
