@@ -200,6 +200,17 @@ func (l *Listing) Hide(now time.Time) {
 	l.updatedAt = now
 }
 
+// Relist は取り消し済み(HIDDEN)を再公開する。HIDDEN のみ可。署名・公開実績は保持する。
+func (l *Listing) Relist(now time.Time) error {
+	if l.status != ListingStatusHidden {
+		return apperr.Domain("LISTING_NOT_RELISTABLE", "Only withdrawn listings can be relisted.")
+	}
+	l.status = ListingStatusPublished
+	l.publishedAt = &now
+	l.updatedAt = now
+	return nil
+}
+
 func validateFields(f ListingFields) error {
 	// 既存TSと同じ評価順（title→description→category→condition）。mapだと順序が非決定的になるため固定。
 	required := []struct {

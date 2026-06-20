@@ -192,6 +192,28 @@ export async function publishUnsignedListing(listingId: string): Promise<{
   });
 }
 
+// 出品の取り消し（HIDDEN化）。検索/購入から外れる。SOLD/HIDDEN は不可（backend が弾く）。
+export async function withdrawListing(listingId: string): Promise<{
+  listingId: string;
+  status: "HIDDEN";
+}> {
+  return bffJson<{ listingId: string; status: "HIDDEN" }>(`/listings/${listingId}/hide`, {
+    method: "POST",
+    body: {},
+  });
+}
+
+// 再出品（HIDDEN→PUBLISHED）。取り消した出品を再公開する。HIDDEN 以外は不可（backend が弾く）。
+export async function relistListing(listingId: string): Promise<{
+  listingId: string;
+  status: "PUBLISHED";
+}> {
+  return bffJson<{ listingId: string; status: "PUBLISHED" }>(`/listings/${listingId}/relist`, {
+    method: "POST",
+    body: {},
+  });
+}
+
 export async function publishListing(input: {
   listingId: string;
   idKitResult: unknown;

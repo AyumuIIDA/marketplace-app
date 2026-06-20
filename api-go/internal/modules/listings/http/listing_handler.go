@@ -30,6 +30,7 @@ type Deps struct {
 	ListCategories  *listingsapp.ListCategoriesUseCase
 	UpdateDraft     *listingsapp.UpdateDraftListingUseCase
 	Hide            *workflows.HideListingWorkflow
+	Relist          *workflows.RelistListingWorkflow
 	Purchase        *workflows.PurchaseItemWorkflow
 	Publish         *workflows.PublishListingWithHumanSignatureWorkflow
 	PublishUnsigned *workflows.PublishListingWorkflow
@@ -44,6 +45,7 @@ func RegisterRoutes(r chi.Router, deps Deps) {
 	r.Patch("/listings/{listingId}/draft", deps.handleUpdateDraft)
 	r.Patch("/listings/{listingId}", deps.handleUpdate)
 	r.Post("/listings/{listingId}/hide", deps.handleHide)
+	r.Post("/listings/{listingId}/relist", deps.handleRelist)
 	r.Post("/listings/{listingId}/publish", deps.handlePublish)
 	r.Post("/listings/{listingId}/purchase", deps.handlePurchase)
 }
@@ -450,6 +452,25 @@ func (deps Deps) handleHide(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out, err := deps.Hide.Execute(r.Context(), listingsapp.HideListingInput{ListingID: listingID, SellerID: sellerID})
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	httpinterface.WriteJSON(w, http.StatusOK, out)
+}
+
+func (deps Deps) handleRelist(w http.ResponseWriter, r *http.Request) {
+	sellerID, err := httpinterface.CurrentUserID(r)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	listingID, err := httpinterface.PathUUID(r, "listingId", "Listing")
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	out, err := deps.Relist.Execute(r.Context(), listingsapp.RelistListingInput{ListingID: listingID, SellerID: sellerID})
 	if err != nil {
 		httpinterface.WriteError(w, r, err)
 		return

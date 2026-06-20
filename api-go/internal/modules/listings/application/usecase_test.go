@@ -101,6 +101,87 @@ func TestGetListing_PublishedVisibleToAnyone(t *testing.T) {
 	}
 }
 
+// fakeParticipantReader は指定ユーザーのみ「注文当事者」と判定するテスト用 reader。
+type fakeParticipantReader struct{ participant uuid.UUID }
+
+func (f fakeParticipantReader) IsOrderParticipant(_ context.Context, _ uuid.UUID, userID uuid.UUID) (bool, error) {
+	return userID == f.participant, nil
+}
+
+func TestGetListing_SoldVisibleToBuyer(t *testing.T) {
+	repo := newFakeRepo()
+	seller := uuid.New()
+	sold := mkListing(t, seller, true)
+	if err := sold.MarkSold(time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	_ = repo.Save(context.Background(), sold)
+
+	buyer := uuid.New()
+	uc := NewGetListingUseCase(repo).WithOrderParticipant(fakeParticipantReader{participant: buyer})
+
+	// 買い手（注文当事者）→ 売却済みでも閲覧可
+	if _, err := uc.Execute(context.Background(), sold.ID(), &buyer); err != nil {
+		t.Fatalf("buyer should view the sold listing they purchased: %v", err)
+	}
+	// 出品者 → 常に閲覧可
+	if _, err := uc.Execute(context.Background(), sold.ID(), &seller); err != nil {
+		t.Fatalf("seller should view own sold listing: %v", err)
+	}
+	// 無関係の第三者 → Forbidden
+	other := uuid.New()
+	if _, err := uc.Execute(context.Background(), sold.ID(), &other); err == nil {
+		t.Fatal("expected forbidden for non-participant viewing sold listing")
+	} else if ae, ok := apperr.As(err); !ok || ae.Kind != apperr.KindForbidden {
+		t.Fatalf("expected Forbidden, got %v", err)
+	}
+}
+
+func TestGetListing_SoldHiddenWithoutParticipantReader(t *testing.T) {
+	repo := newFakeRepo()
+	seller := uuid.New()
+	sold := mkListing(t, seller, true)
+	if err := sold.MarkSold(time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	_ = repo.Save(context.Background(), sold)
+
+	// reader 未注入なら従来どおり売り手のみ可（買い手も第三者も 403）。
+	uc := NewGetListingUseCase(repo)
+	other := uuid.New()
+	if _, err := uc.Execute(context.Background(), sold.ID(), &other); err == nil {
+		t.Fatal("expected forbidden without participant reader")
+	}
+}
+
+func TestRelistListing_HiddenBackToPublished(t *testing.T) {
+	repo := newFakeRepo()
+	seller := uuid.New()
+	l := mkListing(t, seller, true)
+	l.Hide(time.Now()) // 取り消し済み(HIDDEN)
+	_ = repo.Save(context.Background(), l)
+
+	uc := NewRelistListingUseCase(repo, clock.NewSystemClock())
+
+	// 非出品者 → Forbidden
+	other := uuid.New()
+	if _, err := uc.Execute(context.Background(), RelistListingInput{ListingID: l.ID(), SellerID: other}); err == nil {
+		t.Fatal("expected forbidden for non-seller relist")
+	}
+	// 出品者 → PUBLISHED へ復帰
+	out, err := uc.Execute(context.Background(), RelistListingInput{ListingID: l.ID(), SellerID: seller})
+	if err != nil {
+		t.Fatalf("seller relist: %v", err)
+	}
+	if out.Status != "PUBLISHED" {
+		t.Fatalf("status = %s, want PUBLISHED", out.Status)
+	}
+	// 既に公開中を relist → 不可（HIDDEN のみ）
+	if _, err := uc.Execute(context.Background(), RelistListingInput{ListingID: l.ID(), SellerID: seller}); err == nil {
+		t.Fatal("expected error relisting a non-hidden listing")
+	}
+}
+
 func TestGetListing_NotFound(t *testing.T) {
 	uc := NewGetListingUseCase(newFakeRepo())
 	if _, err := uc.Execute(context.Background(), uuid.New(), nil); err == nil {

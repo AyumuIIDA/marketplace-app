@@ -47,3 +47,24 @@ func (w *HideListingWorkflow) Execute(ctx context.Context, in listingsapp.HideLi
 	w.indexer.Remove(ctx, in.ListingID) // post-commit projection
 	return out, nil
 }
+
+// RelistListingWorkflow は relist(usecase)に、コミット後のベクトル再投影を足した workflow。
+// DB再公開 → ベクトルDB upsert（Reindex が PUBLISHED を検索対象へ戻す）の順で実行する。
+type RelistListingWorkflow struct {
+	relist  *listingsapp.RelistListingUseCase
+	indexer *ListingIndexer
+}
+
+// NewRelistListingWorkflow は relist usecaseと projection を束ねる。
+func NewRelistListingWorkflow(rl *listingsapp.RelistListingUseCase, ix *ListingIndexer) *RelistListingWorkflow {
+	return &RelistListingWorkflow{relist: rl, indexer: ix}
+}
+
+func (w *RelistListingWorkflow) Execute(ctx context.Context, in listingsapp.RelistListingInput) (listingsapp.RelistListingResult, error) {
+	out, err := w.relist.Execute(ctx, in)
+	if err != nil {
+		return out, err
+	}
+	w.indexer.Reindex(ctx, in.ListingID) // post-commit projection（PUBLISHED は検索対象へ復帰）
+	return out, nil
+}

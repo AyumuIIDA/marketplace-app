@@ -159,7 +159,9 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 	// ai-assistance の配線。既定は決定論fake、provider=gemini ならVertex AI（失敗時は決定論へ縮退）。
 	aiAssistant := buildAiAssistant(ctx, cfg)
 	aiDeps := aihttp.Deps{
-		SuggestListingFields: aiapp.NewSuggestListingFieldsUseCase(aiAssistant),
+		// 既存(abo由来)の distinct カテゴリを AI に制約として渡し、提案カテゴリを既存集合へ寄せる。
+		SuggestListingFields: aiapp.NewSuggestListingFieldsUseCase(aiAssistant).
+			WithCategories(newAiCategoryAdapter(pool)),
 	}
 
 	// reviews module の配線。list=pool、create=orders+reviews tx、submit=orders+reviews+signatures tx。
@@ -192,6 +194,7 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		ListCategories: listingsapp.NewListCategoriesUseCase(listingRepo),
 		UpdateDraft:    listingsapp.NewUpdateDraftListingUseCase(listingRepo, sysClock),
 		Hide:           workflows.NewHideListingWorkflow(listingsapp.NewHideListingUseCase(listingRepo, sysClock), listingIndexer),
+		Relist:         workflows.NewRelistListingWorkflow(listingsapp.NewRelistListingUseCase(listingRepo, sysClock), listingIndexer),
 		Purchase:       purchaseWorkflow,
 		Publish:        workflows.NewPublishListingWithHumanSignatureWorkflow(humanSignatureTxRunner, listingPublication, humanSignatureService).WithIndexer(listingIndexer),
 		PublishUnsigned: workflows.NewPublishListingWorkflow(
@@ -209,6 +212,8 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 	listingSellerVerified := newListingSellerVerifiedAdapter(pool)
 	listingDeps.Get.WithSellerVerified(listingSellerVerified)
 	listingDeps.Search.WithSellerVerified(listingSellerVerified)
+	// 売却済み出品を、その取引の買い手が出品ページから閲覧できるようにする（peer分離のため adapter 経由）。
+	listingDeps.Get.WithOrderParticipant(ordersapp.NewListingParticipantReader(orderRepo))
 	sellerSummary := socialapp.NewGetSellerSummaryUseCase(socialRepo)
 	listListingsByIDs := listingsapp.NewListListingsByIDsUseCase(listingRepo)
 	socialDeps := socialhttp.Deps{
@@ -222,6 +227,14 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		LikedSellers:  socialapp.NewListLikedSellersUseCase(socialRepo, sellerSummary),
 		CreateComment: socialapp.NewCreateListingCommentUseCase(socialRepo, idGen, sysClock),
 		ListComments:  socialapp.NewListListingCommentsUseCase(socialRepo),
+		// 私的レイヤー（保存/フォロー。認証不要）。保存一覧はいいね一覧と同workflowで本体hydrate。
+		SaveListing: socialapp.NewSaveListingUseCase(socialRepo),
+		SavedListings: workflows.NewLikedListingsWorkflow(
+			socialapp.NewListSavedListingIDsUseCase(socialRepo).Execute,
+			listListingsByIDs.Execute,
+		),
+		FollowSeller:    socialapp.NewFollowSellerUseCase(socialRepo),
+		FollowedSellers: socialapp.NewListFollowedSellersUseCase(socialRepo, sellerSummary),
 	}
 
 	// 掲示板（2ch風）の配線。閲覧は公開・投稿/返信は humanVerified（usecaseで強制）。
@@ -243,7 +256,9 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		Search:  semanticSearch,
 		Similar: similarListings,
 		// 単段RAG: 意味検索で候補取得→LLMで根拠付き回答（discoverの主導線）。
-		Ask: workflows.NewDiscoverRagWorkflow(semanticSearch, discoverRegistry),
+		// RAG 空→keyword フォールバック時、planner に既存カテゴリを提示し category へ正しく寄せさせる。
+		Ask: workflows.NewDiscoverRagWorkflow(semanticSearch, listingDeps.Search, discoverRegistry).
+			WithCategories(newAiCategoryAdapter(pool).Categories),
 	}
 
 	// agents module の配線（pool-bound repo）。/agents/runs(discover agent)は下のMCP配線後に充填する。
@@ -437,7 +452,8 @@ func buildVectorIndex(ctx context.Context, cfg Config) recommendationapp.VectorI
 		slog.Warn("recommendation client init failed; semantic search degraded", slog.String("error", err.Error()))
 		return recommendationinfra.NewUnavailableVectorIndex()
 	}
-	return idx
+	// 設定済みでもサービスが落ちている場合に 500 にせず縮退させる（resilient decorator で包む）。
+	return recommendationinfra.NewResilientVectorIndex(idx)
 }
 
 // Run はHTTPサーバを起動し、ctxのキャンセルでgraceful shutdownする。

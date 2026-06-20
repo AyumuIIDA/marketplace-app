@@ -10,6 +10,8 @@ import {
   createListing,
   publishUnsignedListing,
   purchaseListing,
+  relistListing,
+  withdrawListing,
 } from "../../../lib/api/listings.api";
 
 export async function createListingAction(formData: FormData): Promise<void> {
@@ -34,6 +36,20 @@ export async function createListingAction(formData: FormData): Promise<void> {
 export async function publishListingAction(formData: FormData): Promise<void> {
   const listingId = requiredFormValue(formData, "listingId");
   await publishUnsignedListing(listingId);
+  redirect(`/listings/${listingId}`);
+}
+
+// 出品の取り消し（HIDDEN化）。取り消し後はマイページへ戻す（出品一覧から外れる）。
+export async function withdrawListingAction(formData: FormData): Promise<void> {
+  const listingId = requiredFormValue(formData, "listingId");
+  await withdrawListing(listingId);
+  redirect("/me");
+}
+
+// 再出品（HIDDEN→PUBLISHED）。再公開後は出品ページへ戻す。
+export async function relistListingAction(formData: FormData): Promise<void> {
+  const listingId = requiredFormValue(formData, "listingId");
+  await relistListing(listingId);
   redirect(`/listings/${listingId}`);
 }
 
