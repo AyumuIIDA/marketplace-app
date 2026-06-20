@@ -252,13 +252,13 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 	discoverRegistry := buildDiscoverRegistry(ctx, cfg)
 	semanticSearch := workflows.NewSemanticSearchWorkflow(vectorIndex, listingDeps.Get.Execute)
 	similarListings := workflows.NewSimilarListingsWorkflow(vectorIndex, listingDeps.Get.Execute)
+	// 単段RAG: 意味検索で候補取得→LLMで根拠付き回答（discoverの主導線）。
+	// 意味検索が空のときは、実証済みの多段エージェント検索へ委譲する（fallback は MCP 配線後に注入）。
+	discoverRag := workflows.NewDiscoverRagWorkflow(semanticSearch, discoverRegistry)
 	recommendationDeps := recommendationhttp.Deps{
 		Search:  semanticSearch,
 		Similar: similarListings,
-		// 単段RAG: 意味検索で候補取得→LLMで根拠付き回答（discoverの主導線）。
-		// RAG 空→keyword フォールバック時、planner に既存カテゴリを提示し category へ正しく寄せさせる。
-		Ask: workflows.NewDiscoverRagWorkflow(semanticSearch, listingDeps.Search, discoverRegistry).
-			WithCategories(newAiCategoryAdapter(pool).Categories),
+		Ask:     discoverRag,
 	}
 
 	// agents module の配線（pool-bound repo）。/agents/runs(discover agent)は下のMCP配線後に充填する。
@@ -314,6 +314,8 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		gatewayFactory,
 		discoverRegistry,
 	)
+	// 意味検索が空のとき、RAG はこの実証済みエージェント検索へ委譲する（単一語ILIKE＋反復）。
+	discoverRag.WithAgentFallback(agentDeps.RunDiscover)
 
 	// pgxpool.Pool は Ping(ctx) error を持ち HealthChecker を満たす。
 	router := httpinterface.NewRouter(httpinterface.RouterDeps{
