@@ -29,5 +29,5 @@ WHERE (
   AND (sqlc.narg('buyer_id')::uuid IS NULL OR buyer_id = sqlc.narg('buyer_id')::uuid)
   AND (sqlc.narg('seller_id')::uuid IS NULL OR seller_id = sqlc.narg('seller_id')::uuid)
   AND (sqlc.narg('status')::order_status IS NULL OR status = sqlc.narg('status')::order_status)
-ORDER BY created_at ASC
+ORDER BY created_at DESC
 LIMIT sqlc.arg('result_limit')::integer;

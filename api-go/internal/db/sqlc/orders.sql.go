@@ -72,7 +72,7 @@ WHERE (
   AND ($2::uuid IS NULL OR buyer_id = $2::uuid)
   AND ($3::uuid IS NULL OR seller_id = $3::uuid)
   AND ($4::order_status IS NULL OR status = $4::order_status)
-ORDER BY created_at ASC
+ORDER BY created_at DESC
 LIMIT $5::integer
 `
 
