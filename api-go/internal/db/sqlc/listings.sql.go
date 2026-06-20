@@ -161,6 +161,32 @@ func (q *Queries) ListCategories(ctx context.Context) ([]ListCategoriesRow, erro
 	return items, nil
 }
 
+const listDistinctCategories = `-- name: ListDistinctCategories :many
+SELECT DISTINCT category FROM listings WHERE category <> '' ORDER BY category
+`
+
+// 既存出品のユニークなカテゴリ（AI出品支援に制約として渡し、提案カテゴリを既存集合へ寄せる）。
+// カテゴリのライフサイクルは未管理＝シード(abo)由来の既存データを正本とする。
+func (q *Queries) ListDistinctCategories(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, listDistinctCategories)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var category string
+		if err := rows.Scan(&category); err != nil {
+			return nil, err
+		}
+		items = append(items, category)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listImagesByListingIDs = `-- name: ListImagesByListingIDs :many
 SELECT listing_id, url, sort_order
 FROM listing_images

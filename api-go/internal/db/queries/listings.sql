@@ -98,3 +98,8 @@ FROM listings
 WHERE status = 'PUBLISHED'
 GROUP BY category
 ORDER BY count DESC, category ASC;
+
+-- name: ListDistinctCategories :many
+-- 既存出品のユニークなカテゴリ（AI出品支援に制約として渡し、提案カテゴリを既存集合へ寄せる）。
+-- カテゴリのライフサイクルは未管理＝シード(abo)由来の既存データを正本とする。
+SELECT DISTINCT category FROM listings WHERE category <> '' ORDER BY category;
