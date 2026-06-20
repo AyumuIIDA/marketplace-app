@@ -1,8 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
 import { MarketplaceShell } from "../../../components/layout/marketplace-shell";
-import { ActionButton } from "../../../components/ui/action-button";
-import { Seal } from "../../../components/ui/seal";
 import { CategoryBrowser } from "../../listings/components/category-browser";
 import { CategoryFilter } from "../../listings/components/category-filter";
 import { FeaturedCatalogSection } from "../../listings/components/featured-catalog-section";
@@ -50,7 +48,7 @@ export async function MarketplaceHomeView({
   userLabel,
   verifiedOnly,
 }: MarketplaceHomeViewProps) {
-  const [t, home] = await Promise.all([getTranslations("catalog"), getTranslations("home")]);
+  const t = await getTranslations("catalog");
 
   // カテゴリ候補はサーバ（公開中の全出品）から取得した正本。選択中カテゴリが含まれなければ補う。
   const categoryNames = categories.map((item) => item.category);
@@ -70,27 +68,6 @@ export async function MarketplaceHomeView({
       searchQuery={searchQuery}
       userLabel={userLabel}
     >
-      {isLanding && (
-        <section className="mb-8 overflow-hidden rounded-lg border border-line bg-surface">
-          <div className="grid items-center gap-6 p-6 md:grid-cols-[1fr_auto] md:p-8">
-            <div className="min-w-0">
-              <h1 className="font-mono text-2xl font-bold leading-tight tracking-tight text-ink md:text-4xl">
-                {home("heroTitle")}
-              </h1>
-              <div className="mt-6 flex flex-wrap gap-2">
-                <ActionButton href="/discover" variant="accent">
-                  {home("heroDiscover")}
-                </ActionButton>
-                <ActionButton href="/listings/new" variant="secondary">
-                  {home("heroSell")}
-                </ActionButton>
-              </div>
-            </div>
-            <Seal animate className="hidden md:block" size="xl" />
-          </div>
-        </section>
-      )}
-
       <div className="mb-6 flex flex-col gap-4 border-b border-line pb-5 md:flex-row md:items-end md:justify-between">
         <div className="min-w-0">
           {isLanding ? (

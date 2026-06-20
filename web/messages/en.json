@@ -1,6 +1,7 @@
 {
   "brand": {
-    "name": "HuMarket"
+    "name": "HuMarket",
+    "tagline": "Signed by human. Find by AI."
   },
   "search": {
     "label": "Search listings",
@@ -188,6 +189,7 @@
     "count": "{count} items",
     "draft": "Draft",
     "sold": "Sold",
+    "withdrawn": "Withdrawn",
     "showMore": "Show more",
     "loadMore": "Load more",
     "verifiedOnly": "Signed only",
@@ -285,6 +287,14 @@
     "actions": "Actions",
     "signInToBuy": "Sign in to buy",
     "publishHint": "Publish with just your login. If you're World ID verified, your listing carries the seal automatically.",
+    "withdraw": "Withdraw listing",
+    "withdrawHint": "Takes the listing down from search and purchase. You can relist it anytime.",
+    "withdrawConfirmTitle": "Withdraw this listing?",
+    "withdrawConfirmBody": "It will be removed from search and purchase. You can relist it later from your listings.",
+    "withdrawConfirm": "Withdraw",
+    "withdrawCancel": "Cancel",
+    "relist": "Relist",
+    "relistHint": "Republish this withdrawn listing. It returns to search and purchase.",
     "buyConfirm": "Buy with confirmation",
     "buyConfirmHint": "Review the order before paying. Nothing is charged at this step.",
     "worldPayHint": "Pay on-chain with WLD inside World App.",
@@ -293,7 +303,8 @@
     "publish": "Publish",
     "soldOut": "Sold out",
     "priceLabel": "Price",
-    "descriptionLabel": "Description"
+    "descriptionLabel": "Description",
+    "relatedTitle": "Related items"
   },
   "listingForm": {
     "photosSectionTitle": "Photos",
@@ -364,6 +375,7 @@
     "sendMessage": "Send a message",
     "messages": "Messages",
     "noMessages": "No messages yet.",
+    "hideMessage": "Hide",
     "you": "You",
     "messageLabel": "Message",
     "messagePlaceholder": "Send a transaction update.",

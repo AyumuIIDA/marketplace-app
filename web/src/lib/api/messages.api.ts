@@ -34,3 +34,8 @@ export async function sendOrderMessage(orderId: string, body: string): Promise<M
     },
   });
 }
+
+// hideOrderMessage は取引メッセージを非表示にする（送受信どちらの参加者でも可）。
+export async function hideOrderMessage(messageId: string): Promise<Message> {
+  return bffJson<Message>(`/messages/${messageId}/hide`, { method: "POST" });
+}

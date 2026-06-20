@@ -1,7 +1,9 @@
 import { Seal } from "../../../components/ui/seal";
-import { toggleListingLikeAction } from "../../social/actions/social.actions";
+import { toggleListingLikeAction, toggleListingSaveAction } from "../../social/actions/social.actions";
 import { LikeButton } from "../../social/components/like-button";
+import { SaveButton } from "../../social/components/save-button";
 import type { ListingViewModel } from "../listing-view-model";
+import { CategoryLabel } from "./category-label";
 import { ProductVisual } from "./product-visual";
 
 type ListingCardProps = {
@@ -10,6 +12,9 @@ type ListingCardProps = {
   draftLabel: string;
   soldLabel: string;
   likeLabel: string;
+  saveLabel: string;
+  // 取り消し済み(HIDDEN)の帯文言。出品者の一覧(/me)で使う。未指定なら unavailableLabel にフォールバック。
+  hiddenLabel?: string;
   // 非PUBLISHED出品のリンク無効化(blockUnviewable)時の HIDDEN バッジ文言。無効化しない呼び出しでは不要。
   unavailableLabel?: string;
   // 非PUBLISHED（非出品者には403で開けない）の出品の遷移リンクを無効化する。いいねタブ専用。
@@ -19,8 +24,10 @@ type ListingCardProps = {
 export function ListingCard({
   blockUnviewable = false,
   draftLabel,
+  hiddenLabel,
   item,
   likeLabel,
+  saveLabel,
   signedLabel,
   soldLabel,
   unavailableLabel,
@@ -28,12 +35,17 @@ export function ListingCard({
   // 非出品者は非PUBLISHEDの詳細を開けない（403）。該当時はリンクを無効化し、誤遷移を防ぐ。
   const blocked = blockUnviewable && item.status !== "PUBLISHED";
   const href = `/listings/${item.id}`;
+  // 売却済み/取り消し済みは購入不可。画像をグレースケール化し「終了した出品」を一目化する。
+  const inactive = item.status === "SOLD" || item.status === "HIDDEN";
+  const hiddenBand = hiddenLabel ?? unavailableLabel;
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-sm transition-shadow hover:shadow-md">
       <CardLink blocked={blocked} className="flex flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30" href={href}>
         <div className="relative">
-          <ProductVisual imageUrl={item.imageUrl} title={item.title} />
+          <div className={inactive ? "grayscale" : undefined}>
+            <ProductVisual imageUrl={item.imageUrl} title={item.title} />
+          </div>
           {item.sellerVerified && (
             <span className="absolute left-2 top-2">
               <Seal label={signedLabel} size="sm" />
@@ -44,9 +56,9 @@ export function ListingCard({
               {soldLabel}
             </span>
           )}
-          {blocked && item.status === "HIDDEN" && (
+          {item.status === "HIDDEN" && hiddenBand !== undefined && (
             <span className="absolute inset-0 grid place-items-center bg-ink/55 text-sm font-semibold tracking-wide text-paper">
-              {unavailableLabel}
+              {hiddenBand}
             </span>
           )}
         </div>
@@ -72,12 +84,21 @@ export function ListingCard({
           </svg>
           <span className="font-mono text-xs">{item.commentCount}</span>
         </CardLink>
+        {/* 保存（私的・認証不要）。右端に置き、いいね（公開）と視覚的に分ける。 */}
+        <SaveButton
+          ariaLabel={saveLabel}
+          className="ml-auto"
+          initialSaved={item.saved}
+          toggleAction={toggleListingSaveAction.bind(null, item.id)}
+        />
       </div>
 
       <CardLink blocked={blocked} className="flex flex-1 flex-col focus-visible:outline-none" href={href}>
         <div className="flex flex-1 flex-col gap-1 px-3 pb-3 pt-1.5">
           <div className="flex items-center gap-2">
-            <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-faint">{item.category}</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-faint">
+              <CategoryLabel slug={item.category} />
+            </p>
             {item.status === "DRAFT" && (
               <span className="rounded-full bg-warn-tint px-1.5 py-0.5 text-[10px] font-semibold text-warn">
                 {draftLabel}

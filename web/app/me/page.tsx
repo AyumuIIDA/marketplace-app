@@ -12,7 +12,12 @@ import { TransactionList } from "../../src/features/orders/components/transactio
 import { getCurrentUser } from "../../src/lib/api/current-user.api";
 import { searchMyListings } from "../../src/lib/api/listings.api";
 import { listOrders } from "../../src/lib/api/orders.api";
-import { searchLikedListings, searchLikedSellers } from "../../src/lib/api/social.api";
+import {
+  searchFollowedSellers,
+  searchLikedListings,
+  searchLikedSellers,
+  searchSavedListings,
+} from "../../src/lib/api/social.api";
 import { ensureOnboarded } from "../../src/lib/auth/onboarding";
 
 export const dynamic = "force-dynamic";
@@ -21,22 +26,25 @@ type MePageProps = {
   searchParams: Promise<{ tab?: string }>;
 };
 
-const TABS = ["purchases", "listings", "likes", "connect"] as const;
+const TABS = ["purchases", "listings", "likes", "saved", "following", "connect"] as const;
 type TabKey = (typeof TABS)[number];
 
 export default async function MePage({ searchParams }: MePageProps) {
   await ensureOnboarded("/me");
-  const [{ tab }, currentUser, listings, likedListings, likedSellers, orders, t, social, tx] = await Promise.all([
-    searchParams,
-    getCurrentUser(),
-    searchMyListings({ limit: 50 }),
-    searchLikedListings(50),
-    searchLikedSellers(50),
-    listOrders({ limit: 50 }),
-    getTranslations("pages.me"),
-    getTranslations("social"),
-    getTranslations("transaction"),
-  ]);
+  const [{ tab }, currentUser, listings, likedListings, likedSellers, savedListings, followedSellers, orders, t, social, tx] =
+    await Promise.all([
+      searchParams,
+      getCurrentUser(),
+      searchMyListings({ limit: 50 }),
+      searchLikedListings(50),
+      searchLikedSellers(50),
+      searchSavedListings(50),
+      searchFollowedSellers(50),
+      listOrders({ limit: 50 }),
+      getTranslations("pages.me"),
+      getTranslations("social"),
+      getTranslations("transaction"),
+    ]);
   const { humanLabel, humanVerified, userLabel } = toShellUserLabels(currentUser);
 
   if (currentUser === undefined) {
@@ -55,6 +63,8 @@ export default async function MePage({ searchParams }: MePageProps) {
     { key: "purchases", label: t("tabPurchases"), count: purchases.length },
     { key: "listings", label: t("tabListings"), count: listings.length },
     { key: "likes", label: t("tabLikes"), count: likedListings.length },
+    { key: "saved", label: t("tabSaved"), count: savedListings.length },
+    { key: "following", label: t("tabFollowing"), count: followedSellers.length },
     { key: "connect", label: t("tabConnect") },
   ];
 
@@ -133,6 +143,31 @@ export default async function MePage({ searchParams }: MePageProps) {
                 </section>
               </div>
             )}
+
+            {active === "saved" &&
+              (savedListings.length === 0 ? (
+                <p className="text-sm text-ink-soft">{social("savedItemsEmpty")}</p>
+              ) : (
+                <ListingGrid
+                  blockUnviewable
+                  listings={mapListingsToViewModels(
+                    savedListings,
+                    undefined,
+                    new Set(savedListings.map((l) => l.listingId)),
+                  )}
+                />
+              ))}
+
+            {active === "following" &&
+              (followedSellers.length === 0 ? (
+                <p className="text-sm text-ink-soft">{social("followingEmpty")}</p>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {followedSellers.map((seller) => (
+                    <SellerCard key={seller.sellerId} seller={seller} />
+                  ))}
+                </div>
+              ))}
 
             {active === "connect" && <AgentAccessPanel verified={currentUser.humanVerified} />}
           </div>

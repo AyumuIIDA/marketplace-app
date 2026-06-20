@@ -1,6 +1,7 @@
 {
   "brand": {
-    "name": "HuMarket"
+    "name": "HuMarket",
+    "tagline": "Signed by human. Find by AI."
   },
   "search": {
     "label": "商品を検索",
@@ -188,6 +189,7 @@
     "count": "{count}件",
     "draft": "下書き",
     "sold": "売却済み",
+    "withdrawn": "取り消し済み",
     "showMore": "もっと見る",
     "loadMore": "さらに読み込む",
     "verifiedOnly": "人間証明のみ",
@@ -285,6 +287,14 @@
     "actions": "取引",
     "signInToBuy": "購入するにはログイン",
     "publishHint": "ログインのみで公開できます。World ID で人間証明していれば、出品に自動で印が付きます。",
+    "withdraw": "出品を取り消す",
+    "withdrawHint": "出品を取り下げ、検索・購入から外します。再出品はいつでもできます。",
+    "withdrawConfirmTitle": "出品を取り消しますか？",
+    "withdrawConfirmBody": "検索・購入から外れます。あとからマイページの出品で再出品できます。",
+    "withdrawConfirm": "取り消す",
+    "withdrawCancel": "やめる",
+    "relist": "再出品する",
+    "relistHint": "取り消した出品を再公開します。検索・購入に戻ります。",
     "buyConfirm": "確認して購入",
     "buyConfirmHint": "購入前に内容を確認します。この時点では支払いは確定しません。",
     "worldPayHint": "World App 内で WLD によるオンチェーン決済を行います。",
@@ -293,7 +303,8 @@
     "publish": "公開する",
     "soldOut": "売り切れ",
     "priceLabel": "価格",
-    "descriptionLabel": "商品説明"
+    "descriptionLabel": "商品説明",
+    "relatedTitle": "関連商品"
   },
   "listingForm": {
     "photosSectionTitle": "写真",
@@ -364,6 +375,7 @@
     "sendMessage": "メッセージを送る",
     "messages": "取引メッセージ",
     "noMessages": "まだメッセージはありません。",
+    "hideMessage": "非表示",
     "you": "あなた",
     "messageLabel": "メッセージ",
     "messagePlaceholder": "取引の連絡を送る。",

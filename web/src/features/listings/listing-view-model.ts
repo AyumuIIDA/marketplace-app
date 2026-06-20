@@ -15,6 +15,8 @@ export type ListingViewModel = {
   imageUrl?: string;
   // 現在のユーザーがこの出品をいいね済みか（初期表示のhydrate用）。
   liked: boolean;
+  // 現在のユーザーがこの出品を保存済みか（私的ウォッチリスト。初期表示のhydrate用）。
+  saved: boolean;
   likeCount: number;
   commentCount: number;
 };

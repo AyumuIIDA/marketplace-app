@@ -24,9 +24,11 @@ export async function ListingGrid({ listings, blockUnviewable = false }: Listing
         <ListingCard
           blockUnviewable={blockUnviewable}
           draftLabel={catalog("draft")}
+          hiddenLabel={catalog("withdrawn")}
           item={item}
           key={item.id}
           likeLabel={social("likeItem")}
+          saveLabel={social("saveItem")}
           signedLabel={seal("humanSigned")}
           soldLabel={catalog("sold")}
           unavailableLabel={social("unavailable")}
