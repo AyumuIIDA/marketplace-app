@@ -285,7 +285,7 @@
     "signedExplain": "出品者は World ID で人間だと証明しています。人間証明済みアカウントの出品には印が付きます。",
     "unsignedExplain": "この出品者はまだ World ID の人間証明をしていません。購入はできますが、人が出品した印は付きません。",
     "actions": "取引",
-    "signInToBuy": "購入するにはログイン",
+    "signInToBuy": "ログインして購入",
     "publishHint": "ログインのみで公開できます。World ID で人間証明していれば、出品に自動で印が付きます。",
     "withdraw": "出品を取り消す",
     "withdrawHint": "出品を取り下げ、検索・購入から外します。再出品はいつでもできます。",
@@ -408,6 +408,9 @@
   "discover": {
     "brand": "HuMarket",
     "greeting": "何をお探しですか？",
+    "authTitle": "AIに相談するにはログイン",
+    "authBody": "エージェント検索（会話で絞り込み）はログインが必要です。クイック検索はログインなしで使えます。",
+    "authAction": "ログイン",
     "modeQuick": "自由な言葉で検索",
     "modeAgent": "AIエージェントと検索",
     "modeQuickDesc": "言葉の意味からAIが検索します。",
@@ -430,9 +433,9 @@
     "inputLabel": "探したい物を入力",
     "placeholder": "例: 5万円以下の状態のよいカメラ。人間証明つきで買えるもの。",
     "submit": "探す",
-    "chip0": "状態のよいカメラ",
-    "chip1": "デスク周りのガジェット",
-    "chip2": "人間証明つきの出品",
+    "chip0": "かわいいスマホケース",
+    "chip1": "便利な調理器具",
+    "chip2": "価格の安い日用品",
     "agentTitle": "MCPエージェント",
     "agentMode": "local mcp",
     "agentInitialMessage": "探したい条件を会話で送ってください。必要なMCP toolを呼び出して候補を更新します。",
@@ -461,13 +464,13 @@
     "matched": "キーワード一致",
     "signed": "人間証明済み",
     "buy": "購入手続きへ",
-    "searchError": "いま検索が不安定です。少し待ってからもう一度お試しください。",
+    "searchError": "検索が不安定です。少し待ってからもう一度お試しください。",
     "newSearch": "新規検索",
     "ragHow": "回答の手順",
     "ragSearch": "意味検索で{count}件の候補を取得",
     "ragGenerate": "{provider}が候補を根拠に回答を生成",
     "agentSearching": "候補を検索しています…",
-    "agentEmptyHint": "お探しのものをAIに質問してください。候補を検索します。"
+    "agentEmptyHint": "AIに質問してください。候補を検索します。"
   },
   "sell": {
     "title": "出品管理",
@@ -487,14 +490,14 @@
   },
   "home": {
     "heroTitle": "Signed by human. Find by AI.",
-    "heroDiscover": "AIで探す",
+    "heroDiscover": "AIと探す",
     "heroSell": "出品する"
   },
   "worldId": {
     "verifying": "確認中…",
     "prepareFailed": "World ID リクエストを準備できませんでした。",
-    "verified": "World ID の人間証明が完了しました。",
-    "failed": "World ID の人間証明に失敗しました。",
+    "verified": "World ID による人間証明が完了しました。",
+    "failed": "World ID による人間証明に失敗しました。",
     "submitReview": "World ID で人間証明して送信"
   },
   "payment": {
@@ -502,7 +505,7 @@
     "opening": "World App を起動中…",
     "noReceiver": "送金先アドレスが未設定です。",
     "noRate": "WLD/JPY レートが未設定です。",
-    "needWorldApp": "World App 内で開くと WLD で支払えます。",
+    "needWorldApp": "World App 内で WLD支払が可能です。",
     "needMinikit": "World App が必要です。",
     "verified": "バックエンドが支払いを確認しました。",
     "failed": "支払いに失敗、またはキャンセルされました。"
