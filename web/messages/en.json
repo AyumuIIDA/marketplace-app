@@ -147,7 +147,8 @@
     "desktopLabel": "Claude Desktop (mcp-remote)",
     "copy": "Copy",
     "copied": "Copied",
-    "error": "Could not issue a token. Check that you’re signed in."
+    "error": "Could not issue a token. Check that you’re signed in.",
+    "requiresVerification": "World ID verification is required to connect an agent. Verify via “Link World ID” in the sidebar."
   },
   "seal": {
     "humanSigned": "Signed by a verified human"

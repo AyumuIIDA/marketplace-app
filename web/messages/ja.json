@@ -1,7 +1,7 @@
 {
   "brand": {
     "name": "Human-backed",
-    "tagline": "人が署名するフリマ"
+    "tagline": "人マーケット"
   },
   "search": {
     "label": "出品を検索",
@@ -14,10 +14,10 @@
     "catalog": "出品一覧",
     "orders": "注文",
     "sell": "出品",
-    "discover": "AIで探す",
+    "discover": "AI検索",
     "board": "掲示板",
     "messages": "メッセージ",
-    "me": "マイ"
+    "me": "マイページ"
   },
   "account": {
     "label": "アカウント",
@@ -51,7 +51,7 @@
   },
   "onboarding": {
     "brand": "Human-backed Marketplace",
-    "title": "表示名を決めましょう",
+    "title": "表示名を決めてください",
     "subtitle": "他のユーザーに表示される名前です。あとから変更できます。",
     "label": "表示名",
     "placeholder": "例: 田中 葵",
@@ -69,7 +69,7 @@
     "paymentNote": "デモ決済（実際の請求は発生しません）",
     "confirm": "購入を確定する",
     "confirmHint": "確定すると注文が作成され、注文ページに移動します。",
-    "payOnchain": "オンチェーン決済（WLD）",
+    "payOnchain": "World Coin決済",
     "worldPayHint": "World App 内で WLD によるオンチェーン決済を行います。",
     "signInTitle": "サインインが必要です",
     "signInBody": "購入するにはサインインしてください。",
@@ -147,7 +147,8 @@
     "desktopLabel": "Claude Desktop（mcp-remote）",
     "copy": "コピー",
     "copied": "コピーしました",
-    "error": "トークンを発行できませんでした。サインインを確認してください。"
+    "error": "トークンを発行できませんでした。サインインを確認してください。",
+    "requiresVerification": "エージェント接続には World ID 認証が必要です。左の「World ID を連携」から認証してください。"
   },
   "seal": {
     "humanSigned": "本人署名済み"
@@ -397,7 +398,7 @@
     },
     "backToMarket": "通常のマーケットへ",
     "eyebrow": "実験的 · AI DISCOVERY",
-    "headline": "ことばで、ほしい物を探す。",
+    "headline": "自由に検索してみよう",
     "subhead": "ほしい物を自然な言葉で書いてください。検証済みの人が出品した商品から探します。",
     "inputLabel": "探したい物を入力",
     "placeholder": "例: 5万円以下の状態のよいカメラ。本人署名つきで買えるもの。",
@@ -451,9 +452,9 @@
     "inTransactionTitle": "取引中の商品"
   },
   "home": {
-    "heroEyebrow": "検証済みの人だけのフリマ",
-    "heroTitle": "人間が署名する。AIが探す。",
-    "heroBody": "World ID で本人確認した人だけが出品・評価できる。ほしい物は、AIがあなたの言葉から見つけ出す。",
+    "heroEyebrow": "人間のためのマーケット",
+    "heroTitle": "",
+    "heroBody": "人間だけが評価。ほしいものはAIが調査。",
     "heroDiscover": "AIで探す",
     "heroSell": "出品する"
   },

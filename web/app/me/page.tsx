@@ -134,7 +134,7 @@ export default async function MePage({ searchParams }: MePageProps) {
               </div>
             )}
 
-            {active === "connect" && <AgentAccessPanel />}
+            {active === "connect" && <AgentAccessPanel verified={currentUser.humanVerified} />}
           </div>
         </div>
       </div>

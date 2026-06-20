@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "../../../auth";
+import { getCurrentUser } from "../../lib/api/current-user.api";
 import { signAgentAccessToken } from "../../lib/auth/internal-token";
 
 // MCP クライアント接続用トークンの寿命（24h）。デモ向けに長めだが期限付き・失効可能。
@@ -19,6 +20,13 @@ export async function createAgentTokenAction(): Promise<AgentTokenResult> {
   const userId = session?.user?.id;
   if (userId === undefined) {
     throw new Error("Sign in required to issue an agent token.");
+  }
+
+  // B方針: World ID 認証済みの人間だけがエージェントへ鍵を委任できる（人格の担保は委任点で行う）。
+  // UI でもゲートするが、改ざん防止のためサーバ側でも必ず検証する（多層防御）。
+  const me = await getCurrentUser();
+  if (me === undefined || !me.humanVerified) {
+    throw new Error("World ID verification is required to issue an agent token.");
   }
 
   const token = await signAgentAccessToken({ userId, expiresInSeconds: TTL_SECONDS });

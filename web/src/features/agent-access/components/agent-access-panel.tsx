@@ -7,7 +7,8 @@ import { createAgentTokenAction, type AgentTokenResult } from "../actions";
 
 // MCP クライアント接続パネル。ログイン本人がボタンで PAT を発行し、一度だけ表示する。
 // 接続スニペット（Claude Code / Desktop）まで提示して、外部エージェントをそのまま結線できる。
-export function AgentAccessPanel() {
+// verified=false の場合はトークン発行を出さない（B方針: 委任できるのは World ID 認証済みの人間のみ）。
+export function AgentAccessPanel({ verified }: { verified: boolean }) {
   const t = useTranslations("agentAccess");
   const [result, setResult] = useState<AgentTokenResult | undefined>(undefined);
   const [error, setError] = useState(false);
@@ -60,16 +61,19 @@ export function AgentAccessPanel() {
           <h2 className="text-sm font-semibold text-ink">{t("title")}</h2>
           <p className="mt-0.5 text-xs leading-5 text-ink-soft">{t("description")}</p>
         </div>
-        <button
-          className="shrink-0 rounded-md bg-ink px-3 py-1.5 text-sm font-semibold text-paper outline-none transition-colors hover:bg-ink/90 focus-visible:ring-2 focus-visible:ring-ink/30 disabled:opacity-50"
-          disabled={pending}
-          onClick={issue}
-          type="button"
-        >
-          {pending ? t("issuing") : result === undefined ? t("generate") : t("regenerate")}
-        </button>
+        {verified && (
+          <button
+            className="shrink-0 rounded-md bg-ink px-3 py-1.5 text-sm font-semibold text-paper outline-none transition-colors hover:bg-ink/90 focus-visible:ring-2 focus-visible:ring-ink/30 disabled:opacity-50"
+            disabled={pending}
+            onClick={issue}
+            type="button"
+          >
+            {pending ? t("issuing") : result === undefined ? t("generate") : t("regenerate")}
+          </button>
+        )}
       </div>
 
+      {!verified && <p className="mt-3 text-xs leading-5 text-ink-soft">{t("requiresVerification")}</p>}
       {error && <p className="mt-3 text-xs font-medium text-seal-strong">{t("error")}</p>}
 
       {result !== undefined && (
