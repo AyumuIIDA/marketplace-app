@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 import { Markdown } from "../../../components/ui/markdown";
@@ -9,8 +9,6 @@ import type { ListingViewModel } from "../../listings/listing-view-model";
 import {
   discoverRagAction,
   discoverSearchAction,
-  type DiscoverAgentActionOutput,
-  type DiscoverAgentMessageInput,
   type DiscoverProvider,
 } from "../actions/discover.actions";
 
@@ -19,18 +17,33 @@ type DiscoverViewProps = {
 };
 
 type Mode = "quick" | "agent";
-type Step = DiscoverAgentActionOutput["steps"][number];
+
+type RetrievalMode = "semantic" | "keyword";
 
 type AgentTurn =
   | { kind: "user"; id: string; text: string }
-  | { kind: "assistant"; id: string; text: string; steps: Step[]; listings: ListingViewModel[] };
+  | {
+      kind: "assistant";
+      id: string;
+      text: string;
+      provider: DiscoverProvider;
+      listings: ListingViewModel[];
+      retrievalMode?: RetrievalMode;
+    };
 
 export function DiscoverView({ initial }: DiscoverViewProps) {
   const t = useTranslations("discover");
   const [mode, setMode] = useState<Mode>("quick");
   // AIベンダー選択（agentモードのみ有効）。gemini=Gemini, openai=ChatGPT。
+  // Copilot風の VendorPicker で切替える。model 下位選択は backend が per-request 非対応のため出さない。
   const [provider, setProvider] = useState<DiscoverProvider>("gemini");
   const [input, setInput] = useState("");
+
+  // 一度でも検索したら維持する。モード切替で空状態に戻して結果を失わないため、
+  // モード別の派生フラグではなく独立した状態として持つ。
+  const [started, setStarted] = useState(false);
+  // バックエンド障害をユーザーの言い回しのせいにしない。0件と障害を明確に分ける。
+  const [error, setError] = useState<string | undefined>();
 
   // クイック検索（意味検索）。会話なしのグリッド。
   const [results, setResults] = useState<ListingViewModel[]>(initial);
@@ -41,7 +54,6 @@ export function DiscoverView({ initial }: DiscoverViewProps) {
   const [turns, setTurns] = useState<AgentTurn[]>([]);
   const [isAgentPending, startAgent] = useTransition();
 
-  const started = mode === "quick" ? quickQuery !== undefined : turns.length > 0;
   const chips = [t("chip0"), t("chip1"), t("chip2")];
 
   function submit(raw?: string) {
@@ -50,12 +62,19 @@ export function DiscoverView({ initial }: DiscoverViewProps) {
       return;
     }
 
+    setError(undefined);
+    setStarted(true);
+
     if (mode === "quick") {
       setInput("");
       startQuick(async () => {
-        const next = await discoverSearchAction(text);
-        setQuickQuery(text);
-        setResults(next);
+        try {
+          const next = await discoverSearchAction(text);
+          setQuickQuery(text);
+          setResults(next);
+        } catch {
+          setError(t("searchError"));
+        }
       });
       return;
     }
@@ -63,18 +82,32 @@ export function DiscoverView({ initial }: DiscoverViewProps) {
     setInput("");
     setTurns((current) => [...current, { kind: "user", id: `u-${Date.now()}`, text }]);
     startAgent(async () => {
-      const out = await discoverRagAction(text, provider);
-      setTurns((current) => [
-        ...current,
-        {
-          kind: "assistant",
-          id: `a-${Date.now()}`,
-          listings: out.listings,
-          steps: out.steps,
-          text: out.assistantMessage,
-        },
-      ]);
+      try {
+        const out = await discoverRagAction(text, provider);
+        setTurns((current) => [
+          ...current,
+          {
+            kind: "assistant",
+            id: `a-${Date.now()}`,
+            listings: out.listings,
+            provider,
+            retrievalMode: out.retrievalMode,
+            text: out.assistantMessage,
+          },
+        ]);
+      } catch {
+        setError(t("searchError"));
+      }
     });
+  }
+
+  function reset() {
+    setStarted(false);
+    setError(undefined);
+    setInput("");
+    setQuickQuery(undefined);
+    setResults(initial);
+    setTurns([]);
   }
 
   return (
@@ -84,23 +117,44 @@ export function DiscoverView({ initial }: DiscoverViewProps) {
           <Seal size="sm" tone="dark" />
           <span className="font-mono text-xs uppercase tracking-[0.18em] text-canvas-ink-soft">{t("brand")}</span>
         </a>
-        <a
-          className="text-sm font-medium text-canvas-ink-soft transition-colors hover:text-canvas-ink"
-          href="/"
-        >
-          {t("backToMarket")}
-        </a>
+        <div className="flex items-center gap-4">
+          {started && (
+            <button
+              className="text-sm font-medium text-canvas-ink-soft transition-colors hover:text-canvas-ink"
+              onClick={reset}
+              type="button"
+            >
+              {t("newSearch")}
+            </button>
+          )}
+          <a
+            className="text-sm font-medium text-canvas-ink-soft transition-colors hover:text-canvas-ink"
+            href="/"
+          >
+            {t("backToMarket")}
+          </a>
+        </div>
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pb-28">
         {!started ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-7 py-10">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <Seal size="md" tone="dark" />
-              <h1 className="text-xl font-semibold text-canvas-ink">{t("greeting")}</h1>
+          <div className="flex flex-1 flex-col items-center justify-center gap-10 py-12">
+            <div className="flex flex-col items-center gap-5 text-center">
+              <Seal animate size="lg" tone="dark" />
+              <h1 className="text-2xl font-semibold leading-tight text-canvas-ink sm:text-3xl">{t("greeting")}</h1>
             </div>
-            <div className="w-full max-w-2xl">
-              <Composer mode={mode} onModeChange={setMode} onProviderChange={setProvider} onSubmit={submit} provider={provider} setValue={setInput} value={input} />
+            <div className="w-full max-w-2xl space-y-4">
+              <ModeCards mode={mode} onModeChange={setMode} />
+              <Composer
+                mode={mode}
+                onModeChange={setMode}
+                onProviderChange={setProvider}
+                onSubmit={submit}
+                provider={provider}
+                setValue={setInput}
+                showModeToggle={false}
+                value={input}
+              />
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               {chips.map((chip) => (
@@ -117,10 +171,11 @@ export function DiscoverView({ initial }: DiscoverViewProps) {
           </div>
         ) : (
           <div className="flex-1 py-6">
+            {error !== undefined && <ErrorNotice message={error} />}
             {mode === "quick" ? (
               <QuickResults isPending={isQuickPending} query={quickQuery} results={results} />
             ) : (
-              <AgentThread isPending={isAgentPending} turns={turns} />
+              <AgentThread chips={chips} isPending={isAgentPending} onChip={submit} turns={turns} />
             )}
           </div>
         )}
@@ -129,11 +184,93 @@ export function DiscoverView({ initial }: DiscoverViewProps) {
       {started && (
         <div className="sticky bottom-0 border-t border-canvas-line bg-canvas/95 backdrop-blur-sm">
           <div className="mx-auto w-full max-w-3xl px-4 py-3">
-            <Composer mode={mode} onModeChange={setMode} onProviderChange={setProvider} onSubmit={submit} provider={provider} setValue={setInput} value={input} />
+            <Composer
+              mode={mode}
+              onModeChange={setMode}
+              onProviderChange={setProvider}
+              onSubmit={submit}
+              provider={provider}
+              setValue={setInput}
+              showModeToggle
+              value={input}
+            />
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+// ModeCards は2つの検索モードの違いを一目で示す入口（empty stateのthesis）。
+// 自由なことばで検索（即時の意味検索グリッド）と AIエージェントと検索（会話で絞り込み）。
+function ModeCards({ mode, onModeChange }: { mode: Mode; onModeChange: (mode: Mode) => void }) {
+  const t = useTranslations("discover");
+  const options: { key: Mode; label: string; desc: string; icon: ReactNode }[] = [
+    { key: "quick", label: t("modeQuick"), desc: t("modeQuickDesc"), icon: <QuickIcon /> },
+    { key: "agent", label: t("modeAgent"), desc: t("modeAgentDesc"), icon: <AgentIcon /> },
+  ];
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {options.map((option) => {
+        const active = mode === option.key;
+        return (
+          <button
+            aria-pressed={active}
+            className={
+              active
+                ? "flex flex-col gap-2 rounded-xl border border-seal bg-seal/10 p-4 text-left"
+                : "flex flex-col gap-2 rounded-xl border border-canvas-line bg-canvas-2 p-4 text-left transition-colors hover:border-seal/50"
+            }
+            key={option.key}
+            onClick={() => onModeChange(option.key)}
+            type="button"
+          >
+            <span className="flex items-center gap-2">
+              <span aria-hidden className={active ? "text-seal" : "text-canvas-ink-soft"}>
+                {option.icon}
+              </span>
+              <span className="text-sm font-semibold text-canvas-ink">{option.label}</span>
+            </span>
+            <span className="text-xs leading-5 text-canvas-ink-soft">{option.desc}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function QuickIcon() {
+  return (
+    <svg
+      className="size-[18px]"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.8"
+      viewBox="0 0 24 24"
+    >
+      <circle cx="11" cy="11" r="6" />
+      <path d="m20 20-3.4-3.4" />
+    </svg>
+  );
+}
+
+function AgentIcon() {
+  return (
+    <svg
+      className="size-[18px]"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.8"
+      viewBox="0 0 24 24"
+    >
+      <path d="M21 11.5a8 8 0 0 1-11.7 7.1L4 20l1.4-4.2A8 8 0 1 1 21 11.5Z" />
+      <path d="M12 8v3.5M10.25 9.75h3.5" />
+    </svg>
   );
 }
 
@@ -144,6 +281,7 @@ function Composer({
   onSubmit,
   provider,
   setValue,
+  showModeToggle,
   value,
 }: {
   mode: Mode;
@@ -152,61 +290,49 @@ function Composer({
   onSubmit: () => void;
   provider: DiscoverProvider;
   setValue: (value: string) => void;
+  // empty stateでは ModeCards がモードを担うため pill は出さない。stickyバーでは出す。
+  showModeToggle: boolean;
   value: string;
 }) {
   const t = useTranslations("discover");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modes: { key: Mode; label: string }[] = [
     { key: "quick", label: t("modeQuick") },
     { key: "agent", label: t("modeAgent") },
   ];
-  const providers: { key: DiscoverProvider; label: string }[] = [
-    { key: "gemini", label: t("providerGemini") },
-    { key: "openai", label: t("providerOpenai") },
-  ];
+
+  // 複数行入力で内部スクロールにせず、内容に合わせて伸ばす（上限はmax-h側で抑える）。
+  function autoGrow(element: HTMLTextAreaElement) {
+    element.style.height = "auto";
+    element.style.height = `${element.scrollHeight}px`;
+  }
 
   return (
     <div>
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <div className="inline-flex rounded-full border border-canvas-line p-0.5 text-xs">
-          {modes.map((item) => (
-            <button
-              aria-pressed={mode === item.key}
-              className={
-                mode === item.key
-                  ? "rounded-full bg-seal px-3 py-1 font-medium text-white"
-                  : "rounded-full px-3 py-1 font-medium text-canvas-ink-soft transition-colors hover:text-canvas-ink"
-              }
-              key={item.key}
-              onClick={() => onModeChange(item.key)}
-              type="button"
-            >
-              {item.label}
-            </button>
-          ))}
+      {(showModeToggle || mode === "agent") && (
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          {showModeToggle && (
+            <div className="inline-flex rounded-full border border-canvas-line p-0.5 text-xs">
+              {modes.map((item) => (
+                <button
+                  aria-pressed={mode === item.key}
+                  className={
+                    mode === item.key
+                      ? "rounded-full bg-seal px-3 py-1 font-medium text-white"
+                      : "rounded-full px-3 py-1 font-medium text-canvas-ink-soft transition-colors hover:text-canvas-ink"
+                  }
+                  key={item.key}
+                  onClick={() => onModeChange(item.key)}
+                  type="button"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {mode === "agent" && <VendorPicker onChange={onProviderChange} value={provider} />}
         </div>
-        {mode === "agent" && (
-          <div
-            aria-label={t("providerLabel")}
-            className="inline-flex rounded-full border border-canvas-line p-0.5 text-xs"
-          >
-            {providers.map((item) => (
-              <button
-                aria-pressed={provider === item.key}
-                className={
-                  provider === item.key
-                    ? "rounded-full bg-seal px-3 py-1 font-medium text-white"
-                    : "rounded-full px-3 py-1 font-medium text-canvas-ink-soft transition-colors hover:text-canvas-ink"
-                }
-                key={item.key}
-                onClick={() => onProviderChange(item.key)}
-                type="button"
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
       <form
         className="flex items-end gap-2 rounded-2xl border border-canvas-line bg-canvas-2 p-2 focus-within:border-seal"
         onSubmit={(event) => {
@@ -218,16 +344,23 @@ function Composer({
           {t("inputLabel")}
         </label>
         <textarea
-          className="min-h-11 flex-1 resize-none bg-transparent px-3 py-2 text-base leading-6 text-canvas-ink outline-none placeholder:text-canvas-ink-soft/70"
+          className="min-h-11 max-h-40 flex-1 resize-none overflow-y-auto bg-transparent px-3 py-2 text-base leading-6 text-canvas-ink outline-none placeholder:text-canvas-ink-soft/70"
           id="discover-input"
-          onChange={(event) => setValue(event.target.value)}
+          onChange={(event) => {
+            setValue(event.target.value);
+            autoGrow(event.target);
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();
               onSubmit();
+              if (textareaRef.current !== null) {
+                textareaRef.current.style.height = "auto";
+              }
             }
           }}
           placeholder={t("placeholder")}
+          ref={textareaRef}
           rows={1}
           value={value}
         />
@@ -241,6 +374,79 @@ function Composer({
         </button>
       </form>
     </div>
+  );
+}
+
+// AIベンダー選択。Copilot等の model picker と同じ作法で、現在の選択を見せつつ切替える。
+// model 下位選択はバックエンドが per-request 非対応のため出さない（vendorのみ）。
+function VendorPicker({
+  onChange,
+  value,
+}: {
+  onChange: (provider: DiscoverProvider) => void;
+  value: DiscoverProvider;
+}) {
+  const t = useTranslations("discover");
+  const [open, setOpen] = useState(false);
+  const options: { key: DiscoverProvider; label: string }[] = [
+    { key: "gemini", label: t("providerGemini") },
+    { key: "openai", label: t("providerOpenai") },
+  ];
+  const current = options.find((option) => option.key === value) ?? options[0];
+
+  return (
+    <div className="relative">
+      <button
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={t("providerLabel")}
+        className="inline-flex items-center gap-1.5 rounded-full border border-canvas-line px-3 py-1 text-xs font-medium text-canvas-ink-soft transition-colors hover:text-canvas-ink"
+        onClick={() => setOpen((isOpen) => !isOpen)}
+        type="button"
+      >
+        <span aria-hidden className="size-1.5 rounded-full bg-seal" />
+        {current.label}
+        <span aria-hidden className="text-[10px] leading-none">▾</span>
+      </button>
+      {open && (
+        <ul
+          className="absolute left-0 z-10 mt-2 w-40 overflow-hidden rounded-md border border-canvas-line bg-canvas-2 py-1 shadow-md"
+          role="listbox"
+        >
+          {options.map((option) => (
+            <li aria-selected={option.key === value} key={option.key} role="option">
+              <button
+                className={
+                  option.key === value
+                    ? "flex w-full items-center justify-between px-3 py-1.5 text-xs font-medium text-canvas-ink"
+                    : "flex w-full items-center justify-between px-3 py-1.5 text-xs font-medium text-canvas-ink-soft transition-colors hover:bg-canvas-line/40 hover:text-canvas-ink"
+                }
+                onClick={() => {
+                  onChange(option.key);
+                  setOpen(false);
+                }}
+                type="button"
+              >
+                {option.label}
+                {option.key === value && (
+                  <span aria-hidden className="text-seal">
+                    ✓
+                  </span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ErrorNotice({ message }: { message: string }) {
+  return (
+    <p className="mb-4 rounded-md border border-seal/40 bg-seal/10 px-4 py-3 text-sm text-canvas-ink" role="alert">
+      {message}
+    </p>
   );
 }
 
@@ -276,7 +482,40 @@ function QuickResults({
   );
 }
 
-function AgentThread({ isPending, turns }: { isPending: boolean; turns: AgentTurn[] }) {
+function AgentThread({
+  chips,
+  isPending,
+  onChip,
+  turns,
+}: {
+  chips: string[];
+  isPending: boolean;
+  onChip: (text: string) => void;
+  turns: AgentTurn[];
+}) {
+  const t = useTranslations("discover");
+
+  // agentモードに切替えた直後（まだ発話なし）。空白で放置せず、ガイドを再提示する。
+  if (turns.length === 0 && !isPending) {
+    return (
+      <div className="flex flex-col items-center gap-5 py-16 text-center">
+        <p className="max-w-md text-sm leading-6 text-canvas-ink-soft">{t("agentEmptyHint")}</p>
+        <div className="flex flex-wrap justify-center gap-2">
+          {chips.map((chip) => (
+            <button
+              className="rounded-full border border-canvas-line px-3 py-1.5 text-xs text-canvas-ink-soft transition-colors hover:border-seal hover:text-canvas-ink"
+              key={chip}
+              onClick={() => onChip(chip)}
+              type="button"
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {turns.map((turn) =>
@@ -288,82 +527,50 @@ function AgentThread({ isPending, turns }: { isPending: boolean; turns: AgentTur
           <AssistantTurn key={turn.id} turn={turn} />
         ),
       )}
-      {isPending && <PendingTrace />}
+      {isPending && <PendingIndicator />}
     </div>
   );
 }
 
 function AssistantTurn({ turn }: { turn: Extract<AgentTurn, { kind: "assistant" }> }) {
+  const t = useTranslations("discover");
+  const providerLabel = turn.provider === "openai" ? t("providerOpenai") : t("providerGemini");
+
   return (
     <div className="space-y-3">
-      {turn.steps.length > 0 && <AgentTrace steps={turn.steps} />}
       {turn.text.length > 0 && <Markdown className="text-canvas-ink">{turn.text}</Markdown>}
       {turn.listings.length > 0 && <ResultTiles items={turn.listings} />}
-    </div>
-  );
-}
-
-function AgentTrace({ steps }: { steps: Step[] }) {
-  const t = useTranslations("discover");
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="rounded-md border border-canvas-line bg-canvas-2 p-3">
-      <ol className="space-y-1.5">
-        {steps.map((step) => (
-          <li className="flex items-center gap-2 text-xs leading-5 text-canvas-ink-soft" key={step.index}>
-            <span className="size-1.5 shrink-0 rounded-full bg-seal" />
-            <span>{t(`trace.${step.phase}`)}</span>
+      {/* 回答の手順を正直に開示。単段RAG（意味検索→生成）の実データ。既定で閉、興味があれば開く。 */}
+      <details className="group">
+        <summary className="inline-flex cursor-pointer list-none items-center gap-1 font-mono text-[11px] uppercase tracking-[0.08em] text-canvas-ink-soft transition-colors hover:text-canvas-ink [&::-webkit-details-marker]:hidden">
+          <span aria-hidden className="transition-transform group-open:rotate-90">
+            ›
+          </span>
+          {t("ragHow")}
+        </summary>
+        <ol className="mt-2 space-y-1 border-l border-canvas-line pl-3">
+          <li className="text-xs leading-5 text-canvas-ink-soft">
+            {turn.retrievalMode === "keyword"
+              ? t("ragSearchKeyword", { count: turn.listings.length })
+              : t("ragSearch", { count: turn.listings.length })}
           </li>
-        ))}
-      </ol>
-      <button
-        aria-expanded={open}
-        className="mt-2 font-mono text-[11px] uppercase tracking-[0.08em] text-canvas-ink-soft transition-colors hover:text-canvas-ink"
-        onClick={() => setOpen((current) => !current)}
-        type="button"
-      >
-        {open ? t("traceHide") : t("traceDetails")}
-      </button>
-      {open && (
-        <ol className="mt-2 space-y-1 border-t border-canvas-line pt-2">
-          {steps.map((step) => (
-            <li
-              className="font-mono text-[11px] uppercase tracking-[0.06em] text-canvas-ink-soft/80"
-              key={`raw-${step.index}`}
-            >
-              {t("agentStepMessage", {
-                actor: step.actor === "llm" ? t("agentActorLlm") : t("agentActorMcp"),
-                index: step.index,
-                label: step.label,
-                phase: t(`agentPhase.${step.phase}`),
-                status: step.status,
-              })}
-            </li>
-          ))}
+          <li className="text-xs leading-5 text-canvas-ink-soft">
+            {t("ragGenerate", { provider: providerLabel })}
+          </li>
         </ol>
-      )}
+      </details>
     </div>
   );
 }
 
-function PendingTrace() {
+// 検索中の人間向け表示。回答の実手順は各ターンの「回答の手順」開示に出す。
+function PendingIndicator() {
   const t = useTranslations("discover");
-  const pendingSteps = [t("agentPendingPlan"), t("agentPendingTool"), t("agentPendingReply")];
 
   return (
-    <div className="rounded-md border border-canvas-line bg-canvas-2 p-3">
-      <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-canvas-ink-soft">
-        {t("agentThinking")}
-      </div>
-      <ol className="space-y-1.5">
-        {pendingSteps.map((step) => (
-          <li className="flex items-center gap-2 text-xs leading-5 text-canvas-ink-soft" key={step}>
-            <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-seal motion-reduce:animate-none" />
-            <span>{step}</span>
-          </li>
-        ))}
-      </ol>
+    <div className="flex items-center gap-2 text-sm text-canvas-ink-soft">
+      <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-seal motion-reduce:animate-none" />
+      <span>{t("agentSearching")}</span>
     </div>
   );
 }
@@ -385,12 +592,6 @@ function ResultTiles({ items }: { items: ListingViewModel[] }) {
       ))}
     </div>
   );
-}
-
-function toHistory(turns: AgentTurn[]): DiscoverAgentMessageInput[] {
-  return turns
-    .map((turn) => ({ content: turn.text, role: turn.kind === "user" ? ("user" as const) : ("assistant" as const) }))
-    .slice(-8);
 }
 
 function DiscoverCard({
