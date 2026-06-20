@@ -9,7 +9,6 @@ import { GlassPanel } from "../../../components/ui/glass-panel";
 import { StatePanel } from "../../../components/ui/state-panel";
 import { StatusBadge } from "../../../components/ui/status-badge";
 import type { CurrentUser } from "../../../lib/api/current-user.api";
-import { getListing } from "../../../lib/api/listings.api";
 import type { Message } from "../../../lib/api/messages.api";
 import type { Order } from "../../../lib/api/orders.api";
 import { getSellerSummary } from "../../../lib/api/sellers.api";
@@ -17,6 +16,7 @@ import { shortRef } from "../../../lib/format/id";
 import type { Review } from "../../../lib/api/reviews.api";
 import { SubmitReviewButton } from "../../reviews/components/submit-review-button";
 import {
+  hideOrderMessageAction,
   markOrderReceivedAction,
   markOrderShippedAction,
   sendOrderMessageAction,
@@ -46,8 +46,8 @@ export async function OrderDetailView({ currentUser, messages, order, reviews }:
   const canReceive = isBuyer && order.status === "SHIPPED";
   const canReview = currentUser !== undefined && (order.status === "RECEIVED" || order.status === "COMPLETED");
 
-  // 生IDの代わりに、商品（タイトル/写真）と取引相手（表示名）を見せる。
-  const listing = await getListing(order.listingId);
+  // 商品（タイトル/写真）は注文に焼き付けたスナップショットを使う。SOLD 化後も live listing を取得せず
+  // （=403を踏まず）「何を買ったか」を見せる。取引相手（表示名）は別途取得する。
   const counterpartyId = isSeller ? order.buyerId : order.sellerId;
   const counterparty = await getSellerSummary(counterpartyId);
   const counterpartyLabel = isSeller ? t("buyer") : t("seller");
@@ -67,16 +67,18 @@ export async function OrderDetailView({ currentUser, messages, order, reviews }:
             className="flex items-center gap-3 rounded-md border border-line bg-paper p-3 transition-colors hover:border-ink/30"
             href={`/listings/${order.listingId}`}
           >
-            {listing?.images?.[0] !== undefined ? (
+            {order.listingImageUrl.length > 0 ? (
               // 商品画像はブラウザが storage を直接読む公開アセット
-              <img alt="" className="size-16 shrink-0 rounded-md object-cover" src={listing.images[0].url} />
+              <img alt="" className="size-16 shrink-0 rounded-md object-cover" src={order.listingImageUrl} />
             ) : (
               <span className="grid size-16 shrink-0 place-items-center rounded-md bg-surface font-mono text-[10px] uppercase tracking-[0.16em] text-ink-faint">
                 no photo
               </span>
             )}
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold text-ink">{listing?.title ?? t("item")}</span>
+              <span className="block truncate text-sm font-semibold text-ink">
+                {order.listingTitle.length > 0 ? order.listingTitle : t("item")}
+              </span>
               <span className="mt-0.5 block font-mono text-sm text-ink-soft">
                 ¥{order.price.toLocaleString("ja-JP")}
               </span>
@@ -123,7 +125,21 @@ export async function OrderDetailView({ currentUser, messages, order, reviews }:
                         ? counterparty.displayName
                         : shortRef(message.senderId)}
                   </span>
-                  <span>{formatDate(message.createdAt)}</span>
+                  <div className="flex items-center gap-2">
+                    <span>{formatDate(message.createdAt)}</span>
+                    {currentUser !== undefined && (
+                      <form action={hideOrderMessageAction}>
+                        <input name="orderId" type="hidden" value={order.orderId} />
+                        <input name="messageId" type="hidden" value={message.messageId} />
+                        <button
+                          className="text-ink-faint underline-offset-2 transition-colors hover:text-seal hover:underline"
+                          type="submit"
+                        >
+                          {t("hideMessage")}
+                        </button>
+                      </form>
+                    )}
+                  </div>
                 </div>
                 <p className="text-sm leading-6 text-ink">{message.body}</p>
               </div>

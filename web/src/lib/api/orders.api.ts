@@ -8,6 +8,9 @@ export type Order = {
   status: "PAID" | "SHIPPED" | "RECEIVED" | "COMPLETED" | "CANCELED";
   price: number;
   currency: "JPY";
+  // 購入時点の商品スナップショット（live listing 非依存。旧注文は空文字）。
+  listingTitle: string;
+  listingImageUrl: string;
   createdAt: string;
   paidAt?: string;
   shippedAt?: string;

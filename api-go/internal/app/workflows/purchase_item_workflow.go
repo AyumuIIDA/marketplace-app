@@ -70,12 +70,22 @@ func (w *PurchaseItemWorkflow) Execute(ctx context.Context, in PurchaseItemInput
 		if err != nil {
 			return err
 		}
+		// claim は画像を空で返すため、スナップショット用に先頭画像URLを別途 hydrate する（best-effort）。
+		// 画像取得の失敗で購入を巻き戻さない（タイトルは常に取れる／画像欠落は no photo 表示で許容）。
+		thumbnailURL := ""
+		if full, ferr := repos.Listings.FindByID(ctx, listing.ID()); ferr == nil && full != nil {
+			if images := full.Images(); len(images) > 0 {
+				thumbnailURL = images[0].URL
+			}
+		}
 		out, err := w.orderFulfillment.CreatePaidOrder(ctx, repos.Orders, ordersapp.CreatePaidOrderInput{
-			ListingID: listing.ID(),
-			BuyerID:   in.BuyerID,
-			SellerID:  listing.SellerID(),
-			Price:     listing.Fields().Price,
-			Currency:  listing.Fields().Currency,
+			ListingID:       listing.ID(),
+			BuyerID:         in.BuyerID,
+			SellerID:        listing.SellerID(),
+			Price:           listing.Fields().Price,
+			Currency:        listing.Fields().Currency,
+			ListingTitle:    listing.Fields().Title,
+			ListingImageURL: thumbnailURL,
 		})
 		if err != nil {
 			return err
