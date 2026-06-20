@@ -12,6 +12,16 @@ type LikeStatusView struct {
 	LikedByMe bool  `json:"likedByMe"`
 }
 
+// SaveStatusView は商品保存トグル応答（私的なので件数は出さず自分の状態のみ）。
+type SaveStatusView struct {
+	SavedByMe bool `json:"savedByMe"`
+}
+
+// FollowStatusView は出品者フォロートグル応答（私的なので自分の状態のみ）。
+type FollowStatusView struct {
+	FollowingByMe bool `json:"followingByMe"`
+}
+
 // CommentView は出品コメントの応答（著者表示名/本人認証バッジ付き）。
 type CommentView struct {
 	CommentID           string    `json:"commentId"`
@@ -52,6 +62,8 @@ type SellerSummaryView struct {
 	ReviewCount   int64    `json:"reviewCount"`
 	LikeCount     int64    `json:"likeCount"`
 	LikedByMe     bool     `json:"likedByMe"`
+	// FollowingByMe は閲覧者がこの出品者をフォローしているか（私的フォロー）。viewer 非nil時に解決。
+	FollowingByMe bool `json:"followingByMe"`
 }
 
 // handleFromID は出品者idから安定したhandle(@先頭8桁)を導出する。

@@ -8,6 +8,15 @@ import "context"
 type SuggestListingFieldsInput struct {
 	UserHint  *string
 	ImageURLs []string // API到達可能URL（マルチモーダル入力にする）
+	// AllowedCategories は既存出品のユニークなカテゴリ。非空なら AI は category をこのいずれかへ寄せる
+	// （prompt＋ResponseSchema の enum で制約）。usecase が注入する。
+	AllowedCategories []string
+}
+
+// CategoryReader は既存出品のユニークなカテゴリ集合を返す read port。
+// listings と peer 分離のため、実装(adapter)は composition root が注入する。
+type CategoryReader interface {
+	Categories(ctx context.Context) ([]string, error)
 }
 
 type SuggestListingFieldsResult struct {

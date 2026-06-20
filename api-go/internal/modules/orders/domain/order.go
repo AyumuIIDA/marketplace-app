@@ -26,29 +26,34 @@ const (
 // ARCH-EXCEPTION(§6): 金額は price(int32)+currency(string)。理由/解消条件は
 // listingsdomain.ListingFields の同マーカー参照（単一通貨JPY・円単位整数のため Money 未導入）。
 type Order struct {
-	id          uuid.UUID
-	listingID   uuid.UUID
-	buyerID     uuid.UUID
-	sellerID    uuid.UUID
-	status      OrderStatus
-	price       int32
-	currency    string
-	createdAt   time.Time
-	paidAt      *time.Time
-	shippedAt   *time.Time
-	receivedAt  *time.Time
-	completedAt *time.Time
-	canceledAt  *time.Time
+	id        uuid.UUID
+	listingID uuid.UUID
+	buyerID   uuid.UUID
+	sellerID  uuid.UUID
+	status    OrderStatus
+	price     int32
+	currency  string
+	// 購入時点の商品スナップショット（live listing 非依存。SOLD化/編集/削除に影響されない）。
+	listingTitle    string
+	listingImageURL string
+	createdAt       time.Time
+	paidAt          *time.Time
+	shippedAt       *time.Time
+	receivedAt      *time.Time
+	completedAt     *time.Time
+	canceledAt      *time.Time
 }
 
 type CreatePaidOrderInput struct {
-	ID        uuid.UUID
-	ListingID uuid.UUID
-	BuyerID   uuid.UUID
-	SellerID  uuid.UUID
-	Price     int32
-	Currency  string
-	Now       time.Time
+	ID              uuid.UUID
+	ListingID       uuid.UUID
+	BuyerID         uuid.UUID
+	SellerID        uuid.UUID
+	Price           int32
+	Currency        string
+	ListingTitle    string
+	ListingImageURL string
+	Now             time.Time
 }
 
 // CreatePaid は支払い済み注文(status=PAID)を生成する。買い手≠売り手・正の価格を要求する。
@@ -66,49 +71,55 @@ func CreatePaid(in CreatePaidOrderInput) (*Order, error) {
 	}
 	now := in.Now
 	return &Order{
-		id:        in.ID,
-		listingID: in.ListingID,
-		buyerID:   in.BuyerID,
-		sellerID:  in.SellerID,
-		status:    OrderStatusPaid,
-		price:     in.Price,
-		currency:  currency,
-		createdAt: now,
-		paidAt:    &now,
+		id:              in.ID,
+		listingID:       in.ListingID,
+		buyerID:         in.BuyerID,
+		sellerID:        in.SellerID,
+		status:          OrderStatusPaid,
+		price:           in.Price,
+		currency:        currency,
+		listingTitle:    in.ListingTitle,
+		listingImageURL: in.ListingImageURL,
+		createdAt:       now,
+		paidAt:          &now,
 	}, nil
 }
 
 type RehydrateInput struct {
-	ID          uuid.UUID
-	ListingID   uuid.UUID
-	BuyerID     uuid.UUID
-	SellerID    uuid.UUID
-	Status      OrderStatus
-	Price       int32
-	Currency    string
-	CreatedAt   time.Time
-	PaidAt      *time.Time
-	ShippedAt   *time.Time
-	ReceivedAt  *time.Time
-	CompletedAt *time.Time
-	CanceledAt  *time.Time
+	ID              uuid.UUID
+	ListingID       uuid.UUID
+	BuyerID         uuid.UUID
+	SellerID        uuid.UUID
+	Status          OrderStatus
+	Price           int32
+	Currency        string
+	ListingTitle    string
+	ListingImageURL string
+	CreatedAt       time.Time
+	PaidAt          *time.Time
+	ShippedAt       *time.Time
+	ReceivedAt      *time.Time
+	CompletedAt     *time.Time
+	CanceledAt      *time.Time
 }
 
 func Rehydrate(in RehydrateInput) *Order {
 	return &Order{
-		id:          in.ID,
-		listingID:   in.ListingID,
-		buyerID:     in.BuyerID,
-		sellerID:    in.SellerID,
-		status:      in.Status,
-		price:       in.Price,
-		currency:    in.Currency,
-		createdAt:   in.CreatedAt,
-		paidAt:      in.PaidAt,
-		shippedAt:   in.ShippedAt,
-		receivedAt:  in.ReceivedAt,
-		completedAt: in.CompletedAt,
-		canceledAt:  in.CanceledAt,
+		id:              in.ID,
+		listingID:       in.ListingID,
+		buyerID:         in.BuyerID,
+		sellerID:        in.SellerID,
+		status:          in.Status,
+		price:           in.Price,
+		currency:        in.Currency,
+		listingTitle:    in.ListingTitle,
+		listingImageURL: in.ListingImageURL,
+		createdAt:       in.CreatedAt,
+		paidAt:          in.PaidAt,
+		shippedAt:       in.ShippedAt,
+		receivedAt:      in.ReceivedAt,
+		completedAt:     in.CompletedAt,
+		canceledAt:      in.CanceledAt,
 	}
 }
 
@@ -119,6 +130,8 @@ func (o *Order) SellerID() uuid.UUID     { return o.sellerID }
 func (o *Order) Status() OrderStatus     { return o.status }
 func (o *Order) Price() int32            { return o.price }
 func (o *Order) Currency() string        { return o.currency }
+func (o *Order) ListingTitle() string    { return o.listingTitle }
+func (o *Order) ListingImageURL() string { return o.listingImageURL }
 func (o *Order) CreatedAt() time.Time    { return o.createdAt }
 func (o *Order) PaidAt() *time.Time      { return o.paidAt }
 func (o *Order) ShippedAt() *time.Time   { return o.shippedAt }

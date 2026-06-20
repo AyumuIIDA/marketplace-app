@@ -50,6 +50,18 @@ type Repository interface {
 	IsSellerLiked(ctx context.Context, userID, sellerID uuid.UUID) (bool, error)
 	ListLikedSellerIDs(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]uuid.UUID, error)
 
+	// --- 商品の保存（私的ウォッチリスト。認証不要） ---
+	SaveListing(ctx context.Context, userID, listingID uuid.UUID) error
+	UnsaveListing(ctx context.Context, userID, listingID uuid.UUID) error
+	IsListingSaved(ctx context.Context, userID, listingID uuid.UUID) (bool, error)
+	ListSavedListingIDs(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]uuid.UUID, error)
+
+	// --- 出品者のフォロー（私的。認証不要） ---
+	FollowSeller(ctx context.Context, userID, sellerID uuid.UUID) error
+	UnfollowSeller(ctx context.Context, userID, sellerID uuid.UUID) error
+	IsFollowingSeller(ctx context.Context, userID, sellerID uuid.UUID) (bool, error)
+	ListFollowedSellerIDs(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]uuid.UUID, error)
+
 	// FindSellerProfile は出品者の表示情報を返す。存在しなければ (nil, nil)。
 	FindSellerProfile(ctx context.Context, sellerID uuid.UUID) (*SellerProfile, error)
 	// GetSellerRating は SUBMITTED reviews の平均評価と件数を返す。

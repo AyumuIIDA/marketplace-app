@@ -30,11 +30,28 @@ type ToolError struct {
 	Message string `json:"message"`
 }
 
+// ToolImage はclientに返す画像コンテンツブロック。
+// Data 非nil＝インライン(ImageContent/base64・確実に描画される)、nil＝URL参照(ResourceLink・軽量)。
+type ToolImage struct {
+	URL      string
+	Title    string
+	MimeType string
+	Data     []byte
+}
+
 // ToolResult はtool実行結果。SUCCEEDED/REQUIRES_*はData、FAILEDはError。
+// Images はリッチclient向けの画像ブロック（任意）。structuredContentには含めない（base64二重化防止）。
 type ToolResult struct {
-	Status ToolStatus `json:"status"`
-	Data   any        `json:"data,omitempty"`
-	Error  *ToolError `json:"error,omitempty"`
+	Status ToolStatus  `json:"status"`
+	Data   any         `json:"data,omitempty"`
+	Error  *ToolError  `json:"error,omitempty"`
+	Images []ToolImage `json:"-"`
+}
+
+// ImageFetcher は画像URLからバイト列を取得する（get_listing のヒーロー画像インライン化用）。
+// 実装(adapter)は composition root が注入する。未注入/失敗時は ResourceLink へ劣化する。
+type ImageFetcher interface {
+	Fetch(ctx context.Context, url string) (data []byte, mimeType string, err error)
 }
 
 // McpTool は単一MCPツールの契約。input は client から受け取った引数（JSON object）。
@@ -45,6 +62,11 @@ type McpTool interface {
 
 // Succeeded/RequiresConfirmation/RequiresHumanSignature/Failed はResult構築ヘルパ。
 func Succeeded(data any) ToolResult { return ToolResult{Status: ToolSucceeded, Data: data} }
+
+// SucceededWithImages は画像ブロック付きの成功結果。get_listing のリッチ描画に使う。
+func SucceededWithImages(data any, images []ToolImage) ToolResult {
+	return ToolResult{Status: ToolSucceeded, Data: data, Images: images}
+}
 func RequiresConfirmation(data any) ToolResult {
 	return ToolResult{Status: ToolRequiresConfirmation, Data: data}
 }

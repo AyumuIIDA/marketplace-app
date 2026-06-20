@@ -61,7 +61,7 @@ export default async function Page({ searchParams }: PageProps) {
     selectedCategory === undefined
       ? 0
       : (categories.find((c) => c.category === selectedCategory)?.count ?? categoryPage.length);
-  const { humanLabel, userLabel } = toShellUserLabels(currentUser);
+  const { humanLabel, humanVerified, userLabel } = toShellUserLabels(currentUser);
   const purchaseT = await getTranslations("purchase");
 
   return (
@@ -73,7 +73,7 @@ export default async function Page({ searchParams }: PageProps) {
       category={selectedCategory}
       categoryItems={mapListingsToViewModels(categoryPage, likedIds)}
       categoryTotal={categoryTotal}
-      humanLabel={humanLabel}
+      humanLabel={humanLabel} humanVerified={humanVerified}
       likedIds={likedIds}
       pageSize={pageSize}
       searchQuery={searchQuery}

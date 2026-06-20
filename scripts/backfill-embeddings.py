@@ -29,10 +29,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "services", "re
 from recommendation.v1 import recommendation_pb2 as pb  # noqa: E402
 from recommendation.v1 import recommendation_pb2_grpc as pb_grpc  # noqa: E402
 
-HOST = os.environ["REC_SERVICE_HOST"]
-INVOKER_SA = os.environ["REC_INVOKER_SA"]
+# ローカル: REC_INSECURE_ADDR(例 localhost:50051) を設定すると平文gRPC＋無認証で叩く。
+# 本番: REC_SERVICE_HOST(https host) + REC_INVOKER_SA で Cloud Run ID token を付与する。
+LOCAL_ADDR = os.getenv("REC_INSECURE_ADDR")
+HOST = os.getenv("REC_SERVICE_HOST", "")
+INVOKER_SA = os.getenv("REC_INVOKER_SA", "")
 CONCURRENCY = int(os.getenv("CONCURRENCY", "8"))
-AUDIENCE = f"https://{HOST}"
+AUDIENCE = f"https://{HOST}" if HOST else ""
 
 _token = {"v": "", "exp": 0.0}
 
@@ -71,6 +74,8 @@ def fetch_rows() -> list[dict]:
 
 
 def make_stub() -> pb_grpc.RecommendationServiceStub:
+    if LOCAL_ADDR:
+        return pb_grpc.RecommendationServiceStub(grpc.insecure_channel(LOCAL_ADDR))
     creds = grpc.ssl_channel_credentials()
     channel = grpc.secure_channel(f"{HOST}:443", creds)
     return pb_grpc.RecommendationServiceStub(channel)
@@ -87,9 +92,9 @@ def index_one(stub, row) -> tuple[str, bool, str]:
         status=row["status"] or "",
         seller_id=str(row["seller_id"] or ""),
     )
-    md = [("authorization", f"Bearer {id_token()}")]
+    md = [] if LOCAL_ADDR else [("authorization", f"Bearer {id_token()}")]
     try:
-        res = stub.IndexListing(req, metadata=md, timeout=120)  # 初回はCLIPモデルロードを吸収
+        res = stub.IndexListing(req, metadata=md, timeout=180)  # 初回はCLIPモデルロードを吸収
         return str(row["id"]), res.indexed, res.detail
     except grpc.RpcError as e:
         return str(row["id"]), False, f"{e.code()}: {e.details()}"[:160]
@@ -97,7 +102,7 @@ def index_one(stub, row) -> tuple[str, bool, str]:
 
 def main() -> None:
     rows = fetch_rows()
-    print(f"backfill: {len(rows)} listings (main image) -> {HOST}", flush=True)
+    print(f"backfill: {len(rows)} listings (main image) -> {LOCAL_ADDR or HOST}", flush=True)
     stub = make_stub()
     ok = fail = 0
     with ThreadPoolExecutor(max_workers=CONCURRENCY) as ex:

@@ -13,21 +13,71 @@ import (
 
 // fakeRepo は socialapp.Repository の in-memory 実装（テスト用）。
 type fakeRepo struct {
-	listingLikes map[[2]uuid.UUID]bool
-	sellerLikes  map[[2]uuid.UUID]bool
-	profiles     map[uuid.UUID]*socialapp.SellerProfile
-	ratings      map[uuid.UUID]socialapp.SellerRating
-	comments     map[uuid.UUID][]*socialdomain.Comment
+	listingLikes  map[[2]uuid.UUID]bool
+	sellerLikes   map[[2]uuid.UUID]bool
+	listingSaves  map[[2]uuid.UUID]bool
+	sellerFollows map[[2]uuid.UUID]bool
+	profiles      map[uuid.UUID]*socialapp.SellerProfile
+	ratings       map[uuid.UUID]socialapp.SellerRating
+	comments      map[uuid.UUID][]*socialdomain.Comment
 }
 
 func newFakeRepo() *fakeRepo {
 	return &fakeRepo{
-		listingLikes: map[[2]uuid.UUID]bool{},
-		sellerLikes:  map[[2]uuid.UUID]bool{},
-		profiles:     map[uuid.UUID]*socialapp.SellerProfile{},
-		ratings:      map[uuid.UUID]socialapp.SellerRating{},
-		comments:     map[uuid.UUID][]*socialdomain.Comment{},
+		listingLikes:  map[[2]uuid.UUID]bool{},
+		sellerLikes:   map[[2]uuid.UUID]bool{},
+		listingSaves:  map[[2]uuid.UUID]bool{},
+		sellerFollows: map[[2]uuid.UUID]bool{},
+		profiles:      map[uuid.UUID]*socialapp.SellerProfile{},
+		ratings:       map[uuid.UUID]socialapp.SellerRating{},
+		comments:      map[uuid.UUID][]*socialdomain.Comment{},
 	}
+}
+
+// verify は userID を人間認証済みとして登録するテストヘルパ（いいねゲートを通すため）。
+func (f *fakeRepo) verify(id uuid.UUID) {
+	f.profiles[id] = &socialapp.SellerProfile{DisplayName: "verified", HumanVerified: true}
+}
+
+func (f *fakeRepo) SaveListing(_ context.Context, u, l uuid.UUID) error {
+	f.listingSaves[[2]uuid.UUID{u, l}] = true
+	return nil
+}
+func (f *fakeRepo) UnsaveListing(_ context.Context, u, l uuid.UUID) error {
+	delete(f.listingSaves, [2]uuid.UUID{u, l})
+	return nil
+}
+func (f *fakeRepo) IsListingSaved(_ context.Context, u, l uuid.UUID) (bool, error) {
+	return f.listingSaves[[2]uuid.UUID{u, l}], nil
+}
+func (f *fakeRepo) ListSavedListingIDs(_ context.Context, u uuid.UUID, _, _ int32) ([]uuid.UUID, error) {
+	ids := []uuid.UUID{}
+	for k := range f.listingSaves {
+		if k[0] == u {
+			ids = append(ids, k[1])
+		}
+	}
+	return ids, nil
+}
+func (f *fakeRepo) FollowSeller(_ context.Context, u, s uuid.UUID) error {
+	f.sellerFollows[[2]uuid.UUID{u, s}] = true
+	return nil
+}
+func (f *fakeRepo) UnfollowSeller(_ context.Context, u, s uuid.UUID) error {
+	delete(f.sellerFollows, [2]uuid.UUID{u, s})
+	return nil
+}
+func (f *fakeRepo) IsFollowingSeller(_ context.Context, u, s uuid.UUID) (bool, error) {
+	return f.sellerFollows[[2]uuid.UUID{u, s}], nil
+}
+func (f *fakeRepo) ListFollowedSellerIDs(_ context.Context, u uuid.UUID, _, _ int32) ([]uuid.UUID, error) {
+	ids := []uuid.UUID{}
+	for k := range f.sellerFollows {
+		if k[0] == u {
+			ids = append(ids, k[1])
+		}
+	}
+	return ids, nil
 }
 
 func (f *fakeRepo) LikeListing(_ context.Context, u, l uuid.UUID) error {
@@ -117,6 +167,7 @@ func TestListingLikeToggle(t *testing.T) {
 	repo := newFakeRepo()
 	uc := socialapp.NewListingLikeUseCase(repo)
 	user, listing := uuid.New(), uuid.New()
+	repo.verify(user) // いいねは人間認証ゲートがあるため検証済みにする。
 
 	st, err := uc.Like(context.Background(), user, listing)
 	if err != nil {
@@ -137,6 +188,21 @@ func TestListingLikeToggle(t *testing.T) {
 	}
 	if st.LikedByMe || st.LikeCount != 0 {
 		t.Fatalf("after unlike: got %+v, want liked=false count=0", st)
+	}
+}
+
+func TestListingLikeRequiresVerified(t *testing.T) {
+	repo := newFakeRepo()
+	uc := socialapp.NewListingLikeUseCase(repo)
+	user, listing := uuid.New(), uuid.New()
+	repo.profiles[user] = &socialapp.SellerProfile{DisplayName: "unverified", HumanVerified: false}
+
+	_, err := uc.Like(context.Background(), user, listing)
+	if err == nil {
+		t.Fatal("unverified user should not be able to like")
+	}
+	if ae, ok := apperr.As(err); !ok || ae.Kind != apperr.KindForbidden {
+		t.Fatalf("want forbidden error, got %v", err)
 	}
 }
 

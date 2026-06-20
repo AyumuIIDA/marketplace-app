@@ -9,21 +9,24 @@ import type { CurrentUser } from "../../../lib/api/current-user.api";
 import type { Listing } from "../../../lib/api/listings.api";
 import { getSellerSummary } from "../../../lib/api/sellers.api";
 import { listListingComments } from "../../../lib/api/social.api";
-import { createListingCommentAction, toggleListingLikeAction, toggleSellerLikeAction } from "../../social/actions/social.actions";
+import { createListingCommentAction, toggleListingLikeAction, toggleListingSaveAction, toggleSellerLikeAction } from "../../social/actions/social.actions";
 import { CommentThread } from "../../social/components/comment-thread";
 import { LikeButton } from "../../social/components/like-button";
+import { SaveButton } from "../../social/components/save-button";
+import { CategoryLabel } from "./category-label";
 import { StarRating } from "../../social/components/star-rating";
-import { publishListingAction } from "../actions/listing.actions";
+import { publishListingAction, relistListingAction, withdrawListingAction } from "../actions/listing.actions";
+import { ConfirmActionButton } from "./confirm-action-button";
 import { ProductGallery } from "./product-gallery";
-import { PublishListingButton } from "./publish-listing-button";
 
 type ListingDetailViewProps = {
   currentUser: CurrentUser | undefined;
+  initialSaved?: boolean;
   listing: Listing | undefined;
   initialLiked?: boolean;
 };
 
-export async function ListingDetailView({ currentUser, initialLiked = false, listing }: ListingDetailViewProps) {
+export async function ListingDetailView({ currentUser, initialLiked = false, initialSaved = false, listing }: ListingDetailViewProps) {
   const [t, social] = await Promise.all([getTranslations("listing"), getTranslations("social")]);
 
   if (listing === undefined) {
@@ -33,7 +36,8 @@ export async function ListingDetailView({ currentUser, initialLiked = false, lis
   const isSeller = currentUser?.userId === listing.sellerId;
   const isSold = listing.status === "SOLD";
   const canPurchase = currentUser !== undefined && !isSeller && listing.status === "PUBLISHED";
-  const signed = listing.signatureId !== undefined;
+  // Seal の正本＝出品者アカウントの人間認証。行為署名(signatureId)ではなくアカウント認証で判断する（Route A）。
+  const signed = listing.sellerVerified === true;
   const [seller, comments] = await Promise.all([
     getSellerSummary(listing.sellerId),
     listListingComments(listing.listingId),
@@ -127,24 +131,47 @@ export async function ListingDetailView({ currentUser, initialLiked = false, lis
             </div>
           </div>
 
-          {/* 取引。出品者本人は公開操作、それ以外は購入導線（PCインライン）。 */}
+          {/* 取引。出品者本人は公開/取り消し操作、それ以外は購入導線（PCインライン）。 */}
           {isSeller ? (
-            listing.status === "DRAFT" ? (
-              <div className="space-y-4">
-                {/* ブランドの核＝本人署名公開を主導線に。ログインのみ公開は副次に置く。 */}
-                <div className="space-y-1.5">
-                  <PublishListingButton label={t("publishSigned")} listing={listing} />
-                  <p className="text-xs leading-5 text-ink-soft">{t("publishSignedHint")}</p>
-                </div>
-                <form action={publishListingAction} className="space-y-1.5 border-t border-line pt-4">
+            <div className="space-y-2">
+              {listing.status === "DRAFT" && (
+                // 公開はログインのみ。認証済みアカウントの出品は自動で認証マーク(Seal)が付く（Route A: アカウント認証を継承）。
+                <form action={publishListingAction} className="space-y-1.5">
                   <input name="listingId" type="hidden" value={listing.listingId} />
-                  <ActionButton className="w-full" type="submit" variant="secondary">
+                  <ActionButton className="w-full" type="submit" variant="primary">
                     {t("publish")}
                   </ActionButton>
-                  <p className="text-xs leading-5 text-ink-soft">{t("publishUnsignedHint")}</p>
+                  <p className="text-xs leading-5 text-ink-soft">{t("publishHint")}</p>
                 </form>
-              </div>
-            ) : null
+              )}
+              {/* 取り消しは DRAFT/PUBLISHED のみ（SOLD/HIDDEN は backend が弾く）。確認ダイアログを挟む。 */}
+              {(listing.status === "DRAFT" || listing.status === "PUBLISHED") && (
+                <div className="space-y-1.5">
+                  <ConfirmActionButton
+                    action={withdrawListingAction}
+                    body={t("withdrawConfirmBody")}
+                    cancelLabel={t("withdrawCancel")}
+                    confirmLabel={t("withdrawConfirm")}
+                    confirmVariant="accent"
+                    listingId={listing.listingId}
+                    title={t("withdrawConfirmTitle")}
+                    triggerLabel={t("withdraw")}
+                    triggerVariant="secondary"
+                  />
+                  <p className="text-xs leading-5 text-ink-soft">{t("withdrawHint")}</p>
+                </div>
+              )}
+              {/* 取り消し済み(HIDDEN)は再出品で PUBLISHED へ戻せる。 */}
+              {listing.status === "HIDDEN" && (
+                <form action={relistListingAction} className="space-y-1.5">
+                  <input name="listingId" type="hidden" value={listing.listingId} />
+                  <ActionButton className="w-full" type="submit" variant="primary">
+                    {t("relist")}
+                  </ActionButton>
+                  <p className="text-xs leading-5 text-ink-soft">{t("relistHint")}</p>
+                </form>
+              )}
+            </div>
           ) : (
             <div className="hidden space-y-1.5 md:block">
               <ActionButton className="w-full" disabled={buy.disabled} href={buy.href} variant={buy.variant}>
@@ -154,7 +181,7 @@ export async function ListingDetailView({ currentUser, initialLiked = false, lis
             </div>
           )}
 
-          {/* いいね＋コメント導線。ZOZOのお気に入り相当をここに置く。 */}
+          {/* いいね（公開・認証必須）＋保存（私的・認証不要）＋コメント導線。 */}
           <div className="flex items-center gap-1 border-t border-line pt-4">
             <LikeButton
               ariaLabel={social("likeItem")}
@@ -162,6 +189,11 @@ export async function ListingDetailView({ currentUser, initialLiked = false, lis
               initialLiked={initialLiked}
               showCount
               toggleAction={toggleListingLikeAction.bind(null, listing.listingId)}
+            />
+            <SaveButton
+              ariaLabel={social("saveItem")}
+              initialSaved={initialSaved}
+              toggleAction={toggleListingSaveAction.bind(null, listing.listingId)}
             />
             <a
               aria-label="コメントへ"
@@ -182,7 +214,7 @@ export async function ListingDetailView({ currentUser, initialLiked = false, lis
             <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-2 text-sm">
               <div className="flex items-baseline gap-2">
                 <dt className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-faint">{t("category")}</dt>
-                <dd className="text-ink">{listing.category}</dd>
+                <dd className="text-ink"><CategoryLabel slug={listing.category} /></dd>
               </div>
               <div className="flex items-baseline gap-2">
                 <dt className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-faint">{t("condition")}</dt>

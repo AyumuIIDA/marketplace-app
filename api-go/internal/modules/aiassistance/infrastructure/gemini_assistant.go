@@ -54,16 +54,25 @@ func (g *GeminiAiAssistant) SuggestListingFields(ctx context.Context, in aiapp.S
 	if err != nil {
 		return aiapp.SuggestListingFieldsResult{}, err
 	}
-	prompt := strings.Join([]string{
+	lines := []string{
 		"あなたはフリマアプリの出品支援AIです。以下の情報から出品項目を日本語で提案してください。",
 		"ヒント: " + strFromPtr(in.UserHint, "(なし)"),
 		"添付された商品画像を読み取り、見た目・状態・カテゴリを反映してください。",
 		"confidenceNotesには推定の根拠や不確実な点を記載してください。",
-	}, "\n")
+	}
+	// 既存カテゴリがあれば、その中から最も近いものを必ず選ばせる（新カテゴリを作らせない）。
+	categorySchema := &genai.Schema{Type: genai.TypeString}
+	if len(in.AllowedCategories) > 0 {
+		lines = append(lines,
+			"categoryは必ず次の既存カテゴリのいずれかに合わせてください（新しいカテゴリを作らない）: "+
+				strings.Join(in.AllowedCategories, " / "))
+		categorySchema = &genai.Schema{Type: genai.TypeString, Format: "enum", Enum: in.AllowedCategories}
+	}
+	prompt := strings.Join(lines, "\n")
 	schema := objectSchema(map[string]*genai.Schema{
 		"title":           {Type: genai.TypeString},
 		"description":     {Type: genai.TypeString},
-		"category":        {Type: genai.TypeString},
+		"category":        categorySchema,
 		"condition":       {Type: genai.TypeString},
 		"confidenceNotes": {Type: genai.TypeArray, Items: &genai.Schema{Type: genai.TypeString}},
 	}, "title", "description", "category", "condition", "confidenceNotes")

@@ -45,10 +45,17 @@ type PublishListingWithHumanSignatureWorkflow struct {
 	tx              HumanSignatureTxRunner
 	listingPub      listingsapp.ListingPublicationService
 	humanSignatures *signaturesapp.HumanSignatureService
+	indexer         *ListingIndexer
 }
 
 func NewPublishListingWithHumanSignatureWorkflow(tx HumanSignatureTxRunner, pub listingsapp.ListingPublicationService, hs *signaturesapp.HumanSignatureService) *PublishListingWithHumanSignatureWorkflow {
 	return &PublishListingWithHumanSignatureWorkflow{tx: tx, listingPub: pub, humanSignatures: hs}
+}
+
+// WithIndexer はコミット後のベクトル投影を有効化する（任意。未設定なら投影しない）。
+func (w *PublishListingWithHumanSignatureWorkflow) WithIndexer(ix *ListingIndexer) *PublishListingWithHumanSignatureWorkflow {
+	w.indexer = ix
+	return w
 }
 
 func (w *PublishListingWithHumanSignatureWorkflow) Execute(ctx context.Context, in PublishListingInput) (HumanSignatureResult, error) {
@@ -103,6 +110,7 @@ func (w *PublishListingWithHumanSignatureWorkflow) Execute(ctx context.Context, 
 	if err != nil {
 		return HumanSignatureResult{}, err
 	}
+	w.indexer.Reindex(ctx, in.ListingID) // post-commit projection
 	return out, nil
 }
 
@@ -120,10 +128,17 @@ type UpdateListingWithHumanSignatureWorkflow struct {
 	tx              HumanSignatureTxRunner
 	listingPub      listingsapp.ListingPublicationService
 	humanSignatures *signaturesapp.HumanSignatureService
+	indexer         *ListingIndexer
 }
 
 func NewUpdateListingWithHumanSignatureWorkflow(tx HumanSignatureTxRunner, pub listingsapp.ListingPublicationService, hs *signaturesapp.HumanSignatureService) *UpdateListingWithHumanSignatureWorkflow {
 	return &UpdateListingWithHumanSignatureWorkflow{tx: tx, listingPub: pub, humanSignatures: hs}
+}
+
+// WithIndexer はコミット後のベクトル投影を有効化する（任意。未設定なら投影しない）。
+func (w *UpdateListingWithHumanSignatureWorkflow) WithIndexer(ix *ListingIndexer) *UpdateListingWithHumanSignatureWorkflow {
+	w.indexer = ix
+	return w
 }
 
 func (w *UpdateListingWithHumanSignatureWorkflow) Execute(ctx context.Context, in UpdateListingInput) (HumanSignatureResult, error) {
@@ -178,5 +193,6 @@ func (w *UpdateListingWithHumanSignatureWorkflow) Execute(ctx context.Context, i
 	if err != nil {
 		return HumanSignatureResult{}, err
 	}
+	w.indexer.Reindex(ctx, in.ListingID) // post-commit projection
 	return out, nil
 }

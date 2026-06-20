@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { loadMoreListingsAction } from "../actions/catalog.actions";
+import { categoryLabel } from "../category-labels";
 import type { ListingSort } from "../listing-sort";
 import type { ListingViewModel } from "../listing-view-model";
 import { ListingCard } from "./listing-card";
@@ -34,6 +35,7 @@ export function CategoryBrowser({
   const t = useTranslations("catalog");
   const seal = useTranslations("seal");
   const social = useTranslations("social");
+  const locale = useLocale();
   const [items, setItems] = useState(initialItems);
   const [hasMore, setHasMore] = useState(initialItems.length === pageSize);
   const [isPending, startTransition] = useTransition();
@@ -57,7 +59,7 @@ export function CategoryBrowser({
   return (
     <section>
       <div className="mb-4 flex items-baseline justify-between border-b border-line pb-3">
-        <h2 className="text-base font-semibold text-ink">{category}</h2>
+        <h2 className="text-base font-semibold text-ink">{categoryLabel(category, locale)}</h2>
         <span className="font-mono text-xs text-ink-faint">{t("count", { count: totalCount })}</span>
       </div>
 
@@ -68,6 +70,7 @@ export function CategoryBrowser({
             item={item}
             key={item.id}
             likeLabel={social("likeItem")}
+            saveLabel={social("saveItem")}
             signedLabel={seal("humanSigned")}
             soldLabel={t("sold")}
           />

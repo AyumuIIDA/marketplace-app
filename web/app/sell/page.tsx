@@ -21,13 +21,13 @@ export default async function SellPage() {
     listOrders({ limit: 100 }),
     getTranslations("sell"),
   ]);
-  const { humanLabel, userLabel } = toShellUserLabels(currentUser);
+  const { humanLabel, humanVerified, userLabel } = toShellUserLabels(currentUser);
 
   return (
     <MarketplaceShell
       activeSection="sell"
       authenticated={currentUser !== undefined}
-      humanLabel={humanLabel}
+      humanLabel={humanLabel} humanVerified={humanVerified}
       userLabel={userLabel}
     >
       <PageHeader description={t("description")} title={t("title")} />

@@ -66,6 +66,7 @@ LEFT JOIN (
 LEFT JOIN (
   SELECT listing_id, count(*) AS comment_count FROM listing_comments WHERE hidden_at IS NULL GROUP BY listing_id
 ) cc ON cc.listing_id = listings.id
+LEFT JOIN users su ON su.id = listings.seller_id
 WHERE (sqlc.narg('status')::listing_status IS NULL OR listings.status = sqlc.narg('status')::listing_status)
   AND (sqlc.narg('seller_id')::uuid IS NULL OR listings.seller_id = sqlc.narg('seller_id')::uuid)
   AND (sqlc.narg('category')::varchar IS NULL OR listings.category = sqlc.narg('category')::varchar)
@@ -77,7 +78,9 @@ WHERE (sqlc.narg('status')::listing_status IS NULL OR listings.status = sqlc.nar
     OR listings.title ILIKE '%' || sqlc.narg('keyword')::text || '%'
     OR listings.description ILIKE '%' || sqlc.narg('keyword')::text || '%'
   )
-  AND (sqlc.narg('signed')::boolean IS NULL OR (listings.signature_id IS NOT NULL) = sqlc.narg('signed')::boolean)
+  -- 「認証済みのみ」ファセット。Seal の正本＝出品者アカウントの人間認証(human_verified_at)で絞る
+  -- （行為署名 signature_id ではない）。Route A: 認証済み出品者の出品は認証済みとして扱う。
+  AND (sqlc.narg('signed')::boolean IS NULL OR (su.human_verified_at IS NOT NULL) = sqlc.narg('signed')::boolean)
 ORDER BY
   CASE WHEN sqlc.narg('sort')::text = 'priceAsc'  THEN listings.price END ASC,
   CASE WHEN sqlc.narg('sort')::text = 'priceDesc' THEN listings.price END DESC,
@@ -95,3 +98,8 @@ FROM listings
 WHERE status = 'PUBLISHED'
 GROUP BY category
 ORDER BY count DESC, category ASC;
+
+-- name: ListDistinctCategories :many
+-- 既存出品のユニークなカテゴリ（AI出品支援に制約として渡し、提案カテゴリを既存集合へ寄せる）。
+-- カテゴリのライフサイクルは未管理＝シード(abo)由来の既存データを正本とする。
+SELECT DISTINCT category FROM listings WHERE category <> '' ORDER BY category;

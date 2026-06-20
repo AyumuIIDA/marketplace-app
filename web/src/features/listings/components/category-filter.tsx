@@ -1,7 +1,9 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+
+import { categoryLabel } from "../category-labels";
 
 type CategoryFilterProps = {
   value: string;
@@ -9,9 +11,10 @@ type CategoryFilterProps = {
 };
 
 // カテゴリ絞り込みセレクト。?category= を更新し、keyword/sort 等の既存クエリは維持する。
-// 空選択でフィルタ解除。
+// 空選択でフィルタ解除。option の value はスラッグ、表示は対訳ラベル。
 export function CategoryFilter({ options, value }: CategoryFilterProps) {
   const t = useTranslations("catalog.category");
+  const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -39,7 +42,7 @@ export function CategoryFilter({ options, value }: CategoryFilterProps) {
         <option value="">{t("all")}</option>
         {options.map((category) => (
           <option key={category} value={category}>
-            {category}
+            {categoryLabel(category, locale)}
           </option>
         ))}
       </select>

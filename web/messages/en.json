@@ -1,7 +1,7 @@
 {
   "brand": {
-    "name": "Human-backed",
-    "tagline": "Signed by real people"
+    "name": "HuMarket",
+    "tagline": "Signed by human. Find by AI."
   },
   "search": {
     "label": "Search listings",
@@ -23,6 +23,8 @@
     "label": "Account",
     "profile": "Account",
     "orders": "Orders",
+    "verified": "Verified",
+    "verify": "Verify with World ID",
     "signOut": "Sign out"
   },
   "actions": {
@@ -48,7 +50,7 @@
     "toSignIn": "Sign in"
   },
   "onboarding": {
-    "brand": "Human-backed Marketplace",
+    "brand": "HuMarket",
     "title": "Choose your display name",
     "subtitle": "This is the name other people see. You can change it later.",
     "label": "Display name",
@@ -85,7 +87,10 @@
     "listings": "Listings",
     "count": "{count} items",
     "emptyTitle": "No listings",
-    "emptyBody": "This seller hasn’t published any items yet."
+    "emptyBody": "This seller hasn’t published any items yet.",
+    "reviews": "Reviews",
+    "reviewsEmpty": "No reviews yet.",
+    "verifiedBuyer": "Verified counterparty"
   },
   "dm": {
     "title": "Messages",
@@ -129,8 +134,24 @@
   },
   "locale": {
     "label": "Language",
+    "switchTo": "Switch to {lang}",
     "en": "English",
     "ja": "日本語"
+  },
+  "agentAccess": {
+    "title": "Connect an agent (MCP)",
+    "description": "Issue a token to connect an AI agent (like Claude) that acts as your account.",
+    "generate": "Generate token",
+    "regenerate": "Regenerate",
+    "issuing": "Issuing…",
+    "once": "This token is shown once. Store it safely (expires in {hours}h).",
+    "tokenLabel": "Access token",
+    "cliLabel": "Claude Code (native HTTP)",
+    "desktopLabel": "Claude Desktop (mcp-remote)",
+    "copy": "Copy",
+    "copied": "Copied",
+    "error": "Could not issue a token. Check that you’re signed in.",
+    "requiresVerification": "World ID verification is required to connect an agent. Verify via “Link World ID” in the sidebar."
   },
   "seal": {
     "humanSigned": "Signed by a verified human"
@@ -138,7 +159,7 @@
   "social": {
     "likeItem": "Like",
     "likedItem": "Liked",
-    "likeSeller": "Like seller",
+    "likeSeller": "Like",
     "likedSeller": "Liked",
     "sellerLabel": "Seller",
     "verifiedSeller": "Verified seller",
@@ -146,18 +167,29 @@
     "reviewCount": "{count} reviews",
     "likedItems": "Liked items",
     "likedItemsEmpty": "You haven’t liked any items yet.",
+    "unavailable": "Unavailable",
     "likedSellers": "Liked sellers",
-    "likedSellersEmpty": "You haven’t liked any sellers yet."
+    "likedSellersEmpty": "You haven’t liked any sellers yet.",
+    "saveItem": "Save",
+    "savedItem": "Saved",
+    "follow": "Follow",
+    "following": "Following",
+    "savedItems": "Saved items",
+    "savedItemsEmpty": "You haven’t saved any items yet.",
+    "followingSellers": "Following",
+    "followingEmpty": "You aren’t following any sellers yet.",
+    "likeRequiresVerification": "Liking requires World ID verification (use Save if you’re not verified yet)"
   },
   "catalog": {
     "title": "Listings",
-    "subtitle": "Items listed by verified people.",
+    "subtitle": "",
     "searchResults": "Results for “{query}”",
     "create": "Sell an item",
     "available": "Available",
     "count": "{count} items",
     "draft": "Draft",
     "sold": "Sold",
+    "withdrawn": "Withdrawn",
     "showMore": "Show more",
     "loadMore": "Load more",
     "verifiedOnly": "Signed only",
@@ -233,6 +265,9 @@
       "tabPurchases": "Purchases",
       "tabListings": "Listings",
       "tabLikes": "Likes",
+      "tabSaved": "Saved",
+      "tabFollowing": "Following",
+      "tabConnect": "Connect",
       "statListings": "Listings",
       "statPurchases": "Purchases"
     }
@@ -240,30 +275,36 @@
   "listing": {
     "backAction": "Back to listings",
     "unavailableTitle": "This listing is not available",
-    "signed": "Human-signed",
-    "unsigned": "Unsigned",
+    "signed": "Verified",
+    "unsigned": "Unverified",
     "category": "Category",
     "condition": "Condition",
     "seller": "Seller ID",
-    "signedTitle": "Signed by a verified human",
-    "unsignedTitle": "Unsigned listing",
-    "signedExplain": "The seller verified with World ID and digitally signed this listing — proof a real person listed it.",
-    "unsignedExplain": "This listing has no World ID signature. It can still be purchased, but it doesn’t carry the human-signed seal.",
+    "signedTitle": "Verified human seller",
+    "unsignedTitle": "Unverified seller",
+    "signedExplain": "The seller verified they're human with World ID. Listings from verified accounts carry the seal.",
+    "unsignedExplain": "This seller hasn't verified with World ID yet. It can still be purchased, but it doesn't carry the human seal.",
     "actions": "Actions",
     "signInToBuy": "Sign in to buy",
-    "publishHint": "Sign with World ID to publish. Purchasing opens once signed.",
+    "publishHint": "Publish with just your login. If you're World ID verified, your listing carries the seal automatically.",
+    "withdraw": "Withdraw listing",
+    "withdrawHint": "Takes the listing down from search and purchase. You can relist it anytime.",
+    "withdrawConfirmTitle": "Withdraw this listing?",
+    "withdrawConfirmBody": "It will be removed from search and purchase. You can relist it later from your listings.",
+    "withdrawConfirm": "Withdraw",
+    "withdrawCancel": "Cancel",
+    "relist": "Relist",
+    "relistHint": "Republish this withdrawn listing. It returns to search and purchase.",
     "buyConfirm": "Buy with confirmation",
     "buyConfirmHint": "Review the order before paying. Nothing is charged at this step.",
     "worldPayHint": "Pay on-chain with WLD inside World App.",
     "payOnchain": "On-chain payment (WLD)",
     "notPurchasable": "This listing cannot be purchased right now.",
     "publish": "Publish",
-    "publishUnsignedHint": "Publish with just your login — no verification needed. You can add a World ID signature later.",
-    "publishSigned": "Publish with World ID",
-    "publishSignedHint": "Adds the human-signed seal — buyers trust it more.",
     "soldOut": "Sold out",
     "priceLabel": "Price",
-    "descriptionLabel": "Description"
+    "descriptionLabel": "Description",
+    "relatedTitle": "Related items"
   },
   "listingForm": {
     "photosSectionTitle": "Photos",
@@ -334,6 +375,7 @@
     "sendMessage": "Send a message",
     "messages": "Messages",
     "noMessages": "No messages yet.",
+    "hideMessage": "Hide",
     "you": "You",
     "messageLabel": "Message",
     "messagePlaceholder": "Send a transaction update.",
@@ -364,10 +406,12 @@
     "submit": "Create review draft"
   },
   "discover": {
-    "brand": "AI Discovery",
+    "brand": "HuMarket",
     "greeting": "What are you looking for?",
-    "modeQuick": "Quick search",
-    "modeAgent": "Ask the agent",
+    "modeQuick": "Search in your words",
+    "modeAgent": "Search with an AI agent",
+    "modeQuickDesc": "Write what you want; AI matches by meaning.",
+    "modeAgentDesc": "Refine results in a chat with AI.",
     "providerLabel": "AI vendor",
     "providerGemini": "Gemini",
     "providerOpenai": "ChatGPT",
@@ -416,7 +460,15 @@
     "noResults": "No matching items. Try describing it differently.",
     "matched": "keyword match",
     "signed": "Human-signed",
-    "buy": "Buy now"
+    "buy": "Buy now",
+    "searchError": "Search is unstable right now. Please wait a moment and try again.",
+    "newSearch": "New search",
+    "ragHow": "How this answer was found",
+    "ragSearch": "Retrieved {count} candidates by semantic search",
+    "ragSearchKeyword": "Semantic search was empty, so retrieved {count} candidates by keyword search",
+    "ragGenerate": "{provider} composed the answer grounded in those candidates",
+    "agentSearching": "Searching for matches…",
+    "agentEmptyHint": "Describe what you want in chat. We refine the matches as you add detail."
   },
   "sell": {
     "title": "Your listings",
@@ -435,9 +487,7 @@
     "inTransactionTitle": "In transaction"
   },
   "home": {
-    "heroEyebrow": "A marketplace of verified people",
-    "heroTitle": "Signed by humans. Found by AI.",
-    "heroBody": "Only World ID–verified people can list and review. AI finds what you want from your own words.",
+    "heroTitle": "Signed by human. Find by AI.",
     "heroDiscover": "Discover with AI",
     "heroSell": "Sell an item"
   },

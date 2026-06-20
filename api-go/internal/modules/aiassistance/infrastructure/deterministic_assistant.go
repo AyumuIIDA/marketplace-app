@@ -38,10 +38,15 @@ func (DeterministicAiAssistant) SuggestListingFields(_ context.Context, in aiapp
 		title = sliceRunes(hint, 40)
 		description = fmt.Sprintf("%s。状態は画像と説明から推定しています。", hint)
 	}
+	// 既存カテゴリがあれば先頭に寄せる（決定論でも既存集合へ整合）。
+	category := "general"
+	if len(in.AllowedCategories) > 0 {
+		category = in.AllowedCategories[0]
+	}
 	return aiapp.SuggestListingFieldsResult{
 		Title:           title,
 		Description:     description,
-		Category:        "general",
+		Category:        category,
 		Condition:       "good",
 		ConfidenceNotes: []string{"状態とカテゴリは入力テキストから推定した暫定値です。"},
 	}, nil

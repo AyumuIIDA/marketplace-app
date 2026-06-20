@@ -43,7 +43,8 @@ func (t searchListingsTool) Execute(ctx context.Context, in map[string]any, tc T
 
 // get_listing
 type getListingTool struct {
-	uc *listingsapp.GetListingUseCase
+	uc      *listingsapp.GetListingUseCase
+	fetcher ImageFetcher
 }
 
 func (getListingTool) Name() string { return "get_listing" }
@@ -60,7 +61,35 @@ func (t getListingTool) Execute(ctx context.Context, in map[string]any, tc ToolC
 	if err != nil {
 		return ToolResult{}, err
 	}
-	return Succeeded(out), nil
+	// リッチclientで商品画像を描画させる。ヒーロー(先頭)はインライン(base64)で確実に出し、
+	// 残りは軽量な ResourceLink。fetcher 未注入/取得失敗時は ResourceLink へ劣化する。
+	return SucceededWithImages(out, t.buildImages(ctx, out.Title, out.Images)), nil
+}
+
+// maxListingImageBlocks は1出品あたりclientへ返す画像ブロック数の上限（ペイロード抑制）。
+const maxListingImageBlocks = 6
+
+func (t getListingTool) buildImages(ctx context.Context, title string, imgs []listingsapp.ImageView) []ToolImage {
+	if len(imgs) == 0 {
+		return nil
+	}
+	if len(imgs) > maxListingImageBlocks {
+		imgs = imgs[:maxListingImageBlocks]
+	}
+	out := make([]ToolImage, 0, len(imgs))
+	for i, im := range imgs {
+		block := ToolImage{URL: im.URL, Title: title, MimeType: "image/jpeg"}
+		if i == 0 && t.fetcher != nil { // ヒーローのみインライン化
+			if data, mime, ferr := t.fetcher.Fetch(ctx, im.URL); ferr == nil && len(data) > 0 {
+				block.Data = data
+				if mime != "" {
+					block.MimeType = mime
+				}
+			}
+		}
+		out = append(out, block)
+	}
+	return out
 }
 
 // create_listing_draft
@@ -101,8 +130,10 @@ func (t createListingDraftTool) Execute(ctx context.Context, in map[string]any, 
 }
 
 // publish_listing
+// MCPクライアントは World ID UI を出せないため、エージェント経路の公開は login のみ（unsigned）で自律実行する。
+// 人格の担保は「MCPトークンを発行できるのは World ID 認証済みユーザーのみ」という発行ゲート側で行う（B方針）。
 type publishListingTool struct {
-	wf *workflows.PublishListingWithHumanSignatureWorkflow
+	uc *workflows.PublishListingWorkflow
 }
 
 func (publishListingTool) Name() string { return "publish_listing" }
@@ -111,19 +142,13 @@ func (t publishListingTool) Execute(ctx context.Context, in map[string]any, tc T
 	if err != nil {
 		return ToolResult{}, err
 	}
-	idKit, ok := toIdKit(in)
-	if !ok {
-		return RequiresHumanSignature(map[string]any{"actionType": "listing-publish", "resourceType": "LISTING", "resourceId": listingID.String()}), nil
-	}
 	sellerID, err := requireUserID(tc)
 	if err != nil {
 		return ToolResult{}, err
 	}
-	out, err := t.wf.Execute(ctx, workflows.PublishListingInput{
-		ListingID:           listingID,
-		SellerID:            sellerID,
-		IdKit:               idKit,
-		ExpectedEnvironment: argStr(in, "expectedEnvironment"),
+	out, err := t.uc.Execute(ctx, listingsapp.PublishListingInput{
+		ListingID: listingID,
+		SellerID:  sellerID,
 	})
 	if err != nil {
 		return ToolResult{}, err

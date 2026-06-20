@@ -2,11 +2,12 @@
 
 import type { ReactNode } from "react";
 import { useState, useTransition } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { ActionButton } from "../../../components/ui/action-button";
 import { inputClassName, textareaClassName } from "../../../components/ui/form-field";
 import { createListingAction, suggestListingFieldsAction } from "../actions/listing.actions";
+import { categoryLabel, CATEGORY_SLUGS } from "../category-labels";
 import { uploadListingImage, type UploadedImage } from "../upload-image.client";
 
 const MAX_IMAGES = 10;
@@ -17,25 +18,12 @@ const FEE_RATE = 0.1;
 
 // 状態は Mercari と同じ6段階。値は表示ラベル文字列をそのまま送信する（API は自由文字列）。
 const CONDITION_KEYS = ["new", "likeNew", "good", "fair", "poor", "bad"] as const;
-const CATEGORY_KEYS = [
-  "fashion",
-  "babyKids",
-  "gamesToys",
-  "booksMagazines",
-  "music",
-  "electronics",
-  "sports",
-  "handmade",
-  "beauty",
-  "autoMoto",
-  "interior",
-  "other",
-] as const;
 
 const yen = (value: number) => `¥${value.toLocaleString("ja-JP")}`;
 
 export function ListingForm() {
   const tf = useTranslations("listingForm");
+  const locale = useLocale();
   const [userHint, setUserHint] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -95,12 +83,12 @@ export function ListingForm() {
   }
 
   const conditionOptions = CONDITION_KEYS.map((key) => tf(`condition.${key}`));
-  const categoryOptions = CATEGORY_KEYS.map((key) => tf(`category.${key}`));
+  // カテゴリは abo の正準スラッグ（DB/AI 制約と一致）。値=スラッグ、表示=対訳ラベル。
   // AI提案などで定型外の値が来たら、選択肢に補って必ず表示・選択できるようにする。
   const categoryChoices =
-    category.length > 0 && !categoryOptions.includes(category)
-      ? [category, ...categoryOptions]
-      : categoryOptions;
+    category.length > 0 && !CATEGORY_SLUGS.includes(category)
+      ? [category, ...CATEGORY_SLUGS]
+      : CATEGORY_SLUGS;
 
   const priceNumber = Number(price);
   const hasValidPrice = Number.isFinite(priceNumber) && priceNumber >= MIN_PRICE;
@@ -227,7 +215,7 @@ export function ListingForm() {
               </option>
               {categoryChoices.map((choice) => (
                 <option key={choice} value={choice}>
-                  {choice}
+                  {categoryLabel(choice, locale)}
                 </option>
               ))}
             </select>

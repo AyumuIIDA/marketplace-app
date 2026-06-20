@@ -4,6 +4,7 @@ import { IDKitRequestWidget, type IDKitResult, orbLegacy } from "@worldcoin/idki
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
+import { Seal } from "../../../components/ui/seal";
 import { createWorldIdRpContext, type WorldIdRpContext } from "../../../lib/api/world-id-context.client";
 import { getWorldAppId, getWorldIdEnvironment, type WorldIdAction } from "../../../lib/world/world-config";
 import { linkWorldIdAction } from "../actions/world-id.actions";
@@ -15,21 +16,6 @@ type WorldIdButtonProps = {
   onVerified?: (result: IDKitResult) => Promise<void>;
   signal?: string;
 };
-
-// World ID 公式準拠の人間性検証マーク（オーブ/グローブ）。「Verify with World ID」ブランドボタンに使用。
-function WorldMark() {
-  return (
-    <svg aria-hidden className="size-4" fill="none" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-      <path
-        d="M12 3c-3.2 2.6-3.2 15.4 0 18M12 3c3.2 2.6 3.2 15.4 0 18M3.4 9.5h17.2M3.4 14.5h17.2"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="1.4"
-      />
-    </svg>
-  );
-}
 
 export function WorldIdButton({ action, label, onBeforeOpen, onVerified, signal }: WorldIdButtonProps) {
   const t = useTranslations("worldId");
@@ -75,7 +61,7 @@ export function WorldIdButton({ action, label, onBeforeOpen, onVerified, signal 
         onClick={openWidget}
         type="button"
       >
-        <WorldMark />
+        <Seal size="xs" />
         {isPending ? t("verifying") : label}
       </button>
       {message !== undefined && <p className="text-xs leading-5 text-ink-soft">{message}</p>}

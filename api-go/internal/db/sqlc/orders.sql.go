@@ -13,7 +13,7 @@ import (
 )
 
 const getOrderByID = `-- name: GetOrderByID :one
-SELECT id, listing_id, buyer_id, seller_id, status, price, currency, created_at, paid_at, shipped_at, received_at, completed_at, canceled_at FROM orders WHERE id = $1
+SELECT id, listing_id, buyer_id, seller_id, status, price, currency, created_at, paid_at, shipped_at, received_at, completed_at, canceled_at, listing_title, listing_image_url FROM orders WHERE id = $1
 `
 
 func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error) {
@@ -33,12 +33,14 @@ func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error)
 		&i.ReceivedAt,
 		&i.CompletedAt,
 		&i.CanceledAt,
+		&i.ListingTitle,
+		&i.ListingImageUrl,
 	)
 	return i, err
 }
 
 const getOrderByListingID = `-- name: GetOrderByListingID :one
-SELECT id, listing_id, buyer_id, seller_id, status, price, currency, created_at, paid_at, shipped_at, received_at, completed_at, canceled_at FROM orders WHERE listing_id = $1
+SELECT id, listing_id, buyer_id, seller_id, status, price, currency, created_at, paid_at, shipped_at, received_at, completed_at, canceled_at, listing_title, listing_image_url FROM orders WHERE listing_id = $1
 `
 
 func (q *Queries) GetOrderByListingID(ctx context.Context, listingID uuid.UUID) (Order, error) {
@@ -58,12 +60,14 @@ func (q *Queries) GetOrderByListingID(ctx context.Context, listingID uuid.UUID) 
 		&i.ReceivedAt,
 		&i.CompletedAt,
 		&i.CanceledAt,
+		&i.ListingTitle,
+		&i.ListingImageUrl,
 	)
 	return i, err
 }
 
 const searchOrders = `-- name: SearchOrders :many
-SELECT id, listing_id, buyer_id, seller_id, status, price, currency, created_at, paid_at, shipped_at, received_at, completed_at, canceled_at FROM orders
+SELECT id, listing_id, buyer_id, seller_id, status, price, currency, created_at, paid_at, shipped_at, received_at, completed_at, canceled_at, listing_title, listing_image_url FROM orders
 WHERE (
     $1::uuid IS NULL
     OR buyer_id = $1::uuid
@@ -72,7 +76,7 @@ WHERE (
   AND ($2::uuid IS NULL OR buyer_id = $2::uuid)
   AND ($3::uuid IS NULL OR seller_id = $3::uuid)
   AND ($4::order_status IS NULL OR status = $4::order_status)
-ORDER BY created_at ASC
+ORDER BY created_at DESC
 LIMIT $5::integer
 `
 
@@ -114,6 +118,8 @@ func (q *Queries) SearchOrders(ctx context.Context, arg SearchOrdersParams) ([]O
 			&i.ReceivedAt,
 			&i.CompletedAt,
 			&i.CanceledAt,
+			&i.ListingTitle,
+			&i.ListingImageUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -128,9 +134,10 @@ func (q *Queries) SearchOrders(ctx context.Context, arg SearchOrdersParams) ([]O
 const upsertOrder = `-- name: UpsertOrder :exec
 INSERT INTO orders (
     id, listing_id, buyer_id, seller_id, status, price, currency,
+    listing_title, listing_image_url,
     created_at, paid_at, shipped_at, received_at, completed_at, canceled_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
 )
 ON CONFLICT (id) DO UPDATE SET
     status = EXCLUDED.status,
@@ -141,21 +148,25 @@ ON CONFLICT (id) DO UPDATE SET
 `
 
 type UpsertOrderParams struct {
-	ID          uuid.UUID
-	ListingID   uuid.UUID
-	BuyerID     uuid.UUID
-	SellerID    uuid.UUID
-	Status      OrderStatus
-	Price       int32
-	Currency    string
-	CreatedAt   pgtype.Timestamptz
-	PaidAt      pgtype.Timestamptz
-	ShippedAt   pgtype.Timestamptz
-	ReceivedAt  pgtype.Timestamptz
-	CompletedAt pgtype.Timestamptz
-	CanceledAt  pgtype.Timestamptz
+	ID              uuid.UUID
+	ListingID       uuid.UUID
+	BuyerID         uuid.UUID
+	SellerID        uuid.UUID
+	Status          OrderStatus
+	Price           int32
+	Currency        string
+	ListingTitle    string
+	ListingImageUrl string
+	CreatedAt       pgtype.Timestamptz
+	PaidAt          pgtype.Timestamptz
+	ShippedAt       pgtype.Timestamptz
+	ReceivedAt      pgtype.Timestamptz
+	CompletedAt     pgtype.Timestamptz
+	CanceledAt      pgtype.Timestamptz
 }
 
+// listing_title / listing_image_url は購入時の商品スナップショット。状態更新(ON CONFLICT)では
+// 上書きしない（焼き付けた値を保持する）。
 func (q *Queries) UpsertOrder(ctx context.Context, arg UpsertOrderParams) error {
 	_, err := q.db.Exec(ctx, upsertOrder,
 		arg.ID,
@@ -165,6 +176,8 @@ func (q *Queries) UpsertOrder(ctx context.Context, arg UpsertOrderParams) error 
 		arg.Status,
 		arg.Price,
 		arg.Currency,
+		arg.ListingTitle,
+		arg.ListingImageUrl,
 		arg.CreatedAt,
 		arg.PaidAt,
 		arg.ShippedAt,

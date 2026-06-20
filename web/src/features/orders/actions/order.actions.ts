@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { sendOrderMessage } from "../../../lib/api/messages.api";
+import { hideOrderMessage, sendOrderMessage } from "../../../lib/api/messages.api";
 import { markOrderReceived, markOrderShipped } from "../../../lib/api/orders.api";
 
 export async function markOrderShippedAction(formData: FormData): Promise<void> {
@@ -26,6 +26,14 @@ export async function sendOrderMessageAction(formData: FormData): Promise<void> 
   const orderId = requiredFormValue(formData, "orderId");
 
   await sendOrderMessage(orderId, requiredFormValue(formData, "body"));
+  revalidatePath(`/orders/${orderId}`);
+  redirect(`/orders/${orderId}`);
+}
+
+export async function hideOrderMessageAction(formData: FormData): Promise<void> {
+  const orderId = requiredFormValue(formData, "orderId");
+
+  await hideOrderMessage(requiredFormValue(formData, "messageId"));
   revalidatePath(`/orders/${orderId}`);
   redirect(`/orders/${orderId}`);
 }

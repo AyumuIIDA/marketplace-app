@@ -8,12 +8,15 @@ export type ListingViewModel = {
   currency: "JPY";
   category: string;
   sellerId: string;
-  signed: boolean;
+  // 出品者が人間認証済みか。Seal(認証マーク)の表示判定に使う（アカウント認証が正本）。
+  sellerVerified: boolean;
   status: Listing["status"];
   createdAt: string;
   imageUrl?: string;
   // 現在のユーザーがこの出品をいいね済みか（初期表示のhydrate用）。
   liked: boolean;
+  // 現在のユーザーがこの出品を保存済みか（私的ウォッチリスト。初期表示のhydrate用）。
+  saved: boolean;
   likeCount: number;
   commentCount: number;
 };

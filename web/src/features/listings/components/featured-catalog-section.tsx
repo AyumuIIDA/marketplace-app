@@ -5,6 +5,7 @@ import { searchListings, type ListingCategory } from "../../../lib/api/listings.
 import { groupByCategory, type ListingSort } from "../listing-sort";
 import type { ListingViewModel } from "../listing-view-model";
 import { mapListingsToViewModels } from "../listing.mapper";
+import { CategoryLabel } from "./category-label";
 import { ListingGrid } from "./listing-grid";
 
 type CatalogSectionProps = {
@@ -88,7 +89,7 @@ export async function FeaturedCatalogSection({
       {groups.map((group) => (
         <section key={group.category}>
           <div className="mb-4 flex items-baseline justify-between gap-3 border-b border-line pb-3">
-            <h2 className="text-base font-semibold text-ink">{group.category}</h2>
+            <h2 className="text-base font-semibold text-ink"><CategoryLabel slug={group.category} /></h2>
             <a
               className="shrink-0 text-sm font-semibold text-seal-strong underline-offset-2 hover:underline"
               href={categoryHref(group.category, searchQuery, sort)}

@@ -23,11 +23,13 @@ func NewOrderFulfillmentService(g ids.Generator, c clock.Clock) *OrderFulfillmen
 }
 
 type CreatePaidOrderInput struct {
-	ListingID uuid.UUID
-	BuyerID   uuid.UUID
-	SellerID  uuid.UUID
-	Price     int32
-	Currency  string
+	ListingID       uuid.UUID
+	BuyerID         uuid.UUID
+	SellerID        uuid.UUID
+	Price           int32
+	Currency        string
+	ListingTitle    string
+	ListingImageURL string
 }
 
 // CreatePaidOrder は同一listingに既存注文が無ければ支払い済み注文を作る。
@@ -41,13 +43,15 @@ func (s *OrderFulfillmentService) CreatePaidOrder(ctx context.Context, repo orde
 	}
 
 	order, err := ordersdomain.CreatePaid(ordersdomain.CreatePaidOrderInput{
-		ID:        s.ids.NewID(),
-		ListingID: in.ListingID,
-		BuyerID:   in.BuyerID,
-		SellerID:  in.SellerID,
-		Price:     in.Price,
-		Currency:  in.Currency,
-		Now:       s.clock.Now(),
+		ID:              s.ids.NewID(),
+		ListingID:       in.ListingID,
+		BuyerID:         in.BuyerID,
+		SellerID:        in.SellerID,
+		Price:           in.Price,
+		Currency:        in.Currency,
+		ListingTitle:    in.ListingTitle,
+		ListingImageURL: in.ListingImageURL,
+		Now:             s.clock.Now(),
 	})
 	if err != nil {
 		return OrderView{}, err

@@ -46,10 +46,17 @@ type PurchaseItemWorkflow struct {
 	listingPurchase  listingsapp.ListingPurchaseService
 	orderFulfillment *ordersapp.OrderFulfillmentService
 	clock            clock.Clock
+	indexer          *ListingIndexer
 }
 
 func NewPurchaseItemWorkflow(tx PurchaseTxRunner, lp listingsapp.ListingPurchaseService, of *ordersapp.OrderFulfillmentService, c clock.Clock) *PurchaseItemWorkflow {
 	return &PurchaseItemWorkflow{tx: tx, listingPurchase: lp, orderFulfillment: of, clock: c}
+}
+
+// WithIndexer はコミット後のベクトル投影を有効化する（売却済みは検索対象から除外）。
+func (w *PurchaseItemWorkflow) WithIndexer(ix *ListingIndexer) *PurchaseItemWorkflow {
+	w.indexer = ix
+	return w
 }
 
 func (w *PurchaseItemWorkflow) Execute(ctx context.Context, in PurchaseItemInput) (PurchaseItemResult, error) {
@@ -63,12 +70,22 @@ func (w *PurchaseItemWorkflow) Execute(ctx context.Context, in PurchaseItemInput
 		if err != nil {
 			return err
 		}
+		// claim は画像を空で返すため、スナップショット用に先頭画像URLを別途 hydrate する（best-effort）。
+		// 画像取得の失敗で購入を巻き戻さない（タイトルは常に取れる／画像欠落は no photo 表示で許容）。
+		thumbnailURL := ""
+		if full, ferr := repos.Listings.FindByID(ctx, listing.ID()); ferr == nil && full != nil {
+			if images := full.Images(); len(images) > 0 {
+				thumbnailURL = images[0].URL
+			}
+		}
 		out, err := w.orderFulfillment.CreatePaidOrder(ctx, repos.Orders, ordersapp.CreatePaidOrderInput{
-			ListingID: listing.ID(),
-			BuyerID:   in.BuyerID,
-			SellerID:  listing.SellerID(),
-			Price:     listing.Fields().Price,
-			Currency:  listing.Fields().Currency,
+			ListingID:       listing.ID(),
+			BuyerID:         in.BuyerID,
+			SellerID:        listing.SellerID(),
+			Price:           listing.Fields().Price,
+			Currency:        listing.Fields().Currency,
+			ListingTitle:    listing.Fields().Title,
+			ListingImageURL: thumbnailURL,
 		})
 		if err != nil {
 			return err
@@ -79,5 +96,6 @@ func (w *PurchaseItemWorkflow) Execute(ctx context.Context, in PurchaseItemInput
 	if err != nil {
 		return PurchaseItemResult{}, err
 	}
+	w.indexer.Remove(ctx, in.ListingID) // post-commit projection: 売却済みは検索対象外
 	return PurchaseItemResult{Status: "PAID", Order: &order}, nil
 }

@@ -14,8 +14,8 @@ const STEPS = ["paidAt", "shippedAt", "receivedAt", "completedAt"] as const;
 
 /*
   取引行リスト。買い手(購入)と売り手(取引中)で共用し、各行は取引状況ページ /orders/[orderId] へ導線する。
-  状態バッジ＋4段ミニ進捗で「いまどの段階か」を一目化する（商品名/写真は遷移先の取引状況ページで見せる。
-  取引相手の SOLD 出品は閲覧権限が無く一覧では取得しない＝余計なAPIと403を避ける）。
+  商品名/写真は注文に焼き付けたスナップショット(listingTitle/listingImageUrl)を表示する。
+  これにより SOLD 化後でも live listing を取得せず（=余計なAPIと403を避け）「何を買ったか」が一覧で分かる。
 */
 export async function TransactionList({ currentUserId, emptyLabel, orders }: TransactionListProps) {
   const t = await getTranslations("transaction");
@@ -37,12 +37,16 @@ export async function TransactionList({ currentUserId, emptyLabel, orders }: Tra
               className="flex items-center gap-4 rounded-lg border border-line bg-surface p-4 shadow-sm transition-colors hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30"
               href={`/orders/${order.orderId}`}
             >
+              <Thumbnail title={order.listingTitle} url={order.listingImageUrl} />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge tone={tone}>{t(`status.${order.status}`)}</StatusBadge>
                   <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-faint">{role}</span>
                   <span className="font-mono text-[11px] text-ink-faint">{shortRef(order.orderId)}</span>
                 </div>
+                {order.listingTitle.length > 0 && (
+                  <p className="mt-1.5 truncate text-sm font-semibold text-ink">{order.listingTitle}</p>
+                )}
                 <div className="mt-2.5 flex items-center justify-between gap-3">
                   {canceled ? (
                     <span className="text-xs text-ink-faint">{formatDate(order.createdAt)}</span>
@@ -62,6 +66,19 @@ export async function TransactionList({ currentUserId, emptyLabel, orders }: Tra
       })}
     </ul>
   );
+}
+
+// 注文に焼き付けた商品サムネ。URL が空（旧注文/画像なし）なら no photo プレースホルダ。
+function Thumbnail({ title, url }: { title: string; url: string }) {
+  if (url.length === 0) {
+    return (
+      <span className="grid size-14 shrink-0 place-items-center rounded-md bg-paper font-mono text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+        no photo
+      </span>
+    );
+  }
+  // 商品画像はブラウザが storage を直接読む公開アセット
+  return <img alt={title} className="size-14 shrink-0 rounded-md object-cover" src={url} />;
 }
 
 // 4段の進捗ドット。タイムスタンプが入った段階まで朱で塗る。

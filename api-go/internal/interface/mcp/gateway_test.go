@@ -2,6 +2,7 @@ package mcpinterface
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -39,8 +40,9 @@ func TestInProcessGateway_PresentDiscoverOutput_Succeeds(t *testing.T) {
 		t.Fatalf("assistantMessage = %v", data["assistantMessage"])
 	}
 	// content text は人間/LLM向けの短い要約。
-	if out.ContentText != "Tool call succeeded." {
-		t.Fatalf("contentText = %q", out.ContentText)
+	// 成功結果は content テキストにも実データ(JSON)が入る（client がモデルに渡せるよう）。
+	if !strings.Contains(out.ContentText, "Found 2 sneakers under your budget.") {
+		t.Fatalf("contentText should carry the data JSON, got %q", out.ContentText)
 	}
 	// 監査記録される。
 	if len(repo.saved) != 1 {

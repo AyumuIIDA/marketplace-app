@@ -27,6 +27,11 @@ type Deps struct {
 	LikedSellers  *socialapp.ListLikedSellersUseCase
 	CreateComment *socialapp.CreateListingCommentUseCase
 	ListComments  *socialapp.ListListingCommentsUseCase
+	// 私的レイヤー（保存/フォロー。認証不要）。
+	SaveListing     *socialapp.SaveListingUseCase
+	SavedListings   *workflows.LikedListingsWorkflow // 保存ID→本体hydrate（いいね一覧と同workflowを流用）
+	FollowSeller    *socialapp.FollowSellerUseCase
+	FollowedSellers *socialapp.ListFollowedSellersUseCase
 }
 
 // RegisterRoutes は social 系を認証済みグループへ登録する。
@@ -35,14 +40,20 @@ type Deps struct {
 func RegisterRoutes(r chi.Router, deps Deps) {
 	r.Post("/listings/{listingId}/like", deps.handleLikeListing)
 	r.Delete("/listings/{listingId}/like", deps.handleUnlikeListing)
+	r.Post("/listings/{listingId}/save", deps.handleSaveListing)
+	r.Delete("/listings/{listingId}/save", deps.handleUnsaveListing)
 	r.Get("/listings/{listingId}/comments", deps.handleListComments)
 	r.Post("/listings/{listingId}/comments", deps.handleCreateComment)
 	r.Get("/me/liked-listings", deps.handleLikedListings)
 	r.Get("/me/liked-sellers", deps.handleLikedSellers)
+	r.Get("/me/saved-listings", deps.handleSavedListings)
+	r.Get("/me/following", deps.handleFollowedSellers)
 	r.Route("/sellers", func(sr chi.Router) {
 		sr.Get("/{sellerId}", deps.handleGetSeller)
 		sr.Post("/{sellerId}/like", deps.handleLikeSeller)
 		sr.Delete("/{sellerId}/like", deps.handleUnlikeSeller)
+		sr.Post("/{sellerId}/follow", deps.handleFollowSeller)
+		sr.Delete("/{sellerId}/follow", deps.handleUnfollowSeller)
 	})
 }
 
@@ -95,6 +106,104 @@ func (deps Deps) handleUnlikeSeller(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out, err := deps.SellerLike.Unlike(r.Context(), userID, sellerID)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	httpinterface.WriteJSON(w, http.StatusOK, out)
+}
+
+// --- 保存（商品の私的ウォッチリスト） ---
+
+func (deps Deps) handleSaveListing(w http.ResponseWriter, r *http.Request) {
+	userID, listingID, err := userAndPath(r, "listingId", "Listing")
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	out, err := deps.SaveListing.Save(r.Context(), userID, listingID)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	httpinterface.WriteJSON(w, http.StatusOK, out)
+}
+
+func (deps Deps) handleUnsaveListing(w http.ResponseWriter, r *http.Request) {
+	userID, listingID, err := userAndPath(r, "listingId", "Listing")
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	out, err := deps.SaveListing.Unsave(r.Context(), userID, listingID)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	httpinterface.WriteJSON(w, http.StatusOK, out)
+}
+
+func (deps Deps) handleSavedListings(w http.ResponseWriter, r *http.Request) {
+	userID, err := httpinterface.CurrentUserID(r)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	limit, offset, err := pageParams(r)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	out, err := deps.SavedListings.Execute(r.Context(), userID, limit, offset)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	httpinterface.WriteJSON(w, http.StatusOK, out)
+}
+
+// --- フォロー（出品者の私的フォロー） ---
+
+func (deps Deps) handleFollowSeller(w http.ResponseWriter, r *http.Request) {
+	userID, sellerID, err := userAndPath(r, "sellerId", "Seller")
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	out, err := deps.FollowSeller.Follow(r.Context(), userID, sellerID)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	httpinterface.WriteJSON(w, http.StatusOK, out)
+}
+
+func (deps Deps) handleUnfollowSeller(w http.ResponseWriter, r *http.Request) {
+	userID, sellerID, err := userAndPath(r, "sellerId", "Seller")
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	out, err := deps.FollowSeller.Unfollow(r.Context(), userID, sellerID)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	httpinterface.WriteJSON(w, http.StatusOK, out)
+}
+
+func (deps Deps) handleFollowedSellers(w http.ResponseWriter, r *http.Request) {
+	userID, err := httpinterface.CurrentUserID(r)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	limit, offset, err := pageParams(r)
+	if err != nil {
+		httpinterface.WriteError(w, r, err)
+		return
+	}
+	out, err := deps.FollowedSellers.Execute(r.Context(), userID, limit, offset)
 	if err != nil {
 		httpinterface.WriteError(w, r, err)
 		return

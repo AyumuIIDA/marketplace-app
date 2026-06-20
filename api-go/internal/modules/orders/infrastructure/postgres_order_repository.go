@@ -28,19 +28,21 @@ func NewPostgresOrderRepository(db sqlc.DBTX) *PostgresOrderRepository {
 
 func (r *PostgresOrderRepository) Save(ctx context.Context, o *ordersdomain.Order) error {
 	err := r.q.UpsertOrder(ctx, sqlc.UpsertOrderParams{
-		ID:          o.ID(),
-		ListingID:   o.ListingID(),
-		BuyerID:     o.BuyerID(),
-		SellerID:    o.SellerID(),
-		Status:      sqlc.OrderStatus(o.Status()),
-		Price:       o.Price(),
-		Currency:    o.Currency(),
-		CreatedAt:   pgconv.Timestamptz(o.CreatedAt()),
-		PaidAt:      pgconv.TimestamptzPtr(o.PaidAt()),
-		ShippedAt:   pgconv.TimestamptzPtr(o.ShippedAt()),
-		ReceivedAt:  pgconv.TimestamptzPtr(o.ReceivedAt()),
-		CompletedAt: pgconv.TimestamptzPtr(o.CompletedAt()),
-		CanceledAt:  pgconv.TimestamptzPtr(o.CanceledAt()),
+		ID:              o.ID(),
+		ListingID:       o.ListingID(),
+		BuyerID:         o.BuyerID(),
+		SellerID:        o.SellerID(),
+		Status:          sqlc.OrderStatus(o.Status()),
+		Price:           o.Price(),
+		Currency:        o.Currency(),
+		ListingTitle:    o.ListingTitle(),
+		ListingImageUrl: o.ListingImageURL(),
+		CreatedAt:       pgconv.Timestamptz(o.CreatedAt()),
+		PaidAt:          pgconv.TimestamptzPtr(o.PaidAt()),
+		ShippedAt:       pgconv.TimestamptzPtr(o.ShippedAt()),
+		ReceivedAt:      pgconv.TimestamptzPtr(o.ReceivedAt()),
+		CompletedAt:     pgconv.TimestamptzPtr(o.CompletedAt()),
+		CanceledAt:      pgconv.TimestamptzPtr(o.CanceledAt()),
 	})
 	if err != nil {
 		// listing_id 一意制約違反 = 同一listingに既に注文あり → 409。
@@ -110,18 +112,20 @@ func notFoundToNil(err error) error {
 
 func mapOrderRow(row sqlc.Order) *ordersdomain.Order {
 	return ordersdomain.Rehydrate(ordersdomain.RehydrateInput{
-		ID:          row.ID,
-		ListingID:   row.ListingID,
-		BuyerID:     row.BuyerID,
-		SellerID:    row.SellerID,
-		Status:      ordersdomain.OrderStatus(row.Status),
-		Price:       row.Price,
-		Currency:    row.Currency,
-		CreatedAt:   pgconv.Time(row.CreatedAt),
-		PaidAt:      pgconv.TimePtr(row.PaidAt),
-		ShippedAt:   pgconv.TimePtr(row.ShippedAt),
-		ReceivedAt:  pgconv.TimePtr(row.ReceivedAt),
-		CompletedAt: pgconv.TimePtr(row.CompletedAt),
-		CanceledAt:  pgconv.TimePtr(row.CanceledAt),
+		ID:              row.ID,
+		ListingID:       row.ListingID,
+		BuyerID:         row.BuyerID,
+		SellerID:        row.SellerID,
+		Status:          ordersdomain.OrderStatus(row.Status),
+		Price:           row.Price,
+		Currency:        row.Currency,
+		ListingTitle:    row.ListingTitle,
+		ListingImageURL: row.ListingImageUrl,
+		CreatedAt:       pgconv.Time(row.CreatedAt),
+		PaidAt:          pgconv.TimePtr(row.PaidAt),
+		ShippedAt:       pgconv.TimePtr(row.ShippedAt),
+		ReceivedAt:      pgconv.TimePtr(row.ReceivedAt),
+		CompletedAt:     pgconv.TimePtr(row.CompletedAt),
+		CanceledAt:      pgconv.TimePtr(row.CanceledAt),
 	})
 }

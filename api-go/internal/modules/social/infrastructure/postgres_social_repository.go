@@ -92,6 +92,70 @@ func (r *PostgresSocialRepository) IsSellerLiked(ctx context.Context, userID, se
 	return liked, nil
 }
 
+// --- 商品の保存（私的） ---
+
+func (r *PostgresSocialRepository) SaveListing(ctx context.Context, userID, listingID uuid.UUID) error {
+	if err := r.q.SaveListing(ctx, sqlc.SaveListingParams{UserID: userID, ListingID: listingID}); err != nil {
+		return pgerr.FromPg(err)
+	}
+	return nil
+}
+
+func (r *PostgresSocialRepository) UnsaveListing(ctx context.Context, userID, listingID uuid.UUID) error {
+	if err := r.q.UnsaveListing(ctx, sqlc.UnsaveListingParams{UserID: userID, ListingID: listingID}); err != nil {
+		return pgerr.FromPg(err)
+	}
+	return nil
+}
+
+func (r *PostgresSocialRepository) IsListingSaved(ctx context.Context, userID, listingID uuid.UUID) (bool, error) {
+	saved, err := r.q.IsListingSaved(ctx, sqlc.IsListingSavedParams{UserID: userID, ListingID: listingID})
+	if err != nil {
+		return false, pgerr.FromPg(err)
+	}
+	return saved, nil
+}
+
+func (r *PostgresSocialRepository) ListSavedListingIDs(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]uuid.UUID, error) {
+	ids, err := r.q.ListSavedListingIDs(ctx, sqlc.ListSavedListingIDsParams{UserID: userID, ResultLimit: limit, ResultOffset: offset})
+	if err != nil {
+		return nil, pgerr.FromPg(err)
+	}
+	return ids, nil
+}
+
+// --- 出品者のフォロー（私的） ---
+
+func (r *PostgresSocialRepository) FollowSeller(ctx context.Context, userID, sellerID uuid.UUID) error {
+	if err := r.q.FollowSeller(ctx, sqlc.FollowSellerParams{FollowerID: userID, SellerID: sellerID}); err != nil {
+		return pgerr.FromPg(err)
+	}
+	return nil
+}
+
+func (r *PostgresSocialRepository) UnfollowSeller(ctx context.Context, userID, sellerID uuid.UUID) error {
+	if err := r.q.UnfollowSeller(ctx, sqlc.UnfollowSellerParams{FollowerID: userID, SellerID: sellerID}); err != nil {
+		return pgerr.FromPg(err)
+	}
+	return nil
+}
+
+func (r *PostgresSocialRepository) IsFollowingSeller(ctx context.Context, userID, sellerID uuid.UUID) (bool, error) {
+	following, err := r.q.IsFollowingSeller(ctx, sqlc.IsFollowingSellerParams{FollowerID: userID, SellerID: sellerID})
+	if err != nil {
+		return false, pgerr.FromPg(err)
+	}
+	return following, nil
+}
+
+func (r *PostgresSocialRepository) ListFollowedSellerIDs(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]uuid.UUID, error) {
+	ids, err := r.q.ListFollowedSellerIDs(ctx, sqlc.ListFollowedSellerIDsParams{FollowerID: userID, ResultLimit: limit, ResultOffset: offset})
+	if err != nil {
+		return nil, pgerr.FromPg(err)
+	}
+	return ids, nil
+}
+
 func (r *PostgresSocialRepository) ListLikedSellerIDs(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]uuid.UUID, error) {
 	ids, err := r.q.ListLikedSellerIDs(ctx, sqlc.ListLikedSellerIDsParams{UserID: userID, ResultLimit: limit, ResultOffset: offset})
 	if err != nil {

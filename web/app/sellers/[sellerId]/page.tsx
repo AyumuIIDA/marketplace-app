@@ -10,37 +10,51 @@ import { StatePanel } from "../../../src/components/ui/state-panel";
 import { toShellUserLabels } from "../../../src/features/current-user/shell-user";
 import { ListingGrid } from "../../../src/features/listings/components/listing-grid";
 import { mapListingsToViewModels } from "../../../src/features/listings/listing.mapper";
-import { toggleSellerLikeAction } from "../../../src/features/social/actions/social.actions";
+import { SellerReviews } from "../../../src/features/reviews/components/seller-reviews";
+import { toggleSellerFollowAction, toggleSellerLikeAction } from "../../../src/features/social/actions/social.actions";
+import { FollowButton } from "../../../src/features/social/components/follow-button";
 import { LikeButton } from "../../../src/features/social/components/like-button";
 import { StarRating } from "../../../src/features/social/components/star-rating";
 import { getCurrentUser } from "../../../src/lib/api/current-user.api";
 import { searchListings } from "../../../src/lib/api/listings.api";
+import { listReviews } from "../../../src/lib/api/reviews.api";
 import { getSellerSummary } from "../../../src/lib/api/sellers.api";
 
 export const dynamic = "force-dynamic";
 
 type SellerProfilePageProps = {
   params: Promise<{ sellerId: string }>;
+  searchParams: Promise<{ tab?: string }>;
 };
 
-export default async function SellerProfilePage({ params }: SellerProfilePageProps) {
+const SELLER_TABS = ["listings", "reviews"] as const;
+type SellerTab = (typeof SELLER_TABS)[number];
+
+export default async function SellerProfilePage({ params, searchParams }: SellerProfilePageProps) {
   const { sellerId } = await params;
-  const [currentUser, seller, listings, t, social] = await Promise.all([
+  const [{ tab }, currentUser, seller, listings, reviews, t, social] = await Promise.all([
+    searchParams,
     getCurrentUser(),
     getSellerSummary(sellerId),
     searchListings({ sellerId, limit: 24 }),
+    listReviews({ revieweeId: sellerId, limit: 50 }),
     getTranslations("sellerProfile"),
     getTranslations("social"),
   ]);
-  const { humanLabel, userLabel } = toShellUserLabels(currentUser);
+  const { humanLabel, humanVerified, userLabel } = toShellUserLabels(currentUser);
   const items = mapListingsToViewModels(listings);
   const isSelf = currentUser?.userId === seller.sellerId;
+  const active: SellerTab = SELLER_TABS.includes(tab as SellerTab) ? (tab as SellerTab) : "listings";
+  const tabs: { key: SellerTab; label: string; count: number }[] = [
+    { key: "listings", label: t("listings"), count: items.length },
+    { key: "reviews", label: t("reviews"), count: reviews.length },
+  ];
 
   return (
     <MarketplaceShell
       activeSection="catalog"
       authenticated={currentUser !== undefined}
-      humanLabel={humanLabel}
+      humanLabel={humanLabel} humanVerified={humanVerified}
       userLabel={userLabel}
     >
       <PageHeader eyebrow={t("eyebrow")} title={t("title")} />
@@ -75,7 +89,14 @@ export default async function SellerProfilePage({ params }: SellerProfilePagePro
               </ActionButton>
             </div>
           ) : (
-            <div className="mt-4">
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {/* フォロー（私的・認証不要）。誰でも押せる受け皿。 */}
+              <FollowButton
+                initialFollowing={seller.followingByMe}
+                text={{ follow: social("follow"), following: social("following") }}
+                toggleAction={toggleSellerFollowAction.bind(null, seller.sellerId)}
+              />
+              {/* いいね（公開シグナル・認証必須）。未認証は押すと 403→巻き戻る。 */}
               <LikeButton
                 ariaLabel={social("likeSeller")}
                 initialCount={seller.likeCount}
@@ -88,17 +109,40 @@ export default async function SellerProfilePage({ params }: SellerProfilePagePro
           )}
         </GlassPanel>
 
-        <section>
-          <div className="mb-4 flex items-baseline justify-between border-b border-line pb-3">
-            <h3 className="text-sm font-semibold text-ink">{t("listings")}</h3>
-            <span className="font-mono text-xs text-ink-faint">{t("count", { count: items.length })}</span>
+        {/* GitHub/me 型のタブ。出品と評価を並列に切替（SSR・共有可）。 */}
+        <div>
+          <nav className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line">
+            {tabs.map((item) => {
+              const selected = item.key === active;
+              return (
+                <a
+                  aria-current={selected ? "page" : undefined}
+                  className={`-mb-px flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
+                    selected ? "border-seal text-ink" : "border-transparent text-ink-soft hover:text-ink"
+                  }`}
+                  href={item.key === "listings" ? `/sellers/${sellerId}` : `/sellers/${sellerId}?tab=${item.key}`}
+                  key={item.key}
+                >
+                  {item.label}
+                  <span className="rounded-full bg-paper px-1.5 font-mono text-[11px] text-ink-soft ring-1 ring-line">
+                    {item.count}
+                  </span>
+                </a>
+              );
+            })}
+          </nav>
+
+          <div className="mt-6">
+            {active === "listings" &&
+              (items.length === 0 ? (
+                <StatePanel title={t("emptyTitle")}>{t("emptyBody")}</StatePanel>
+              ) : (
+                <ListingGrid listings={items} />
+              ))}
+
+            {active === "reviews" && <SellerReviews reviews={reviews} />}
           </div>
-          {items.length === 0 ? (
-            <StatePanel title={t("emptyTitle")}>{t("emptyBody")}</StatePanel>
-          ) : (
-            <ListingGrid listings={items} />
-          )}
-        </section>
+        </div>
       </div>
     </MarketplaceShell>
   );

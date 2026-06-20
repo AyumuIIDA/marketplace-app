@@ -18,7 +18,13 @@ export type SemanticSearchInput = {
 };
 
 export type DiscoverAskInput = { query: string; provider?: "gemini" | "openai" };
-export type DiscoverAskOutput = { assistantMessage: string; items: ScoredListing[] };
+// retrievalMode は実際の取得経路。semantic が空のとき backend は keyword(SQL) に縮退する。
+export type DiscoverRetrievalMode = "semantic" | "keyword";
+export type DiscoverAskOutput = {
+  assistantMessage: string;
+  items: ScoredListing[];
+  retrievalMode?: DiscoverRetrievalMode;
+};
 
 // discoverAsk は単段RAG（意味検索→LLM根拠付き生成）。/recommendations/ask（POST）。
 export async function discoverAsk(input: DiscoverAskInput): Promise<DiscoverAskOutput> {

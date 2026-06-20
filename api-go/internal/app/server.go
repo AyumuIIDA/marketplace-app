@@ -159,7 +159,9 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 	// ai-assistance の配線。既定は決定論fake、provider=gemini ならVertex AI（失敗時は決定論へ縮退）。
 	aiAssistant := buildAiAssistant(ctx, cfg)
 	aiDeps := aihttp.Deps{
-		SuggestListingFields: aiapp.NewSuggestListingFieldsUseCase(aiAssistant),
+		// 既存(abo由来)の distinct カテゴリを AI に制約として渡し、提案カテゴリを既存集合へ寄せる。
+		SuggestListingFields: aiapp.NewSuggestListingFieldsUseCase(aiAssistant).
+			WithCategories(newAiCategoryAdapter(pool)),
 	}
 
 	// reviews module の配線。list=pool、create=orders+reviews tx、submit=orders+reviews+signatures tx。
@@ -176,21 +178,28 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 	// listings module の配線。画像ストアはストレージ設定があるときのみ実体化する。
 	listingRepo := listingsinfra.NewPostgresListingRepository(pool)
 	imageStore := buildImageStore(ctx, cfg)
-	// publish/update は human signature workflow（listings+signatures tx）。
+	// ベクトル索引（recommendation-py）。RECOMMENDATION_SERVICE_URL 未設定なら縮退実装。
+	// 出品ライフサイクル（publish/update/hide/purchase）のコミット後投影に使う。
+	vectorIndex := buildVectorIndex(ctx, cfg)
+	listingIndexer := workflows.NewListingIndexer(listingRepo, vectorIndex)
+	// publish/update は human signature workflow（listings+signatures tx）。コミット後にベクトル投影。
 	humanSignatureTxRunner := txrunner.NewHumanSignatureTxRunner(pool)
 	listingPublication := listingsapp.NewListingPublicationService()
+	purchaseWorkflow.WithIndexer(listingIndexer) // 売却済みは検索対象から除外
 	listingDeps := listingshttp.Deps{
-		Create:          listingsapp.NewCreateListingUseCase(listingRepo, idGen, sysClock),
-		UploadImage:     listingsapp.NewUploadListingImageUseCase(imageStore),
-		Get:             listingsapp.NewGetListingUseCase(listingRepo),
-		Search:          listingsapp.NewSearchListingsUseCase(listingRepo),
-		ListCategories:  listingsapp.NewListCategoriesUseCase(listingRepo),
-		UpdateDraft:     listingsapp.NewUpdateDraftListingUseCase(listingRepo, sysClock),
-		Hide:            listingsapp.NewHideListingUseCase(listingRepo, sysClock),
-		Purchase:        purchaseWorkflow,
-		Publish:         workflows.NewPublishListingWithHumanSignatureWorkflow(humanSignatureTxRunner, listingPublication, humanSignatureService),
-		PublishUnsigned: listingsapp.NewPublishListingUseCase(listingRepo, sysClock),
-		Update:          workflows.NewUpdateListingWithHumanSignatureWorkflow(humanSignatureTxRunner, listingPublication, humanSignatureService),
+		Create:         listingsapp.NewCreateListingUseCase(listingRepo, idGen, sysClock),
+		UploadImage:    listingsapp.NewUploadListingImageUseCase(imageStore),
+		Get:            listingsapp.NewGetListingUseCase(listingRepo),
+		Search:         listingsapp.NewSearchListingsUseCase(listingRepo),
+		ListCategories: listingsapp.NewListCategoriesUseCase(listingRepo),
+		UpdateDraft:    listingsapp.NewUpdateDraftListingUseCase(listingRepo, sysClock),
+		Hide:           workflows.NewHideListingWorkflow(listingsapp.NewHideListingUseCase(listingRepo, sysClock), listingIndexer),
+		Relist:         workflows.NewRelistListingWorkflow(listingsapp.NewRelistListingUseCase(listingRepo, sysClock), listingIndexer),
+		Purchase:       purchaseWorkflow,
+		Publish:        workflows.NewPublishListingWithHumanSignatureWorkflow(humanSignatureTxRunner, listingPublication, humanSignatureService).WithIndexer(listingIndexer),
+		PublishUnsigned: workflows.NewPublishListingWorkflow(
+			listingsapp.NewPublishListingUseCase(listingRepo, sysClock), listingIndexer),
+		Update: workflows.NewUpdateListingWithHumanSignatureWorkflow(humanSignatureTxRunner, listingPublication, humanSignatureService).WithIndexer(listingIndexer),
 	}
 
 	// social module の配線（いいね/出品者サマリ）。いいね商品一覧は social(ID) と listings(本体) の合成。
@@ -199,6 +208,12 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 	listingCounts := newListingCountsAdapter(socialRepo)
 	listingDeps.Get.WithCounts(listingCounts)
 	listingDeps.Search.WithCounts(listingCounts)
+	// 出品者アカウントの人間認証を listings の読取に注入（Seal の正本＝アカウント認証）。peer分離のため adapter 経由。
+	listingSellerVerified := newListingSellerVerifiedAdapter(pool)
+	listingDeps.Get.WithSellerVerified(listingSellerVerified)
+	listingDeps.Search.WithSellerVerified(listingSellerVerified)
+	// 売却済み出品を、その取引の買い手が出品ページから閲覧できるようにする（peer分離のため adapter 経由）。
+	listingDeps.Get.WithOrderParticipant(ordersapp.NewListingParticipantReader(orderRepo))
 	sellerSummary := socialapp.NewGetSellerSummaryUseCase(socialRepo)
 	listListingsByIDs := listingsapp.NewListListingsByIDsUseCase(listingRepo)
 	socialDeps := socialhttp.Deps{
@@ -212,6 +227,14 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		LikedSellers:  socialapp.NewListLikedSellersUseCase(socialRepo, sellerSummary),
 		CreateComment: socialapp.NewCreateListingCommentUseCase(socialRepo, idGen, sysClock),
 		ListComments:  socialapp.NewListListingCommentsUseCase(socialRepo),
+		// 私的レイヤー（保存/フォロー。認証不要）。保存一覧はいいね一覧と同workflowで本体hydrate。
+		SaveListing: socialapp.NewSaveListingUseCase(socialRepo),
+		SavedListings: workflows.NewLikedListingsWorkflow(
+			socialapp.NewListSavedListingIDsUseCase(socialRepo).Execute,
+			listListingsByIDs.Execute,
+		),
+		FollowSeller:    socialapp.NewFollowSellerUseCase(socialRepo),
+		FollowedSellers: socialapp.NewListFollowedSellersUseCase(socialRepo, sellerSummary),
 	}
 
 	// 掲示板（2ch風）の配線。閲覧は公開・投稿/返信は humanVerified（usecaseで強制）。
@@ -224,16 +247,18 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 	}
 
 	// recommendation module の配線。意味検索/類似は listings(本体) と vector(recommendation-py) の合成。
-	// RECOMMENDATION_SERVICE_URL 未設定なら縮退（空結果→フロントはkeyword検索へフォールバック）。
-	vectorIndex := buildVectorIndex(ctx, cfg)
+	// vectorIndex は listings 配線より前で構築済み（出品ライフサイクルの投影にも使うため）。
 	// discover の provider別 planner/responder。RAG(/recommendations/ask)とagent(/agents/runs)で共有。
 	discoverRegistry := buildDiscoverRegistry(ctx, cfg)
 	semanticSearch := workflows.NewSemanticSearchWorkflow(vectorIndex, listingDeps.Get.Execute)
+	similarListings := workflows.NewSimilarListingsWorkflow(vectorIndex, listingDeps.Get.Execute)
 	recommendationDeps := recommendationhttp.Deps{
 		Search:  semanticSearch,
-		Similar: workflows.NewSimilarListingsWorkflow(vectorIndex, listingDeps.Get.Execute),
+		Similar: similarListings,
 		// 単段RAG: 意味検索で候補取得→LLMで根拠付き回答（discoverの主導線）。
-		Ask: workflows.NewDiscoverRagWorkflow(semanticSearch, discoverRegistry),
+		// RAG 空→keyword フォールバック時、planner に既存カテゴリを提示し category へ正しく寄せさせる。
+		Ask: workflows.NewDiscoverRagWorkflow(semanticSearch, listingDeps.Search, discoverRegistry).
+			WithCategories(newAiCategoryAdapter(pool).Categories),
 	}
 
 	// agents module の配線（pool-bound repo）。/agents/runs(discover agent)は下のMCP配線後に充填する。
@@ -252,7 +277,7 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		SearchListings:       listingDeps.Search,
 		GetListing:           listingDeps.Get,
 		CreateListing:        listingDeps.Create,
-		PublishListing:       listingDeps.Publish,
+		PublishListing:       listingDeps.PublishUnsigned,
 		UpdateListing:        listingDeps.Update,
 		Purchase:             purchaseWorkflow,
 		ListOrders:           orderDeps.List,
@@ -265,6 +290,11 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		SuggestListingFields: aiDeps.SuggestListingFields,
 		Assistant:            aiAssistant,
 		CompareListings:      workflows.NewCompareListingsWorkflow(listingDeps.Get, aiAssistant),
+		ImageFetcher:         newMcpImageFetcher(cfg.ImageFetchBaseURL),
+		// RAG(意味検索)。VectorHealth で可用性を判定し、不可用時は keyword 検索へ誘導する。
+		SearchSemantic: semanticSearch,
+		FindSimilar:    similarListings,
+		VectorHealth:   vectorIndex,
 	})
 	toolRunner := mcpinterface.NewToolRunner(mcpRecord)
 	mcpHandler := mcpinterface.NewHTTPHandler(mcpTools, toolRunner,
@@ -422,7 +452,8 @@ func buildVectorIndex(ctx context.Context, cfg Config) recommendationapp.VectorI
 		slog.Warn("recommendation client init failed; semantic search degraded", slog.String("error", err.Error()))
 		return recommendationinfra.NewUnavailableVectorIndex()
 	}
-	return idx
+	// 設定済みでもサービスが落ちている場合に 500 にせず縮退させる（resilient decorator で包む）。
+	return recommendationinfra.NewResilientVectorIndex(idx)
 }
 
 // Run はHTTPサーバを起動し、ctxのキャンセルでgraceful shutdownする。

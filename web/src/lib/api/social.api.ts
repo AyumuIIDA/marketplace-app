@@ -1,4 +1,6 @@
 import { bffJson, isBffError } from "./bff-client";
+import type { Listing } from "./listings.api";
+import type { SellerSummary } from "./sellers.api";
 
 // いいねトグルの応答。backend social module: POST/DELETE /listings/:id/like, /sellers/:id/like。
 export type LikeStatus = {
@@ -20,6 +22,21 @@ export async function getLikedListingIds(limit = 100): Promise<Set<string>> {
   }
 }
 
+// 現在のユーザーがいいね済みの出品「本体」を新着順で取得する（/me のいいねタブ用）。
+// getLikedListingIds が ID だけ返すのに対し、こちらは検索と同じ ListingView をフルで返す。
+// 未ログインなどで取得できなければ空配列。
+export async function searchLikedListings(limit = 50): Promise<Listing[]> {
+  try {
+    const out = await bffJson<{ items: Listing[] }>(`/me/liked-listings?limit=${limit}`);
+    return out.items;
+  } catch (error) {
+    if (isBffError(error) && (error.status === 401 || error.status === 404)) {
+      return [];
+    }
+    throw error;
+  }
+}
+
 // 出品いいね。liked=true で POST（いいね）、false で DELETE（解除）。
 export async function setListingLike(listingId: string, liked: boolean): Promise<LikeStatus> {
   return bffJson<LikeStatus>(`/listings/${listingId}/like`, { method: liked ? "POST" : "DELETE" });
@@ -28,6 +45,79 @@ export async function setListingLike(listingId: string, liked: boolean): Promise
 // 出品者いいね。
 export async function setSellerLike(sellerId: string, liked: boolean): Promise<LikeStatus> {
   return bffJson<LikeStatus>(`/sellers/${sellerId}/like`, { method: liked ? "POST" : "DELETE" });
+}
+
+// 現在のユーザーがいいね済みの出品者サマリを新着順で取得する（/me のいいねタブ用）。
+// /me/liked-sellers は {items: SellerSummary[]}（rating は未評価時 null）。getSellerSummary と同様に正規化する。
+// 未ログインなどで取得できなければ空配列。
+export async function searchLikedSellers(limit = 50): Promise<SellerSummary[]> {
+  try {
+    const out = await bffJson<{ items: (Omit<SellerSummary, "rating"> & { rating: number | null })[] }>(
+      `/me/liked-sellers?limit=${limit}`,
+    );
+    return out.items.map((seller) => ({ ...seller, rating: seller.rating ?? undefined }));
+  } catch (error) {
+    if (isBffError(error) && (error.status === 401 || error.status === 404)) {
+      return [];
+    }
+    throw error;
+  }
+}
+
+// --- 私的レイヤー: 保存（商品）/ フォロー（出品者）。公開シグナルのいいねと違い認証不要。 ---
+
+export type SaveStatus = { savedByMe: boolean };
+export type FollowStatus = { followingByMe: boolean };
+
+// 商品の保存トグル。saved=true で POST、false で DELETE。
+export async function setListingSave(listingId: string, saved: boolean): Promise<SaveStatus> {
+  return bffJson<SaveStatus>(`/listings/${listingId}/save`, { method: saved ? "POST" : "DELETE" });
+}
+
+// 出品者のフォロートグル。
+export async function setSellerFollow(sellerId: string, following: boolean): Promise<FollowStatus> {
+  return bffJson<FollowStatus>(`/sellers/${sellerId}/follow`, { method: following ? "POST" : "DELETE" });
+}
+
+// 保存済み商品ID集合（カード/詳細の初期状態hydrate用）。
+export async function getSavedListingIds(limit = 100): Promise<Set<string>> {
+  try {
+    const out = await bffJson<{ items: { listingId: string }[] }>(`/me/saved-listings?limit=${limit}`);
+    return new Set(out.items.map((item) => item.listingId));
+  } catch (error) {
+    if (isBffError(error) && (error.status === 401 || error.status === 404)) {
+      return new Set();
+    }
+    throw error;
+  }
+}
+
+// 保存済み商品の本体（/me の保存タブ用）。
+export async function searchSavedListings(limit = 50): Promise<Listing[]> {
+  try {
+    const out = await bffJson<{ items: Listing[] }>(`/me/saved-listings?limit=${limit}`);
+    return out.items;
+  } catch (error) {
+    if (isBffError(error) && (error.status === 401 || error.status === 404)) {
+      return [];
+    }
+    throw error;
+  }
+}
+
+// フォロー中の出品者サマリ（/me のフォロータブ用）。
+export async function searchFollowedSellers(limit = 50): Promise<SellerSummary[]> {
+  try {
+    const out = await bffJson<{ items: (Omit<SellerSummary, "rating"> & { rating: number | null })[] }>(
+      `/me/following?limit=${limit}`,
+    );
+    return out.items.map((seller) => ({ ...seller, rating: seller.rating ?? undefined }));
+  } catch (error) {
+    if (isBffError(error) && (error.status === 401 || error.status === 404)) {
+      return [];
+    }
+    throw error;
+  }
 }
 
 // 出品コメント。著者は本人認証済みのみ（backendで強制）。authorHumanVerified で認証バッジを出す。
