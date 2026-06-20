@@ -34,12 +34,7 @@ export async function MarketplaceShell({
         <div className="mx-auto grid min-h-16 max-w-[1320px] grid-cols-[auto_1fr_auto] items-center gap-4 px-4 py-2.5">
           <a className="flex shrink-0 items-center gap-2.5" href="/">
             <Seal size="sm" />
-            <span className="hidden flex-col leading-tight sm:flex">
-              <span className="text-sm font-bold tracking-tight">{t("brand.name")}</span>
-              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-faint">
-                {t("brand.tagline")}
-              </span>
-            </span>
+            <span className="hidden text-base font-bold tracking-tight sm:inline">{t("brand.name")}</span>
             <span className="sr-only sm:hidden">{t("brand.name")}</span>
           </a>
 

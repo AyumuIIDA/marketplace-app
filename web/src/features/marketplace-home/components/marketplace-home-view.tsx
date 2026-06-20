@@ -74,12 +74,10 @@ export async function MarketplaceHomeView({
         <section className="mb-8 overflow-hidden rounded-lg border border-line bg-surface">
           <div className="grid items-center gap-6 p-6 md:grid-cols-[1fr_auto] md:p-8">
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-seal">{home("heroEyebrow")}</p>
-              <h1 className="mt-3 text-2xl font-bold leading-tight tracking-tight text-ink md:text-4xl">
+              <h1 className="font-mono text-2xl font-bold leading-tight tracking-tight text-ink md:text-4xl">
                 {home("heroTitle")}
               </h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-ink-soft">{home("heroBody")}</p>
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-6 flex flex-wrap gap-2">
                 <ActionButton href="/discover" variant="accent">
                   {home("heroDiscover")}
                 </ActionButton>

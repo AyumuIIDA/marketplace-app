@@ -1,7 +1,6 @@
 {
   "brand": {
-    "name": "Human-backed",
-    "tagline": "Signed by real people"
+    "name": "HuMarket"
   },
   "search": {
     "label": "Search listings",
@@ -50,7 +49,7 @@
     "toSignIn": "Sign in"
   },
   "onboarding": {
-    "brand": "Human-backed Marketplace",
+    "brand": "HuMarket",
     "title": "Choose your display name",
     "subtitle": "This is the name other people see. You can change it later.",
     "label": "Display name",
@@ -87,7 +86,10 @@
     "listings": "Listings",
     "count": "{count} items",
     "emptyTitle": "No listings",
-    "emptyBody": "This seller hasn’t published any items yet."
+    "emptyBody": "This seller hasn’t published any items yet.",
+    "reviews": "Reviews",
+    "reviewsEmpty": "No reviews yet.",
+    "verifiedBuyer": "Verified counterparty"
   },
   "dm": {
     "title": "Messages",
@@ -156,7 +158,7 @@
   "social": {
     "likeItem": "Like",
     "likedItem": "Liked",
-    "likeSeller": "Like seller",
+    "likeSeller": "Like",
     "likedSeller": "Liked",
     "sellerLabel": "Seller",
     "verifiedSeller": "Verified seller",
@@ -166,7 +168,16 @@
     "likedItemsEmpty": "You haven’t liked any items yet.",
     "unavailable": "Unavailable",
     "likedSellers": "Liked sellers",
-    "likedSellersEmpty": "You haven’t liked any sellers yet."
+    "likedSellersEmpty": "You haven’t liked any sellers yet.",
+    "saveItem": "Save",
+    "savedItem": "Saved",
+    "follow": "Follow",
+    "following": "Following",
+    "savedItems": "Saved items",
+    "savedItemsEmpty": "You haven’t saved any items yet.",
+    "followingSellers": "Following",
+    "followingEmpty": "You aren’t following any sellers yet.",
+    "likeRequiresVerification": "Liking requires World ID verification (use Save if you’re not verified yet)"
   },
   "catalog": {
     "title": "Listings",
@@ -252,6 +263,8 @@
       "tabPurchases": "Purchases",
       "tabListings": "Listings",
       "tabLikes": "Likes",
+      "tabSaved": "Saved",
+      "tabFollowing": "Following",
       "tabConnect": "Connect",
       "statListings": "Listings",
       "statPurchases": "Purchases"
@@ -381,10 +394,12 @@
     "submit": "Create review draft"
   },
   "discover": {
-    "brand": "AI Discovery",
+    "brand": "HuMarket",
     "greeting": "What are you looking for?",
-    "modeQuick": "Quick search",
-    "modeAgent": "Ask the agent",
+    "modeQuick": "Search in your words",
+    "modeAgent": "Search with an AI agent",
+    "modeQuickDesc": "Write what you want; AI matches by meaning.",
+    "modeAgentDesc": "Refine results in a chat with AI.",
     "providerLabel": "AI vendor",
     "providerGemini": "Gemini",
     "providerOpenai": "ChatGPT",
@@ -433,7 +448,15 @@
     "noResults": "No matching items. Try describing it differently.",
     "matched": "keyword match",
     "signed": "Human-signed",
-    "buy": "Buy now"
+    "buy": "Buy now",
+    "searchError": "Search is unstable right now. Please wait a moment and try again.",
+    "newSearch": "New search",
+    "ragHow": "How this answer was found",
+    "ragSearch": "Retrieved {count} candidates by semantic search",
+    "ragSearchKeyword": "Semantic search was empty, so retrieved {count} candidates by keyword search",
+    "ragGenerate": "{provider} composed the answer grounded in those candidates",
+    "agentSearching": "Searching for matches…",
+    "agentEmptyHint": "Describe what you want in chat. We refine the matches as you add detail."
   },
   "sell": {
     "title": "Your listings",
@@ -452,9 +475,7 @@
     "inTransactionTitle": "In transaction"
   },
   "home": {
-    "heroEyebrow": "A marketplace of verified people",
-    "heroTitle": "Signed by humans. Found by AI.",
-    "heroBody": "Only World ID–verified people can list and review. AI finds what you want from your own words.",
+    "heroTitle": "Signed by human. Find by AI.",
     "heroDiscover": "Discover with AI",
     "heroSell": "Sell an item"
   },
