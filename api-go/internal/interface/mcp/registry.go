@@ -14,7 +14,7 @@ type ToolDeps struct {
 	SearchListings       *listingsapp.SearchListingsUseCase
 	GetListing           *listingsapp.GetListingUseCase
 	CreateListing        *listingsapp.CreateListingUseCase
-	PublishListing       *listingsapp.PublishListingUseCase
+	PublishListing       *workflows.PublishListingWorkflow
 	UpdateListing        *workflows.UpdateListingWithHumanSignatureWorkflow
 	Purchase             *workflows.PurchaseItemWorkflow
 	ListOrders           *ordersapp.ListOrdersUseCase

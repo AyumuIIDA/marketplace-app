@@ -133,7 +133,7 @@ func (t createListingDraftTool) Execute(ctx context.Context, in map[string]any, 
 // MCPクライアントは World ID UI を出せないため、エージェント経路の公開は login のみ（unsigned）で自律実行する。
 // 人格の担保は「MCPトークンを発行できるのは World ID 認証済みユーザーのみ」という発行ゲート側で行う（B方針）。
 type publishListingTool struct {
-	uc *listingsapp.PublishListingUseCase
+	uc *workflows.PublishListingWorkflow
 }
 
 func (publishListingTool) Name() string { return "publish_listing" }

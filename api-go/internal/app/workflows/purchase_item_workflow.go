@@ -46,10 +46,17 @@ type PurchaseItemWorkflow struct {
 	listingPurchase  listingsapp.ListingPurchaseService
 	orderFulfillment *ordersapp.OrderFulfillmentService
 	clock            clock.Clock
+	indexer          *ListingIndexer
 }
 
 func NewPurchaseItemWorkflow(tx PurchaseTxRunner, lp listingsapp.ListingPurchaseService, of *ordersapp.OrderFulfillmentService, c clock.Clock) *PurchaseItemWorkflow {
 	return &PurchaseItemWorkflow{tx: tx, listingPurchase: lp, orderFulfillment: of, clock: c}
+}
+
+// WithIndexer はコミット後のベクトル投影を有効化する（売却済みは検索対象から除外）。
+func (w *PurchaseItemWorkflow) WithIndexer(ix *ListingIndexer) *PurchaseItemWorkflow {
+	w.indexer = ix
+	return w
 }
 
 func (w *PurchaseItemWorkflow) Execute(ctx context.Context, in PurchaseItemInput) (PurchaseItemResult, error) {
@@ -79,5 +86,6 @@ func (w *PurchaseItemWorkflow) Execute(ctx context.Context, in PurchaseItemInput
 	if err != nil {
 		return PurchaseItemResult{}, err
 	}
+	w.indexer.Remove(ctx, in.ListingID) // post-commit projection: 売却済みは検索対象外
 	return PurchaseItemResult{Status: "PAID", Order: &order}, nil
 }

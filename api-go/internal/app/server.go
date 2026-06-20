@@ -176,21 +176,27 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 	// listings module の配線。画像ストアはストレージ設定があるときのみ実体化する。
 	listingRepo := listingsinfra.NewPostgresListingRepository(pool)
 	imageStore := buildImageStore(ctx, cfg)
-	// publish/update は human signature workflow（listings+signatures tx）。
+	// ベクトル索引（recommendation-py）。RECOMMENDATION_SERVICE_URL 未設定なら縮退実装。
+	// 出品ライフサイクル（publish/update/hide/purchase）のコミット後投影に使う。
+	vectorIndex := buildVectorIndex(ctx, cfg)
+	listingIndexer := workflows.NewListingIndexer(listingRepo, vectorIndex)
+	// publish/update は human signature workflow（listings+signatures tx）。コミット後にベクトル投影。
 	humanSignatureTxRunner := txrunner.NewHumanSignatureTxRunner(pool)
 	listingPublication := listingsapp.NewListingPublicationService()
+	purchaseWorkflow.WithIndexer(listingIndexer) // 売却済みは検索対象から除外
 	listingDeps := listingshttp.Deps{
-		Create:          listingsapp.NewCreateListingUseCase(listingRepo, idGen, sysClock),
-		UploadImage:     listingsapp.NewUploadListingImageUseCase(imageStore),
-		Get:             listingsapp.NewGetListingUseCase(listingRepo),
-		Search:          listingsapp.NewSearchListingsUseCase(listingRepo),
-		ListCategories:  listingsapp.NewListCategoriesUseCase(listingRepo),
-		UpdateDraft:     listingsapp.NewUpdateDraftListingUseCase(listingRepo, sysClock),
-		Hide:            listingsapp.NewHideListingUseCase(listingRepo, sysClock),
-		Purchase:        purchaseWorkflow,
-		Publish:         workflows.NewPublishListingWithHumanSignatureWorkflow(humanSignatureTxRunner, listingPublication, humanSignatureService),
-		PublishUnsigned: listingsapp.NewPublishListingUseCase(listingRepo, sysClock),
-		Update:          workflows.NewUpdateListingWithHumanSignatureWorkflow(humanSignatureTxRunner, listingPublication, humanSignatureService),
+		Create:         listingsapp.NewCreateListingUseCase(listingRepo, idGen, sysClock),
+		UploadImage:    listingsapp.NewUploadListingImageUseCase(imageStore),
+		Get:            listingsapp.NewGetListingUseCase(listingRepo),
+		Search:         listingsapp.NewSearchListingsUseCase(listingRepo),
+		ListCategories: listingsapp.NewListCategoriesUseCase(listingRepo),
+		UpdateDraft:    listingsapp.NewUpdateDraftListingUseCase(listingRepo, sysClock),
+		Hide:           workflows.NewHideListingWorkflow(listingsapp.NewHideListingUseCase(listingRepo, sysClock), listingIndexer),
+		Purchase:       purchaseWorkflow,
+		Publish:        workflows.NewPublishListingWithHumanSignatureWorkflow(humanSignatureTxRunner, listingPublication, humanSignatureService).WithIndexer(listingIndexer),
+		PublishUnsigned: workflows.NewPublishListingWorkflow(
+			listingsapp.NewPublishListingUseCase(listingRepo, sysClock), listingIndexer),
+		Update: workflows.NewUpdateListingWithHumanSignatureWorkflow(humanSignatureTxRunner, listingPublication, humanSignatureService).WithIndexer(listingIndexer),
 	}
 
 	// social module の配線（いいね/出品者サマリ）。いいね商品一覧は social(ID) と listings(本体) の合成。
@@ -228,8 +234,7 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 	}
 
 	// recommendation module の配線。意味検索/類似は listings(本体) と vector(recommendation-py) の合成。
-	// RECOMMENDATION_SERVICE_URL 未設定なら縮退（空結果→フロントはkeyword検索へフォールバック）。
-	vectorIndex := buildVectorIndex(ctx, cfg)
+	// vectorIndex は listings 配線より前で構築済み（出品ライフサイクルの投影にも使うため）。
 	// discover の provider別 planner/responder。RAG(/recommendations/ask)とagent(/agents/runs)で共有。
 	discoverRegistry := buildDiscoverRegistry(ctx, cfg)
 	semanticSearch := workflows.NewSemanticSearchWorkflow(vectorIndex, listingDeps.Get.Execute)

@@ -29,10 +29,10 @@ type Deps struct {
 	Search          *listingsapp.SearchListingsUseCase
 	ListCategories  *listingsapp.ListCategoriesUseCase
 	UpdateDraft     *listingsapp.UpdateDraftListingUseCase
-	Hide            *listingsapp.HideListingUseCase
+	Hide            *workflows.HideListingWorkflow
 	Purchase        *workflows.PurchaseItemWorkflow
 	Publish         *workflows.PublishListingWithHumanSignatureWorkflow
-	PublishUnsigned *listingsapp.PublishListingUseCase
+	PublishUnsigned *workflows.PublishListingWorkflow
 	Update          *workflows.UpdateListingWithHumanSignatureWorkflow
 }
 
