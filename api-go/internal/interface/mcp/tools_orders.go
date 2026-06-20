@@ -32,7 +32,15 @@ func (t purchaseItemTool) Execute(ctx context.Context, in map[string]any, tc Too
 		return ToolResult{}, err
 	}
 	if out.Status == "REQUIRES_CONFIRMATION" {
-		return RequiresConfirmation(out), nil
+		// エージェントがチャット内で自己完結できるよう、確認手順を明示する。
+		// 画面UIは存在せず、確認＝同じ listingId に confirmed=true を付けて再呼び出しすること。
+		return RequiresConfirmation(map[string]any{
+			"status":               out.Status,
+			"listingId":            listingID.String(),
+			"confirmationRequired": true,
+			"nextStep":             `To complete the purchase, call purchase_item again with {"listingId":"` + listingID.String() + `","confirmed":true}. There is no on-screen button; confirmation happens by re-calling this tool with confirmed=true.`,
+			"details":              out,
+		}), nil
 	}
 	return Succeeded(out), nil
 }
