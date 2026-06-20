@@ -1,7 +1,11 @@
 "use server";
 
 import { searchListings } from "../../../lib/api/listings.api";
-import { discoverAsk, semanticSearch } from "../../../lib/api/recommendations.api";
+import {
+  discoverAsk,
+  semanticSearch,
+  type DiscoverRetrievalMode,
+} from "../../../lib/api/recommendations.api";
 import { bffJson } from "../../../lib/api/bff-client";
 import type { Listing } from "../../../lib/api/listings.api";
 import type { ListingViewModel } from "../../listings/listing-view-model";
@@ -41,6 +45,8 @@ export type DiscoverAgentActionOutput = {
     arguments: Record<string, unknown>;
     status: string;
   }>;
+  // 実際の取得経路。RAG経路のみ付与（semantic / keyword）。手順表示を事実と一致させる。
+  retrievalMode?: DiscoverRetrievalMode;
 };
 
 export type DiscoverAgentMessageInput = {
@@ -68,6 +74,7 @@ export async function discoverRagAction(
   return {
     assistantMessage: out.assistantMessage,
     listings: mapListingsToViewModels(out.items),
+    retrievalMode: out.retrievalMode,
     steps: [],
     toolCalls: [],
   };

@@ -25,7 +25,7 @@ func jsonString(v any) string {
 }
 
 func buildPlannerPrompt(in agentsapp.PlanDiscoverToolInput) string {
-	return strings.Join([]string{
+	lines := []string{
 		"You are selecting exactly one MCP tool for a marketplace shopping assistant.",
 		"Return only JSON with toolName and arguments.",
 		"Allowed tools:",
@@ -37,11 +37,22 @@ func buildPlannerPrompt(in agentsapp.PlanDiscoverToolInput) string {
 		"Choose get_listing only when a specific listing ID is present and details are requested.",
 		"Choose compare_listings only when at least two listing IDs are present and comparison is requested.",
 		"Choose suggest_price only when the user asks what price to set for an item.",
+	}
+	// カテゴリと言語のヒント。出品タイトルは日本語なので、英語/抽象語の keyword は一致しにくい。
+	// 既存カテゴリへ寄せられるなら category にスラッグを入れさせ、keyword は日本語の具体語にする。
+	if len(in.Categories) > 0 {
+		lines = append(lines,
+			"For search_listings, the available category slugs are: "+strings.Join(in.Categories, ", ")+".",
+			"If the request maps to one of these categories, set the category argument to the exact matching slug.",
+		)
+	}
+	lines = append(lines,
 		"Conversation history JSON:",
 		jsonString(lastMessages(in.Messages, 8)),
 		"Latest user message:",
 		in.UserMessage,
-	}, "\n")
+	)
+	return strings.Join(lines, "\n")
 }
 
 // discoverResultListing は responder へ渡す検索結果の軽量表現（signedはbool）。

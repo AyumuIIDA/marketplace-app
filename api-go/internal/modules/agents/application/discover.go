@@ -22,6 +22,9 @@ type DiscoverToolPlan struct {
 type PlanDiscoverToolInput struct {
 	UserMessage string
 	Messages    []DiscoverMessage
+	// Categories は既存出品のユニークなカテゴリ（abo スラッグ）。非空なら planner に提示し、
+	// クエリが該当するとき search_listings の category 引数へ正確なスラッグを埋めさせる。
+	Categories []string
 }
 
 // DiscoverAgentPlanner は次に呼ぶMCP toolを1つ選ぶ。
