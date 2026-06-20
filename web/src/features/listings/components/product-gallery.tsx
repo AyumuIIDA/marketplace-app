@@ -40,10 +40,10 @@ export function ProductGallery({ images, signed, signedLabel, soldLabel, title }
 
   return (
     <div className="space-y-3">
-      <div className="group relative aspect-square w-full overflow-hidden rounded-lg border border-line bg-paper">
+      <div className="group relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-line bg-paper">
         {images.length === 0 ? (
           <div className="grid size-full place-items-center">
-            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-faint">no photo</span>
+            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-faint">NO IMAGE</span>
           </div>
         ) : (
           <div
@@ -52,10 +52,11 @@ export function ProductGallery({ images, signed, signedLabel, soldLabel, title }
             ref={trackRef}
           >
             {images.map((image, index) => (
-              <div className="grid size-full shrink-0 snap-center place-items-center" key={image.sortOrder}>
+              <div className="size-full shrink-0 snap-center" key={image.sortOrder}>
+                {/* 全体表示。contain で枠内に収め、縦長は左右・横長は上下に紙地の余白が出る（中央寄せは contain が担う）。 */}
                 <img
                   alt={index === 0 ? title : ""}
-                  className="size-full object-contain"
+                  className="block size-full object-contain"
                   loading={index === 0 ? "eager" : "lazy"}
                   src={image.url}
                 />

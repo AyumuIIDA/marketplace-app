@@ -19,8 +19,9 @@ type ProfileSidebarProps = {
 export async function ProfileSidebar({ currentUser, listingsCount, purchasesCount }: ProfileSidebarProps) {
   const t = await getTranslations("pages.me");
 
+  // ダッシュボード左カラム。lg では高さ固定のセル内に収め、自身は動かない（はみ出す場合のみ内部スクロール）。
   return (
-    <aside className="lg:sticky lg:top-20">
+    <aside className="lg:h-full lg:overflow-y-auto lg:pr-1">
       <div className="flex items-center gap-4 lg:flex-col lg:items-start lg:gap-4">
         <Avatar
           alt=""

@@ -14,6 +14,8 @@ import {
 
 type DiscoverViewProps = {
   initial: ListingViewModel[];
+  // AI相談（エージェント/RAG）はログイン必須。未ログインはログイン誘導を出す。
+  authenticated: boolean;
 };
 
 type Mode = "quick" | "agent";
@@ -31,8 +33,9 @@ type AgentTurn =
       retrievalMode?: RetrievalMode;
     };
 
-export function DiscoverView({ initial }: DiscoverViewProps) {
+export function DiscoverView({ authenticated, initial }: DiscoverViewProps) {
   const t = useTranslations("discover");
+  const tb = useTranslations("brand");
   const [mode, setMode] = useState<Mode>("quick");
   // AIベンダー選択（agentモードのみ有効）。gemini=Gemini, openai=ChatGPT。
   // Copilot風の VendorPicker で切替える。model 下位選択は backend が per-request 非対応のため出さない。
@@ -59,6 +62,12 @@ export function DiscoverView({ initial }: DiscoverViewProps) {
   function submit(raw?: string) {
     const text = (raw ?? input).trim();
     if (text.length === 0) {
+      return;
+    }
+
+    // AI相談はログイン必須。未ログインは検索を投げずログイン誘導（AuthPrompt）を見せる。
+    if (mode === "agent" && !authenticated) {
+      setStarted(true);
       return;
     }
 
@@ -112,10 +121,15 @@ export function DiscoverView({ initial }: DiscoverViewProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas text-canvas-ink">
-      <header className="flex items-center justify-between px-5 py-4">
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-canvas-line bg-canvas/95 px-5 py-4 backdrop-blur-sm">
         <a className="flex items-center gap-2.5" href="/">
           <Seal size="sm" tone="dark" />
-          <span className="font-mono text-xs uppercase tracking-[0.18em] text-canvas-ink-soft">{t("brand")}</span>
+          <span className="flex flex-col leading-tight">
+            <span className="text-sm font-bold tracking-tight text-canvas-ink">{tb("name")}</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-canvas-ink-soft">
+              {t("brand")}
+            </span>
+          </span>
         </a>
         <div className="flex items-center gap-4">
           {started && (
@@ -156,26 +170,34 @@ export function DiscoverView({ initial }: DiscoverViewProps) {
                 value={input}
               />
             </div>
-            <div className="flex flex-wrap justify-center gap-2">
-              {chips.map((chip) => (
-                <button
-                  className="rounded-full border border-canvas-line px-3 py-1.5 text-xs text-canvas-ink-soft transition-colors hover:border-seal hover:text-canvas-ink"
-                  key={chip}
-                  onClick={() => submit(chip)}
-                  type="button"
-                >
-                  {chip}
-                </button>
-              ))}
-            </div>
+            {mode === "agent" && !authenticated ? (
+              <div className="w-full max-w-md">
+                <AuthPrompt />
+              </div>
+            ) : (
+              <div className="flex flex-wrap justify-center gap-2">
+                {chips.map((chip) => (
+                  <button
+                    className="rounded-full border border-canvas-line px-3 py-1.5 text-xs text-canvas-ink-soft transition-colors hover:border-seal hover:text-canvas-ink"
+                    key={chip}
+                    onClick={() => submit(chip)}
+                    type="button"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex-1 py-6">
             {error !== undefined && <ErrorNotice message={error} />}
             {mode === "quick" ? (
               <QuickResults isPending={isQuickPending} query={quickQuery} results={results} />
-            ) : (
+            ) : authenticated ? (
               <AgentThread chips={chips} isPending={isAgentPending} onChip={submit} turns={turns} />
+            ) : (
+              <AuthPrompt />
             )}
           </div>
         )}
@@ -447,6 +469,27 @@ function ErrorNotice({ message }: { message: string }) {
     <p className="mb-4 rounded-md border border-seal/40 bg-seal/10 px-4 py-3 text-sm text-canvas-ink" role="alert">
       {message}
     </p>
+  );
+}
+
+// 未ログインで AI相談を使おうとしたときのログイン誘導。クイック検索はログイン不要である旨も伝える。
+function AuthPrompt() {
+  const t = useTranslations("discover");
+
+  return (
+    <div className="flex flex-col items-center gap-4 rounded-lg border border-canvas-line bg-canvas-2 px-6 py-10 text-center">
+      <Seal size="md" tone="dark" />
+      <div className="space-y-1.5">
+        <h2 className="text-base font-semibold text-canvas-ink">{t("authTitle")}</h2>
+        <p className="max-w-sm text-sm leading-6 text-canvas-ink-soft">{t("authBody")}</p>
+      </div>
+      <a
+        className="rounded-xl bg-seal px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-seal-strong"
+        href="/signin"
+      >
+        {t("authAction")}
+      </a>
+    </div>
   );
 }
 
