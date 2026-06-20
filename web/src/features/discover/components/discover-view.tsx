@@ -121,7 +121,7 @@ export function DiscoverView({ authenticated, initial }: DiscoverViewProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas text-canvas-ink">
-      <header className="flex items-center justify-between px-5 py-4">
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-canvas-line bg-canvas/95 px-5 py-4 backdrop-blur-sm">
         <a className="flex items-center gap-2.5" href="/">
           <Seal size="sm" tone="dark" />
           <span className="flex flex-col leading-tight">
