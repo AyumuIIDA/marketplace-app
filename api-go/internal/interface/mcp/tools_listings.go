@@ -130,8 +130,10 @@ func (t createListingDraftTool) Execute(ctx context.Context, in map[string]any, 
 }
 
 // publish_listing
+// MCPクライアントは World ID UI を出せないため、エージェント経路の公開は login のみ（unsigned）で自律実行する。
+// 人格の担保は「MCPトークンを発行できるのは World ID 認証済みユーザーのみ」という発行ゲート側で行う（B方針）。
 type publishListingTool struct {
-	wf *workflows.PublishListingWithHumanSignatureWorkflow
+	uc *listingsapp.PublishListingUseCase
 }
 
 func (publishListingTool) Name() string { return "publish_listing" }
@@ -140,19 +142,13 @@ func (t publishListingTool) Execute(ctx context.Context, in map[string]any, tc T
 	if err != nil {
 		return ToolResult{}, err
 	}
-	idKit, ok := toIdKit(in)
-	if !ok {
-		return RequiresHumanSignature(map[string]any{"actionType": "listing-publish", "resourceType": "LISTING", "resourceId": listingID.String()}), nil
-	}
 	sellerID, err := requireUserID(tc)
 	if err != nil {
 		return ToolResult{}, err
 	}
-	out, err := t.wf.Execute(ctx, workflows.PublishListingInput{
-		ListingID:           listingID,
-		SellerID:            sellerID,
-		IdKit:               idKit,
-		ExpectedEnvironment: argStr(in, "expectedEnvironment"),
+	out, err := t.uc.Execute(ctx, listingsapp.PublishListingInput{
+		ListingID: listingID,
+		SellerID:  sellerID,
 	})
 	if err != nil {
 		return ToolResult{}, err

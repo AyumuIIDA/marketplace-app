@@ -24,6 +24,7 @@ func (f fakeIndex) SimilarItems(context.Context, string, int32, recommendationap
 }
 func (fakeIndex) Index(context.Context, recommendationapp.IndexInput) error { return nil }
 func (fakeIndex) Delete(context.Context, string) error                      { return nil }
+func (fakeIndex) Healthy(context.Context) bool                              { return true }
 
 func TestSemanticSearchHydratesAndPreservesOrderAndScore(t *testing.T) {
 	id1, id2, missing := uuid.New(), uuid.New(), uuid.New()

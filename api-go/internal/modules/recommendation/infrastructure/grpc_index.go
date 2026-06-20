@@ -5,6 +5,8 @@ import (
 	"context"
 	"crypto/tls"
 	"strings"
+	"sync"
+	"time"
 
 	"google.golang.org/api/idtoken"
 	"google.golang.org/grpc"
@@ -22,7 +24,15 @@ import (
 // （実体は API の runtime SA。recommendation サービスに run.invoker 済）。
 type GrpcVectorIndex struct {
 	client recv1.RecommendationServiceClient
+
+	// Healthy の結果を短時間キャッシュし、毎リクエストの HealthCheck RPC を避ける。
+	mu            sync.Mutex
+	healthyCached bool
+	healthyUntil  time.Time
 }
+
+// healthTTL は Healthy 判定のキャッシュ有効期間。
+const healthTTL = 30 * time.Second
 
 // NewGrpcVectorIndex は serviceURL への接続を構築する。
 //   - https://...run.app（既定/Cloud Run）: TLS＋ID token(per-RPC, audience=URL)。
@@ -104,6 +114,29 @@ func (g *GrpcVectorIndex) Delete(ctx context.Context, listingID string) error {
 		return apperr.Infrastructure("recommendation: DeleteListing", err)
 	}
 	return nil
+}
+
+// Healthy は HealthCheck RPC でバックエンド可用性を確認する（2s timeout、30s キャッシュ）。
+// ready=false や疎通失敗は不可用とみなす。
+func (g *GrpcVectorIndex) Healthy(ctx context.Context) bool {
+	g.mu.Lock()
+	if time.Now().Before(g.healthyUntil) {
+		v := g.healthyCached
+		g.mu.Unlock()
+		return v
+	}
+	g.mu.Unlock()
+
+	cctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	res, err := g.client.HealthCheck(cctx, &recv1.HealthCheckRequest{})
+	healthy := err == nil && res.GetReady()
+
+	g.mu.Lock()
+	g.healthyCached = healthy
+	g.healthyUntil = time.Now().Add(healthTTL)
+	g.mu.Unlock()
+	return healthy
 }
 
 func toProtoFilter(f recommendationapp.SearchFilter) *recv1.ListingFilter {

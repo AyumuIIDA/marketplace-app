@@ -233,9 +233,10 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 	// discover の provider別 planner/responder。RAG(/recommendations/ask)とagent(/agents/runs)で共有。
 	discoverRegistry := buildDiscoverRegistry(ctx, cfg)
 	semanticSearch := workflows.NewSemanticSearchWorkflow(vectorIndex, listingDeps.Get.Execute)
+	similarListings := workflows.NewSimilarListingsWorkflow(vectorIndex, listingDeps.Get.Execute)
 	recommendationDeps := recommendationhttp.Deps{
 		Search:  semanticSearch,
-		Similar: workflows.NewSimilarListingsWorkflow(vectorIndex, listingDeps.Get.Execute),
+		Similar: similarListings,
 		// 単段RAG: 意味検索で候補取得→LLMで根拠付き回答（discoverの主導線）。
 		Ask: workflows.NewDiscoverRagWorkflow(semanticSearch, discoverRegistry),
 	}
@@ -256,7 +257,7 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		SearchListings:       listingDeps.Search,
 		GetListing:           listingDeps.Get,
 		CreateListing:        listingDeps.Create,
-		PublishListing:       listingDeps.Publish,
+		PublishListing:       listingDeps.PublishUnsigned,
 		UpdateListing:        listingDeps.Update,
 		Purchase:             purchaseWorkflow,
 		ListOrders:           orderDeps.List,
@@ -270,6 +271,10 @@ func NewServer(ctx context.Context, cfg Config) (*Server, error) {
 		Assistant:            aiAssistant,
 		CompareListings:      workflows.NewCompareListingsWorkflow(listingDeps.Get, aiAssistant),
 		ImageFetcher:         newMcpImageFetcher(cfg.ImageFetchBaseURL),
+		// RAG(意味検索)。VectorHealth で可用性を判定し、不可用時は keyword 検索へ誘導する。
+		SearchSemantic: semanticSearch,
+		FindSimilar:    similarListings,
+		VectorHealth:   vectorIndex,
 	})
 	toolRunner := mcpinterface.NewToolRunner(mcpRecord)
 	mcpHandler := mcpinterface.NewHTTPHandler(mcpTools, toolRunner,

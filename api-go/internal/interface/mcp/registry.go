@@ -14,7 +14,7 @@ type ToolDeps struct {
 	SearchListings       *listingsapp.SearchListingsUseCase
 	GetListing           *listingsapp.GetListingUseCase
 	CreateListing        *listingsapp.CreateListingUseCase
-	PublishListing       *workflows.PublishListingWithHumanSignatureWorkflow
+	PublishListing       *listingsapp.PublishListingUseCase
 	UpdateListing        *workflows.UpdateListingWithHumanSignatureWorkflow
 	Purchase             *workflows.PurchaseItemWorkflow
 	ListOrders           *ordersapp.ListOrdersUseCase
@@ -29,6 +29,10 @@ type ToolDeps struct {
 	CompareListings      *workflows.CompareListingsWorkflow
 	// ImageFetcher は get_listing のヒーロー画像インライン化用（任意。未注入なら ResourceLink へ劣化）。
 	ImageFetcher ImageFetcher
+	// 意味検索(RAG)。VectorHealth が未注入/不可用なら各ツールは「keyword検索を使え」と縮退案内する。
+	SearchSemantic *workflows.SemanticSearchWorkflow
+	FindSimilar    *workflows.SimilarListingsWorkflow
+	VectorHealth   VectorHealth
 }
 
 // BuildTools は全MCPツールを構築する。
@@ -53,6 +57,8 @@ func BuildTools(d ToolDeps) []McpTool {
 		suggestMessageTool{d.Assistant},
 		suggestReviewTool{d.Assistant},
 		compareListingsTool{d.CompareListings},
+		searchListingsSemanticTool{d.SearchSemantic, d.VectorHealth},
+		findSimilarListingsTool{d.FindSimilar, d.VectorHealth},
 		presentDiscoverOutputTool{},
 	}
 }

@@ -38,4 +38,7 @@ type VectorIndex interface {
 	SimilarItems(ctx context.Context, listingID string, topK int32, filter SearchFilter) ([]SearchHit, error)
 	Index(ctx context.Context, in IndexInput) error
 	Delete(ctx context.Context, listingID string) error
+	// Healthy はベクトル検索バックエンドが利用可能か（モデルロード＋インデックス到達）を返す。
+	// 意味検索ツールの可用性判定に使う。縮退実装は false を返す。
+	Healthy(ctx context.Context) bool
 }

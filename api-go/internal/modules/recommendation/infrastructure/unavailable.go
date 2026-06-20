@@ -25,3 +25,7 @@ func (UnavailableVectorIndex) SimilarItems(context.Context, string, int32, recom
 func (UnavailableVectorIndex) Index(context.Context, recommendationapp.IndexInput) error { return nil }
 
 func (UnavailableVectorIndex) Delete(context.Context, string) error { return nil }
+
+// Healthy は常に false（縮退中＝意味検索は利用不可）。ツール側はこれを見て明示的に
+// 「意味検索は使えない→keyword検索を使え」と返せる。
+func (UnavailableVectorIndex) Healthy(context.Context) bool { return false }
