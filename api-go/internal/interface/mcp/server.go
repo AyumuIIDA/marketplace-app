@@ -19,6 +19,9 @@ type CurrentUserResolver func(r *http.Request) (string, bool)
 // NewHTTPHandler は /mcp 用のstateless streamable HTTP handlerを返す。
 // リクエスト毎にcontext(userId+agentId)を束ねたMCP serverを構築する。
 func NewHTTPHandler(tools []McpTool, runner *ToolRunner, resolveUser CurrentUserResolver) http.Handler {
+	// Stateless: セッションをサーバ側に保持しない（毎リクエスト独立）。
+	// 認証は per-request の Bearer/dev ヘッダで完結するためセッション不要。これにより api 再起動や
+	// クライアント再接続で "session not found" が起きず、外部MCPクライアントの接続が壊れにくい。
 	return mcp.NewStreamableHTTPHandler(func(r *http.Request) *mcp.Server {
 		userID, _ := resolveUser(r)
 		var agentID *string
@@ -26,7 +29,7 @@ func NewHTTPHandler(tools []McpTool, runner *ToolRunner, resolveUser CurrentUser
 			agentID = &v
 		}
 		return buildServer(tools, runner, ToolContext{UserID: userID, AgentID: agentID})
-	}, nil)
+	}, &mcp.StreamableHTTPOptions{Stateless: true})
 }
 
 // buildServer はcontextを束ねてtool群を登録したMCP serverを構築する（in-process gatewayでも使う）。
