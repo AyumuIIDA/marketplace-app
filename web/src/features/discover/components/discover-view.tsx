@@ -33,6 +33,7 @@ type AgentTurn =
 
 export function DiscoverView({ initial }: DiscoverViewProps) {
   const t = useTranslations("discover");
+  const tb = useTranslations("brand");
   const [mode, setMode] = useState<Mode>("quick");
   // AIベンダー選択（agentモードのみ有効）。gemini=Gemini, openai=ChatGPT。
   // Copilot風の VendorPicker で切替える。model 下位選択は backend が per-request 非対応のため出さない。
@@ -115,7 +116,12 @@ export function DiscoverView({ initial }: DiscoverViewProps) {
       <header className="flex items-center justify-between px-5 py-4">
         <a className="flex items-center gap-2.5" href="/">
           <Seal size="sm" tone="dark" />
-          <span className="font-mono text-xs uppercase tracking-[0.18em] text-canvas-ink-soft">{t("brand")}</span>
+          <span className="flex flex-col leading-tight">
+            <span className="text-sm font-bold tracking-tight text-canvas-ink">{tb("name")}</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-canvas-ink-soft">
+              {t("brand")}
+            </span>
+          </span>
         </a>
         <div className="flex items-center gap-4">
           {started && (

@@ -36,7 +36,9 @@ export async function MarketplaceShell({
             <Seal size="sm" />
             <span className="hidden flex-col leading-tight sm:flex">
               <span className="text-base font-bold tracking-tight">{t("brand.name")}</span>
-              <span className="font-mono text-[10px] tracking-tight text-ink-faint">{t("brand.tagline")}</span>
+              <span className="whitespace-nowrap font-mono text-[10px] tracking-tight text-ink-faint">
+                {t("brand.tagline")}
+              </span>
             </span>
             <span className="sr-only sm:hidden">{t("brand.name")}</span>
           </a>
