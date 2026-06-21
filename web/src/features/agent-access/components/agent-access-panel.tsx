@@ -30,29 +30,22 @@ export function AgentAccessPanel({ verified }: { verified: boolean }) {
     result === undefined
       ? ""
       : `claude mcp add --transport http marketplace ${result.mcpUrl} \\\n  --header "Authorization: Bearer ${result.token}" \\\n  --header "X-Agent-Id: my-agent"`;
+  // mcp-remote の共通引数。Desktop は http transport 非対応のため npx 経由で接続する。
+  const mcpRemoteArgs =
+    result === undefined
+      ? []
+      : ["-y", "mcp-remote", result.mcpUrl, "--header", `Authorization:Bearer ${result.token}`, "--header", "X-Agent-Id:my-agent"];
+  // macOS / Linux: npx を直接起動。
   const desktopSnippet =
     result === undefined
       ? ""
-      : JSON.stringify(
-          {
-            mcpServers: {
-              marketplace: {
-                command: "npx",
-                args: [
-                  "-y",
-                  "mcp-remote",
-                  result.mcpUrl,
-                  "--header",
-                  `Authorization:Bearer ${result.token}`,
-                  "--header",
-                  "X-Agent-Id:my-agent",
-                ],
-              },
-            },
-          },
-          null,
-          2,
-        );
+      : JSON.stringify({ mcpServers: { marketplace: { command: "npx", args: mcpRemoteArgs } } }, null, 2);
+  // Windows: `cmd /c npx` 経由にする。npx を直接指定すると Claude Desktop が
+  // `C:\Program Files\nodejs\npx.cmd` へ展開し、空白で cmd が途切れて起動に失敗するため。
+  const desktopWindowsSnippet =
+    result === undefined
+      ? ""
+      : JSON.stringify({ mcpServers: { marketplace: { command: "cmd", args: ["/c", "npx", ...mcpRemoteArgs] } } }, null, 2);
 
   return (
     <section className="max-w-2xl rounded-lg border border-line bg-surface p-4">
@@ -82,6 +75,12 @@ export function AgentAccessPanel({ verified }: { verified: boolean }) {
           <CopyBlock copiedLabel={t("copied")} copyLabel={t("copy")} label={t("tokenLabel")} value={result.token} wrap />
           <CopyBlock copiedLabel={t("copied")} copyLabel={t("copy")} label={t("cliLabel")} value={cliSnippet} />
           <CopyBlock copiedLabel={t("copied")} copyLabel={t("copy")} label={t("desktopLabel")} value={desktopSnippet} />
+          <CopyBlock
+            copiedLabel={t("copied")}
+            copyLabel={t("copy")}
+            label={t("desktopWindowsLabel")}
+            value={desktopWindowsSnippet}
+          />
         </div>
       )}
     </section>
