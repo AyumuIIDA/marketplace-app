@@ -110,6 +110,17 @@ export async function ListingDetailView({ currentUser, initialLiked = false, ini
             />
           </div>
 
+          {/* 出品者へDM。商品名を初期文面に載せて文脈を引き継ぐ（自分の出品では非表示）。 */}
+          {!isSeller && (
+            <ActionButton
+              className="w-full"
+              href={`/messages/${seller.sellerId}?subject=${encodeURIComponent(listing.title)}`}
+              variant="secondary"
+            >
+              {social("messageSeller")}
+            </ActionButton>
+          )}
+
           {/* タイトルと価格。価格は ZOZO 同様に大きく主役化。 */}
           <div className="border-t border-line pt-5">
             <h1 className="text-xl font-bold leading-snug tracking-tight text-ink">{listing.title}</h1>

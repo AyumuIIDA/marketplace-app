@@ -18,14 +18,15 @@ export const dynamic = "force-dynamic";
 
 type ThreadPageProps = {
   params: Promise<{ userId: string }>;
+  searchParams: Promise<{ subject?: string }>;
 };
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("ja-JP", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
-export default async function ThreadPage({ params }: ThreadPageProps) {
-  const { userId } = await params;
+export default async function ThreadPage({ params, searchParams }: ThreadPageProps) {
+  const [{ userId }, { subject }] = await Promise.all([params, searchParams]);
   const [currentUser, messages, peer, t] = await Promise.all([
     getCurrentUser(),
     getThread(userId),
@@ -82,7 +83,14 @@ export default async function ThreadPage({ params }: ThreadPageProps) {
 
         <form action={sendDirectMessageAction.bind(null, userId)} className="grid gap-2">
           <FormField label={t("messageLabel")}>
-            <textarea className={textareaClassName} name="body" placeholder={t("placeholder")} required rows={2} />
+            <textarea
+              className={textareaClassName}
+              defaultValue={subject ? t("subjectPrefix", { subject }) : undefined}
+              name="body"
+              placeholder={t("placeholder")}
+              required
+              rows={subject ? 3 : 2}
+            />
           </FormField>
           <div className="flex justify-end">
             <ActionButton type="submit" variant="primary">

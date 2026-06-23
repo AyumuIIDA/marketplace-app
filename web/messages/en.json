@@ -104,7 +104,8 @@
     "back": "Back to messages",
     "signInTitle": "Sign in required",
     "signInBody": "Sign in to use messages.",
-    "signInAction": "Sign in"
+    "signInAction": "Sign in",
+    "subjectPrefix": "About \"{subject}\":\n"
   },
   "board": {
     "title": "Board",
@@ -179,7 +180,8 @@
     "savedItemsEmpty": "You haven’t saved any items yet.",
     "followingSellers": "Following",
     "followingEmpty": "You aren’t following any sellers yet.",
-    "likeRequiresVerification": "Liking requires World ID verification (use Save if you’re not verified yet)"
+    "likeRequiresVerification": "Liking requires World ID verification (use Save if you’re not verified yet)",
+    "messageSeller": "Message seller"
   },
   "catalog": {
     "title": "Listings",
