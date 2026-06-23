@@ -90,6 +90,10 @@ export default async function SellerProfilePage({ params, searchParams }: Seller
             </div>
           ) : (
             <div className="mt-4 flex flex-wrap items-center gap-2">
+              {/* 出品者へDM。プロフィールからは商品文脈なしで会話開始。 */}
+              <ActionButton href={`/messages/${seller.sellerId}`} variant="secondary">
+                {social("messageSeller")}
+              </ActionButton>
               {/* フォロー（私的・認証不要）。誰でも押せる受け皿。 */}
               <FollowButton
                 initialFollowing={seller.followingByMe}

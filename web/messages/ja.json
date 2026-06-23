@@ -104,7 +104,8 @@
     "back": "メッセージ一覧へ",
     "signInTitle": "ログインが必要です",
     "signInBody": "メッセージを使うにはログインしてください。",
-    "signInAction": "ログイン"
+    "signInAction": "ログイン",
+    "subjectPrefix": "「{subject}」について：\n"
   },
   "board": {
     "title": "掲示板",
@@ -179,7 +180,8 @@
     "savedItemsEmpty": "まだ保存した商品はありません。",
     "followingSellers": "フォロー中の出品者",
     "followingEmpty": "まだフォローしている出品者はいません。",
-    "likeRequiresVerification": "いいねには World ID の人間証明が必要です（未証明の方は「保存」をご利用ください）"
+    "likeRequiresVerification": "いいねには World ID の人間証明が必要です（未証明の方は「保存」をご利用ください）",
+    "messageSeller": "出品者にメッセージ"
   },
   "catalog": {
     "title": "出品一覧",
